@@ -1,0 +1,29 @@
+{
+  "name": "@kirill.konshin/eslint-config-next-custom",
+  "version": "0.1.8",
+  "main": "index.js",
+  "module": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@eslint/compat": "^1.2.2",
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.13.0",
+    "@next/eslint-plugin-next": "^15.0.2",
+    "eslint-config-next": "^15.0.2",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.11.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.2"
+  },
+  "peerDependencies": {
+    "next": "^15"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill.konshin@gmail.com> (http://konshin.org)",
+  "license": "MIT",
+  "description": ""
+}
