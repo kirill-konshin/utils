@@ -3,10 +3,9 @@ import {dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import js from '@eslint/js';
-import ts from 'typescript-eslint';
 import {FlatCompat} from '@eslint/eslintrc';
 import {fixupConfigRules} from '@eslint/compat';
-import prettierConfigRecommended from 'eslint-plugin-prettier/recommended';
+import prettierConfigRecommended from 'eslint-config-prettier';
 import globals from 'globals';
 
 const flatCompat = new FlatCompat({
@@ -18,9 +17,13 @@ const flatCompat = new FlatCompat({
 const index = [
     js.configs.recommended,
     ...ts.configs.recommended,
-    ...fixupConfigRules([...flatCompat.extends('next')]),
+    ...fixupConfigRules([...flatCompat.extends('next', 'next/typescript')]), // https://nextjs.org/docs/app/api-reference/config/eslint#with-typescript
     {
-        // last since it disables some previously set rules
+        // Plugin is not recommended by Prettier, they suggest to just use config, and disable all the rules, except for these two in plugin:
+        // 'arrow-body-style': 'off'
+        // 'prefer-arrow-callback': 'off',
+        // import prettierConfigRecommended from 'eslint-plugin-prettier/recommended';
+        // Last since it disables some previously set rules
         name: 'Prettier',
         ...prettierConfigRecommended,
     },
