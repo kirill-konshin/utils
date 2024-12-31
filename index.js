@@ -16,7 +16,6 @@ const flatCompat = new FlatCompat({
 
 const index = [
     js.configs.recommended,
-    ...ts.configs.recommended,
     ...fixupConfigRules([...flatCompat.extends('next', 'next/typescript')]), // https://nextjs.org/docs/app/api-reference/config/eslint#with-typescript
     {
         // Plugin is not recommended by Prettier, they suggest to just use config, and disable all the rules, except for these two in plugin:
@@ -47,6 +46,11 @@ const index = [
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-require-imports': 'off',
             '@typescript-eslint/no-unused-vars': 'off',
+            'import/named': 'off',
+            'import/no-default-export': 'off',
+            'import/no-anonymous-default-export': 'off',
+            'import/no-unresolved': 'off',
+            'import/no-webpack-loader-syntax': 'off',
         },
     },
 ];
