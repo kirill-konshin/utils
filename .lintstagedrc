@@ -1,0 +1,4 @@
+{
+  "*.{js,jsx,ts,tsx,cjs,mjs}": "yarn eslint",
+  "*.{js,jsx,ts,tsx,cjs,mjs,css,scss,sass,less,md,mdx,yml,json,html}": "yarn prettier"
+}
