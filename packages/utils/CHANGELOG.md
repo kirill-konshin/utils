@@ -1,5 +1,11 @@
 # @kirill.konshin/utils
 
+## 0.0.4
+
+### Patch Changes
+
+- 70e3912: Types fix
+
 ## 0.0.3
 
 ### Patch Changes
