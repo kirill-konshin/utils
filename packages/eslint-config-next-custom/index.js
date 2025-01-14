@@ -1,10 +1,10 @@
 // @see https://blog.linotte.dev/eslint-9-next-js-935c2b6d0371
-import {dirname} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import js from '@eslint/js';
-import {FlatCompat} from '@eslint/eslintrc';
-import {fixupConfigRules} from '@eslint/compat';
+import { FlatCompat } from '@eslint/eslintrc';
+import { fixupConfigRules } from '@eslint/compat';
 import prettierConfigRecommended from 'eslint-config-prettier';
 import globals from 'globals';
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useTransition } from 'react';
 
-export function useFetch<R extends any>(
+export function useFetch<R>(
     fn: (...args: any[]) => Promise<R>,
     defaultValue: R | null = null,
 ): [R | null, typeof fn, boolean, Error | undefined] {

@@ -18,14 +18,14 @@ import customConfig from '@kirill.konshin/eslint-config-next-custom';
 const gitignorePath = resolve(dirname(fileURLToPath(import.meta.url)), '.prettierignore'); // <----- !!!
 
 const config = [
-  ...customConfig,
-  {
-    name: 'Custom rules',
-    rules: {
-        // overrides
+    ...customConfig,
+    {
+        name: 'Custom rules',
+        rules: {
+            // overrides
+        },
     },
-  },
-  includeIgnoreFile(gitignorePath),
+    includeIgnoreFile(gitignorePath),
 ];
 
 export default config;
@@ -40,18 +40,17 @@ export default {
     ...config,
     // overrides
 };
-
 ```
 
 `package.json`:
 
 ```json5
 {
-    "scripts": {
-      "eslint": "DEBUG=eslint:eslint eslint --cache --cache-location node_modules/.cache/eslint --fix",
-      "prettier": "prettier --write",
-      "lint:all": "yarn eslint . && yarn prettier ."
-    }
+    scripts: {
+        eslint: 'DEBUG=eslint:eslint eslint --cache --cache-location node_modules/.cache/eslint --fix',
+        prettier: 'prettier --write',
+        'lint:all': 'yarn eslint . && yarn prettier .',
+    },
 }
 ```
 
@@ -64,8 +63,8 @@ IDEA settings:
 
 ```json5
 {
-  "*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,vue}": "yarn eslint",
-  "*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,css,scss,sass,less,yml,yaml,json}": "yarn prettier"
+    '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,vue}': 'yarn eslint',
+    '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,css,scss,sass,less,yml,yaml,json}': 'yarn prettier',
 }
 ```
 
@@ -73,9 +72,9 @@ IDEA settings:
 
 ```json5
 {
-  "scripts": {
-    "prepare": "husky install"
-  }
+    scripts: {
+        prepare: 'husky install',
+    },
 }
 ```
 

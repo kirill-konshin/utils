@@ -1,0 +1,23 @@
+{
+  "name": "@kirill-konshin/electron-utils",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "index.js",
+  "module": "index.js",
+  "exports": {
+    "./images": "./images.js"
+  },
+  "dependencies": {
+    "psd": "^3",
+    "sharp": "^0.33"
+  },
+  "devDependencies": {
+    "@types/psd": "^3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "description": ""
+}

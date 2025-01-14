@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "start": {
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "cache": false,
+      "dependsOn": ["^build"]
+    },
+    "//#lint:all": {
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

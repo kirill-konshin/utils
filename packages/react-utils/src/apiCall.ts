@@ -2,7 +2,7 @@ const json = 'application/json';
 
 export type DataResponse<R> = Response & { data?: R };
 
-export async function apiCall<R extends any>(url: string, init?: RequestInit): Promise<DataResponse<R>> {
+export async function apiCall<R>(url: string, init?: RequestInit): Promise<DataResponse<R>> {
     const useBodyAsIs = !init?.body || init?.body instanceof FormData || typeof init?.body === 'string';
 
     const res: DataResponse<R> = await fetch(url, {

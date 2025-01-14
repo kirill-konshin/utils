@@ -10,7 +10,6 @@
     "lib": ["dom", "dom.iterable", "esnext", "webworker"],
     "module": "esnext",
     "moduleResolution": "node",
-    "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": false,
@@ -21,6 +20,10 @@
         "name": "next"
       }
     ],
+    "outDir": "./build",
+    "declaration": true,
+    "declarationDir": "./build",
+    "rootDir": "src"
   },
   "include": ["src"]
 }

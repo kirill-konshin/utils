@@ -1,13 +1,13 @@
 {
   "name": "@kirill.konshin/eslint-config-next-custom",
   "version": "0.3.1",
+  "type": "module",
   "main": "index.js",
   "module": "index.js",
   "exports": {
     ".": "./index.js",
     "./prettier": "./prettier.js"
   },
-  "type": "module",
   "dependencies": {
     "@eslint/compat": "^1.2.4",
     "@eslint/eslintrc": "^3.2.0",
