@@ -560,9 +560,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kirill-konshin/electron-utils@workspace:packages/electron-utils":
+"@kirill.konshin/electron-utils@workspace:packages/electron-utils":
   version: 0.0.0-use.local
-  resolution: "@kirill-konshin/electron-utils@workspace:packages/electron-utils"
+  resolution: "@kirill.konshin/electron-utils@workspace:packages/electron-utils"
   dependencies:
     "@types/psd": "npm:^3"
     psd: "npm:^3"
