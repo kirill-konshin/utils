@@ -6,11 +6,26 @@
   "module": "build/index.js",
   "types": "build/index.d.ts",
   "exports": {
-    ".": "./build/index.js",
-    "./cache": "./build/cache.js",
-    "./measure": "./build/measure.js",
-    "./mutex": "./build/mutex.js",
-    "./worker": "./build/worker.js"
+    ".": {
+      "default": "./build/index.js",
+      "types": "./build/index.d.ts"
+    },
+    "./cache": {
+      "default": "./build/cache.js",
+      "types": "./build/cache.d.ts"
+    },
+    "./measure": {
+      "default": "./build/measure.js",
+      "types": "./build/measure.d.ts"
+    },
+    "./mutex": {
+      "default": "./build/mutex.js",
+      "types": "./build/mutex.d.ts"
+    },
+    "./worker": {
+      "default": "./build/worker.js",
+      "types": "./build/worker.d.ts"
+    }
   },
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
