@@ -19,6 +19,7 @@
     "lint:staged": "lint-staged --debug",
     "test:playwright": "playwright test",
     "release": "changeset publish",
+    "changeset": "changeset",
     "start": "turbo run start",
     "build": "turbo run build --concurrency=1",
     "serve": "turbo run serve"

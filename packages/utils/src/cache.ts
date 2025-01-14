@@ -57,11 +57,11 @@ export class CacheInPlace<Key, Val, Dep = any> {
         key: Key;
         memo: (oldValue: Val | undefined, key: Key) => Promise<Val> | Val;
         hit?: (oldValue: Val, key: Key) => Promise<Val> | Val;
-        invalidate?: (oldValue: Val, key: Key) => boolean;
+        invalidate?: (key: Key, oldValue: Val) => boolean;
     }): Promise<Val> {
         const oldValue = this.map.get(key);
 
-        if (!!oldValue && invalidate && !invalidate(oldValue, key)) {
+        if (!!oldValue && invalidate && !invalidate(key, oldValue)) {
             return hit ? await hit(oldValue, key) : oldValue;
         }
 
@@ -82,12 +82,12 @@ export class CacheInPlace<Key, Val, Dep = any> {
 }
 
 export abstract class TypedCache<Key, Val = Key, Dep = any> extends CacheInPlace<Key, Val, Dep> {
-    protected invalidate(newValue: Val, oldValue: Val, key: Key): boolean {
-        return newValue && newValue !== oldValue; // shallow compare ever?
+    protected invalidate(key: Key, newValue?: Val, oldValue?: Val): boolean {
+        return !!newValue && newValue !== oldValue; // shallow compare ever?
     }
 
-    protected memoizer(key: Key, newValue: Val, oldValue: Val | undefined): Promise<Val> | Val {
-        return newValue;
+    protected memoizer(key: Key, newValue?: Val, oldValue?: Val): Promise<Val> | Val {
+        return newValue as Val;
     }
 
     protected hit(oldValue: Val, key: Key): Promise<Val> | Val {
@@ -98,12 +98,12 @@ export abstract class TypedCache<Key, Val = Key, Dep = any> extends CacheInPlace
         throw new Error('Use memoIfNotFound() method');
     }
 
-    async memoValue(key: Key, newValue: Val): Promise<Val> {
+    async memoValue(key: Key, newValue?: Val): Promise<Val> {
         return super.memo({
             key,
             memo: (oldValue) => this.memoizer(key, newValue, oldValue),
             hit: this.hit,
-            invalidate: (oldValue, key) => this.invalidate(newValue, oldValue, key),
+            invalidate: (key, oldValue) => this.invalidate(key, newValue, oldValue),
         });
     }
 }
