@@ -6,7 +6,6 @@
       "cache": false
     },
     "build": {
-      "dependsOn": ["clean"],
       "outputs": ["build/**/*"]
     },
     "start": {
