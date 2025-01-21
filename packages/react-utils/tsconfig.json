@@ -18,7 +18,8 @@
     "outDir": "./build",
     "declaration": true,
     "declarationDir": "./build",
-    "rootDir": "src"
+    "rootDir": "src",
+    "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
   "include": ["src"]
 }

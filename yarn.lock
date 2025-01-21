@@ -748,7 +748,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/next-utils@workspace:packages/next-utils"
   dependencies:
-    "@kirill.konshin/utils": "npm:*"
+    "@kirill.konshin/utils": "npm:^0.0.6"
     "@types/react": "npm:^19"
     next: "npm:^15"
     react: "npm:^19"
@@ -765,6 +765,7 @@ __metadata:
   resolution: "@kirill.konshin/react-utils@workspace:packages/react-utils"
   dependencies:
     "@types/react": "npm:^19"
+    classnames: "npm:^2.5.1"
     react: "npm:^19"
     typescript: "npm:^5.7.2"
     zod: "npm:^3"
@@ -788,7 +789,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@kirill.konshin/utils@npm:*, @kirill.konshin/utils@workspace:packages/utils":
+"@kirill.konshin/utils@npm:^0.0.6, @kirill.konshin/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/utils@workspace:packages/utils"
   dependencies:
@@ -2271,6 +2272,13 @@ __metadata:
   version: 3.9.0
   resolution: "ci-info@npm:3.9.0"
   checksum: 10c0/6f0109e36e111684291d46123d491bc4e7b7a1934c3a20dea28cba89f1d4a03acd892f5f6a81ed3855c38647e285a150e3c9ba062e38943bef57fee6c1554c3a
+  languageName: node
+  linkType: hard
+
+"classnames@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "classnames@npm:2.5.1"
+  checksum: 10c0/afff4f77e62cea2d79c39962980bf316bacb0d7c49e13a21adaadb9221e1c6b9d3cdb829d8bb1b23c406f4e740507f37e1dcf506f7e3b7113d17c5bab787aa69
   languageName: node
   linkType: hard
 

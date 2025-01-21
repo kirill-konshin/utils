@@ -1,6 +1,6 @@
 {
   "name": "@kirill.konshin/react-utils",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "type": "module",
   "main": "build/index.js",
   "module": "build/index.js",
@@ -13,6 +13,9 @@
     "build": "tsc --build",
     "start": "yarn build:ts --watch --preserveWatchOutput",
     "wait": "wait-on build/index.js"
+  },
+  "dependencies": {
+    "classnames": "^2.5.1"
   },
   "devDependencies": {
     "@types/react": "^19",

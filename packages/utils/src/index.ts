@@ -1,4 +1,5 @@
-export * as cache from './cache';
-export * as measure from './measure';
-export * as mutex from './mutex';
-export * as worker from './worker';
+export * from './cache';
+export * from './measure';
+export * from './mutex';
+export * from './worker';
+export * from './errors';

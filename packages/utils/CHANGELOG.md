@@ -1,5 +1,23 @@
 # @kirill.konshin/utils
 
+## 0.0.6
+
+### Patch Changes
+
+- Various updates & fixes, Electron implementation
+
+## 0.0.4
+
+### Patch Changes
+
+- 70e3912: Types fix
+
+## 0.0.5
+
+### Patch Changes
+
+- Flat utils, error, misc fixes
+
 ## 0.0.4
 
 ### Patch Changes

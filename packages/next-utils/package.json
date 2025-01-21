@@ -1,11 +1,15 @@
 {
   "name": "@kirill.konshin/next-utils",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "type": "module",
-  "main": "index.js",
-  "module": "index.js",
+  "main": "build/index.js",
+  "module": "build/index.js",
+  "types": "build/index.d.ts",
   "exports": {
-    ".": "./index.js"
+    ".": "./build/index.js",
+    "./appLink": "./build/appLink.js",
+    "./measure": "./build/measure.js",
+    "./useIsInner": "./build/useIsInner.js"
   },
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
@@ -14,7 +18,7 @@
     "wait": "wait-on build/index.js"
   },
   "dependencies": {
-    "@kirill.konshin/utils": "*"
+    "@kirill.konshin/utils": "^0.0.6"
   },
   "devDependencies": {
     "@types/react": "^19",

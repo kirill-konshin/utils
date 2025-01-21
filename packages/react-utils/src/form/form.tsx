@@ -74,7 +74,7 @@ export function create<S extends ZodObject>(schema: S) {
         if (error) {
             // data is undefined if there are errors
             // Next.js will butcher error object, so we provide something more primitive
-            return validationError(rawData, error.flatten().fieldErrors);
+            return validationError(rawData, error.flatten().fieldErrors as any);
         }
 
         return { success: true, data };
@@ -98,7 +98,7 @@ export function create<S extends ZodObject>(schema: S) {
                 {description && <label htmlFor={name}>{description}</label>}
                 {children}
                 {hint && <Hint>{hint}</Hint>}
-                {errors?.[name]?.map((e) => (
+                {errors?.[name]?.map((e: string) => (
                     <Hint error key={e}>
                         {e}
                     </Hint>

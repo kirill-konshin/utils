@@ -2,6 +2,22 @@
   "name": "@kirill.konshin/utils-monorepo",
   "private": true,
   "version": "0.3.1",
+  "scripts": {
+    "----- LINT -----": "",
+    "prepare": "husky install",
+    "eslint": "DEBUG=eslint:eslint eslint --cache --cache-location node_modules/.cache/eslint --fix",
+    "prettier": "prettier --write",
+    "lint:all": "yarn eslint . && yarn prettier .",
+    "lint:staged": "lint-staged --debug",
+    "----- CHANGESETS -----": "",
+    "release-version": "changeset version",
+    "release": "changeset publish",
+    "changeset": "changeset",
+    "----- TURBO -----": "",
+    "start": "turbo run start",
+    "build": "turbo run build --concurrency=1",
+    "serve": "turbo run serve"
+  },
   "devDependencies": {
     "@changesets/cli": "^2.27.11",
     "@eslint/compat": "^1.2.4",
@@ -10,19 +26,6 @@
     "lint-staged": "^15.3.0",
     "prettier": "^3.4.2",
     "turbo": "^2.3.3"
-  },
-  "scripts": {
-    "prepare": "husky install",
-    "eslint": "DEBUG=eslint:eslint eslint --cache --cache-location node_modules/.cache/eslint --fix",
-    "prettier": "prettier --write",
-    "lint:all": "yarn eslint . && yarn prettier .",
-    "lint:staged": "lint-staged --debug",
-    "test:playwright": "playwright test",
-    "release": "changeset publish",
-    "changeset": "changeset",
-    "start": "turbo run start",
-    "build": "turbo run build --concurrency=1",
-    "serve": "turbo run serve"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",

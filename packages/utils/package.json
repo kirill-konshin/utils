@@ -1,31 +1,17 @@
 {
   "name": "@kirill.konshin/utils",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "type": "module",
   "main": "build/index.js",
   "module": "build/index.js",
   "types": "build/index.d.ts",
   "exports": {
-    ".": {
-      "default": "./build/index.js",
-      "types": "./build/index.d.ts"
-    },
-    "./cache": {
-      "default": "./build/cache.js",
-      "types": "./build/cache.d.ts"
-    },
-    "./measure": {
-      "default": "./build/measure.js",
-      "types": "./build/measure.d.ts"
-    },
-    "./mutex": {
-      "default": "./build/mutex.js",
-      "types": "./build/mutex.d.ts"
-    },
-    "./worker": {
-      "default": "./build/worker.js",
-      "types": "./build/worker.d.ts"
-    }
+    ".": "./build/index.js",
+    "./cache": "./build/cache.js",
+    "./errors": "./build/errors.js",
+    "./measure": "./build/measure.js",
+    "./mutex": "./build/mutex.js",
+    "./worker": "./build/worker.js"
   },
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
