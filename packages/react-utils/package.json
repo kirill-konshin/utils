@@ -2,10 +2,11 @@
   "name": "@kirill.konshin/react-utils",
   "version": "0.0.2",
   "type": "module",
-  "main": "index.js",
-  "module": "index.js",
+  "main": "build/index.js",
+  "module": "build/index.js",
+  "types": "build/index.d.ts",
   "exports": {
-    ".": "./index.js"
+    ".": "./build/index.js"
   },
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",

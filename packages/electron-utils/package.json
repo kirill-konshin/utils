@@ -2,18 +2,37 @@
   "name": "@kirill.konshin/electron-utils",
   "version": "0.0.2",
   "type": "module",
-  "main": "index.js",
-  "module": "index.js",
+  "main": "build/index.js",
+  "module": "build/index.js",
+  "types": "build/index.d.ts",
   "exports": {
-    ".": "./index.js",
-    "./images": "./images.js"
+    ".": "./build/index.js",
+    "./images": "./build/images.js",
+    "./updater": "./build/updater.js",
+    "./builder": "./build/builder.js",
+    "./createWindow": "./build/createWindow.js"
+  },
+  "scripts": {
+    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
+    "build": "tsc --build",
+    "start": "yarn build:ts --watch --preserveWatchOutput",
+    "wait": "wait-on build/index.js"
   },
   "dependencies": {
+    "electron-default-menu": "^1.0.2",
+    "electron-store": "^10.0.0",
+    "electron-updater": "^6.3.9",
     "psd": "^3",
     "sharp": "^0.33"
   },
   "devDependencies": {
-    "@types/psd": "^3"
+    "@types/psd": "^3",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "electron": "^34.0.0"
   },
   "publishConfig": {
     "access": "public"

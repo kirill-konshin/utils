@@ -2,19 +2,22 @@ import { open } from 'psd';
 import sharp from 'sharp';
 import path from 'node:path';
 
-/**
- * @param {string} iconPsdPath
- * @param {string} dmgBackgroundPsdPath
- * @param {string} electronAssetsPath
- * @param {string} webPublicPath
- * @returns {Promise<void>}
- */
-export default async function generateImages({ iconPsdPath, dmgBackgroundPsdPath, electronAssetsPath, webPublicPath }) {
+export default async function generateImages({
+    iconPsdPath,
+    dmgBackgroundPsdPath,
+    electronAssetsPath,
+    webPublicPath,
+}: {
+    iconPsdPath: string;
+    dmgBackgroundPsdPath: string;
+    electronAssetsPath: string;
+    webPublicPath: string;
+}) {
     const iconPsd = await open(iconPsdPath);
-    await iconPsd.image.saveAsPng(path.join(electronAssetsPath, 'icon.png'));
+    await iconPsd.image!.saveAsPng(path.join(electronAssetsPath, 'icon.png'));
 
     const bgPsd = await open(dmgBackgroundPsdPath);
-    await bgPsd.image.saveAsPng(path.join(electronAssetsPath, 'background@2x.png'));
+    await bgPsd.image!.saveAsPng(path.join(electronAssetsPath, 'background@2x.png'));
 
     const iconPng = sharp(path.join(electronAssetsPath, 'icon.png'));
     const bgPng = sharp(path.join(electronAssetsPath, 'background@2x.png'));
