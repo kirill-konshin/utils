@@ -20,9 +20,11 @@
     "wait": "wait-on build/index.js"
   },
   "dependencies": {
-    "colors": "^1.4.0"
+    "colors": "^1.4.0",
+    "many-keys-map": "^2.0.1"
   },
   "devDependencies": {
+    "@types/lodash": "^4",
     "typescript": "^5.7.2"
   },
   "publishConfig": {

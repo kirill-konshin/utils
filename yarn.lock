@@ -793,7 +793,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/utils@workspace:packages/utils"
   dependencies:
+    "@types/lodash": "npm:^4"
     colors: "npm:^1.4.0"
+    many-keys-map: "npm:^2.0.1"
     typescript: "npm:^5.7.2"
   languageName: unknown
   linkType: soft
@@ -1117,6 +1119,13 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/ff8f54fc49621210291f815fe5b15d809fd7d032941b3180743440bd507ecdf08b9e844625fa346af568c84bf34114eb378dcdc3e921a08ba1e2a08d7e3c809c
+  languageName: node
+  linkType: hard
+
+"@types/lodash@npm:^4":
+  version: 4.17.14
+  resolution: "@types/lodash@npm:4.17.14"
+  checksum: 10c0/343c6f722e0b39969036a885ad5aad6578479ead83987128c9b994e6b7f2fb9808244d802d4d332396bb09096f720a6c7060de16a492f5460e06a44560360322
   languageName: node
   linkType: hard
 
@@ -5412,6 +5421,13 @@ __metadata:
     promise-retry: "npm:^2.0.1"
     ssri: "npm:^12.0.0"
   checksum: 10c0/c40efb5e5296e7feb8e37155bde8eb70bc57d731b1f7d90e35a092fde403d7697c56fb49334d92d330d6f1ca29a98142036d6480a12681133a0a1453164cb2f0
+  languageName: node
+  linkType: hard
+
+"many-keys-map@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "many-keys-map@npm:2.0.1"
+  checksum: 10c0/cba5a8f67e847441fdff77cf584301e8f2bd91851690dbfabd0561f083c6acccbf34655a951b1e793d63547599b2c279ddf1185547ea0fc1d169e95b38ba2634
   languageName: node
   linkType: hard
 
