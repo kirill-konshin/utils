@@ -1,6 +1,6 @@
 {
   "name": "@kirill.konshin/utils",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "main": "build/index.js",
   "module": "build/index.js",
@@ -20,10 +20,12 @@
     "wait": "wait-on build/index.js"
   },
   "dependencies": {
-    "colors": "^1.4.0"
+    "colors": "^1.4.0",
+    "many-keys-map": "^2.0.1"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "@types/lodash": "^4.17.14",
+    "typescript": "^5.7.3"
   },
   "publishConfig": {
     "access": "public"

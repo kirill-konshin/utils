@@ -1,5 +1,12 @@
 # @kirill.konshin/utils
 
+## 0.0.7
+
+### Patch Changes
+
+- Deps upgrade
+- Better Cache API
+
 ## 0.0.6
 
 ### Patch Changes

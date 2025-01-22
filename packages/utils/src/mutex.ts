@@ -1,4 +1,5 @@
 //TODO Implement queue with ranking & sorting
+//TODO https://github.com/sindresorhus/p-queue
 export class Mutex {
     private promise = Promise.resolve();
 

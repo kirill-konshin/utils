@@ -1,5 +1,14 @@
 # @kirill.konshin/next-utils
 
+## 0.0.6
+
+### Patch Changes
+
+- Deps upgrade
+- Updated dependencies
+- Updated dependencies
+    - @kirill.konshin/utils@0.0.7
+
 ## 0.0.5
 
 ### Patch Changes
