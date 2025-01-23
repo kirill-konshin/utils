@@ -46,7 +46,7 @@ export function createTracker<Dep = any>(whenDifferent: (next: Dep, prev: Dep) =
 export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
     fn: (...args: Key) => MaybePromise<Val>,
     {
-        key = (...k) => k as never as SerializedKey,
+        key = (...k: Key) => k as never as SerializedKey,
         invalidate,
         dispose,
     }: {
@@ -204,7 +204,7 @@ export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
 
         if (!!oldValue && (!newValue || newValue === oldValue)) {
             // console.log('FROM cache', this.name, key, 'old value', oldValue);
-            return (await this.read?.(oldValue, key)) || oldValue;
+            return this.read?.(oldValue, key);
         }
 
         if (this.has(key)) this.delete(key);

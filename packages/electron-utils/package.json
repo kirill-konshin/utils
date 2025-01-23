@@ -22,14 +22,14 @@
     "electron-default-menu": "^1.0.2",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",
-    "psd": "^3",
-    "sharp": "^0.33"
+    "psd": "^3.4.0",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
-    "@types/psd": "^3",
-    "electron": "^34.0.0",
+    "@types/psd": "^3.4.3",
+    "electron": "^34.0.1",
     "electron-builder": "^25.1.8",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "peerDependencies": {
     "electron": "^34.0.0"
