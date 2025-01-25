@@ -7,22 +7,29 @@ export const shallowCompare = (prev: any, next: any) =>
 
 export const equal = (prev: any, next: any) => prev === next;
 
-export function createTracker<Dep = any>(whenDifferent: (next: Dep, prev: Dep) => boolean, shallow = false) {
-    let lastDependency: Dep | null = null;
+const UNUSED = Symbol('UNUSED');
+export const ANY = Symbol('*');
+
+export function createTracker<Dep = any>(whenDifferent: (next: Dep, prev?: Dep) => any, shallow = false) {
+    let lastDependency: Dep = UNUSED as any;
 
     const comparator = shallow ? shallowCompare : equal;
 
     return function tracker(dependency: Dep) {
-        if (!lastDependency || !dependency || comparator(lastDependency, dependency)) {
-            // console.log('RETAINED cache', this.name, 'last', this.lastObj, 'new', obj);
+        // console.log('Tracker', lastDependency, dependency);
+
+        if (lastDependency !== UNUSED && comparator(lastDependency, dependency)) {
+            // console.log('RETAINED cache', { lastDependency, dependency });
             return false;
         }
 
-        // console.log('INVALIDATED cache', this.name, 'last', this.lastObj, 'new', obj);
+        // console.log('INVALIDATED cache', {lastDependency, dependency});
+
+        const res = whenDifferent(dependency, lastDependency === UNUSED ? undefined : lastDependency) || true;
 
         lastDependency = dependency;
 
-        return whenDifferent(dependency, lastDependency) || true;
+        return res;
     };
 }
 
@@ -57,11 +64,22 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
 ) {
     const map = new ManyKeysMap<SerializedKey, Val>();
 
-    const clear = () => {
-        if (dispose) {
-            map.forEach((value, key) => dispose(value, ...key));
+    const clear = (...condition: Key | any[]) => {
+        if (!condition?.length) {
+            map.forEach((value, serializedKey) => {
+                dispose?.(value, ...serializedKey);
+            });
+            map.clear();
+            return;
         }
-        map.clear();
+
+        const keyToClear = key(...(condition as any));
+
+        map.forEach((value, serializedKey) => {
+            if (!serializedKey.every((kk, i) => keyToClear[i] === ANY || kk === keyToClear[i])) return;
+            dispose?.(value, ...serializedKey);
+            map.delete(serializedKey);
+        });
     };
 
     const size = () => map.size;
@@ -168,6 +186,7 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
  */
 export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
     constructor(protected readonly name: string) {
+        console.warn('CREATE cache', name);
         super();
     }
 

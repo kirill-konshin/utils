@@ -1,6 +1,6 @@
 {
   "name": "@kirill.konshin/next-utils",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "main": "build/index.js",
   "module": "build/index.js",
@@ -14,18 +14,18 @@
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
     "build": "tsc --build",
-    "start": "yarn build:ts --watch --preserveWatchOutput",
+    "start": "yarn build --watch --preserveWatchOutput",
     "wait": "wait-on build/index.js"
   },
   "dependencies": {
-    "@kirill.konshin/utils": "^0.0.7"
+    "@kirill.konshin/utils": "^0.0.8"
   },
   "devDependencies": {
     "@types/react": "^19.0.7",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "typescript": "^5.7.3",
-    "zod": "^3.24.1"
+    "wait-on": "^8.0.2"
   },
   "peerDependencies": {
     "next": "^15",

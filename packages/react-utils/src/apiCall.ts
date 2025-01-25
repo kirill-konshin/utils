@@ -1,4 +1,4 @@
-const json = 'application/json';
+export const jsonContentType = 'application/json';
 
 export type DataResponse<R> = Response & { data?: R };
 
@@ -11,11 +11,11 @@ export async function apiCall<R>(url: string, init?: RequestInit): Promise<DataR
         body: useBodyAsIs ? init?.body : JSON.stringify(init.body),
         headers: {
             ...init?.headers,
-            ...(useBodyAsIs ? {} : { 'Content-Type': json }),
+            ...(useBodyAsIs ? {} : { 'Content-Type': jsonContentType }),
         },
     });
 
-    if (res.headers.get('Content-Type')?.includes(json)) {
+    if (res.headers.get('Content-Type')?.includes(jsonContentType)) {
         res.data = await res.json();
     }
 

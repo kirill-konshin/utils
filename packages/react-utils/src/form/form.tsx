@@ -1,4 +1,4 @@
-import { typeToFlattenedError, z, SafeParseReturnType } from 'zod';
+import { typeToFlattenedError, z, SafeParseReturnType, TypeOf } from 'zod';
 
 const nonEmpty = 'This field cannot be empty';
 
@@ -7,30 +7,23 @@ export const maxLength = (schema: z.ZodString): number => schema.maxLength || 0;
 export const minLength = (schema: z.ZodString): number => schema.minLength || 0;
 export const isRequired = (schema: z.ZodString): boolean => minLength(schema) > 0;
 
-export function Hint({ children, error }: { children: any; error?: boolean }) {
-    return <div className={`hint ${error ? 'hint-error' : ''}`}>{children}</div>;
-}
-
-export type ZodObject = z.ZodObject<any> | z.ZodEffects<z.ZodObject<any>>;
-export type T<S extends ZodObject> = z.infer<S>;
-export type MaybeT<S extends ZodObject> = Partial<T<S>>;
-export type SafeT<S extends ZodObject> = SafeParseReturnType<T<S>, T<S>>['data'];
-export type Errors<S extends ZodObject> = typeToFlattenedError<T<S>>['fieldErrors'];
+export type ZodObject = z.ZodObject<any> | z.ZodEffects<z.ZodObject<any>>; // z.ZodType<any, any, any>
+export type MaybeTypeOf<S extends ZodObject> = Partial<TypeOf<S>>;
+export type SafeTypeOf<S extends ZodObject> = SafeParseReturnType<TypeOf<S>, TypeOf<S>>['data'];
+export type Errors<S extends ZodObject> = typeToFlattenedError<TypeOf<S>>['fieldErrors'];
 export type Validation<S extends ZodObject> =
     | {
           success: true; // this is true only if form was validated successfully
-          data: SafeT<S>;
+          data: SafeTypeOf<S>;
           errors?: never;
       }
     | {
           success: false;
-          data?: MaybeT<S>;
+          data?: MaybeTypeOf<S>;
           errors?: Errors<S>;
       };
 
 export function create<S extends ZodObject>(schema: S) {
-    // <S extends z.ZodType<any, any, any>>
-
     const getShape = () =>
         (schema as z.ZodObject<any>).shape || (schema as z.ZodEffects<z.ZodObject<any>>).sourceType().shape;
 
@@ -38,7 +31,7 @@ export function create<S extends ZodObject>(schema: S) {
         throw new Error('Invalid schema: only z.object() or z.object().refine() are supported');
     }
 
-    function register(name: keyof T<S>, data?: MaybeT<S>, errors?: Errors<S>, mui: boolean = false) {
+    function register(name: keyof TypeOf<S>, data?: MaybeTypeOf<S>, errors?: Errors<S>, mui: boolean = false) {
         const field = getShape()[name];
         return {
             name,
@@ -57,7 +50,7 @@ export function create<S extends ZodObject>(schema: S) {
         };
     }
 
-    function validationError(data: MaybeT<S>, errors: Errors<S>): Validation<S> {
+    function validationError(data: MaybeTypeOf<S>, errors: Errors<S>): Validation<S> {
         return {
             success: false,
             data, // data is undefined if there are errors
@@ -66,7 +59,7 @@ export function create<S extends ZodObject>(schema: S) {
     }
 
     function validate(formData: FormData): Validation<S> {
-        const rawData = Object.fromEntries(formData) as T<S>;
+        const rawData = Object.fromEntries(formData) as TypeOf<S>;
         const { error, data } = schema.safeParse(rawData);
 
         // console.log('Validate result', { error, data, rawData });
@@ -80,6 +73,7 @@ export function create<S extends ZodObject>(schema: S) {
         return { success: true, data };
     }
 
+    //FIXME Context?
     function Field({
         children,
         name,
@@ -108,4 +102,8 @@ export function create<S extends ZodObject>(schema: S) {
     }
 
     return { register, validate, Field, validationError };
+}
+
+export function Hint({ children, error }: { children: any; error?: boolean }) {
+    return <div className={`hint ${error ? 'hint-error' : ''}`}>{children}</div>;
 }

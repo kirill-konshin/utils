@@ -1,5 +1,11 @@
 # @kirill.konshin/react-utils
 
+## 0.0.6
+
+### Patch Changes
+
+- Misc fixes and index
+
 ## 0.0.5
 
 ### Patch Changes

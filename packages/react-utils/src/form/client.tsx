@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useCallback, useState, useTransition } from 'react';
-import { create, MaybeT, Validation } from './form';
+import { create, MaybeTypeOf, Validation } from './form';
 import { z } from 'zod';
 
 const FORM_DEBUG = process.env.NEXT_PUBLIC_FORM_DEBUG === 'true';
@@ -28,7 +28,7 @@ export function createClient<S extends z.ZodObject<any>>(schema: S) {
 
     function useValidation(
         actionFn: (data: FormData) => Promise<Validation<S>>,
-        initialData: MaybeT<S> = {} as MaybeT<S>,
+        initialData: MaybeTypeOf<S> = {} as MaybeTypeOf<S>,
     ) {
         const cb = useValidationCallback(actionFn);
 
@@ -40,7 +40,7 @@ export function createClient<S extends z.ZodObject<any>>(schema: S) {
 
     function useValidationTransition(
         actionFn: (data: FormData) => Promise<Validation<S>>,
-        initialData: MaybeT<S> = {} as MaybeT<S>,
+        initialData: MaybeTypeOf<S> = {} as MaybeTypeOf<S>,
     ): [Validation<S>, (formData: FormData) => Promise<Validation<S>>, boolean] {
         const [isPending, startTransition] = useTransition();
         const [state, setState] = useState<Validation<S>>({ success: false, data: initialData });

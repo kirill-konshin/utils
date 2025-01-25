@@ -10,7 +10,8 @@
     },
     "start": {
       "persistent": true,
-      "cache": false
+      "cache": false,
+      "dependsOn": ["^wait"]
     },
     "wait": {
       "cache": false

@@ -2,6 +2,9 @@
 
 import { useCallback, useState, useTransition } from 'react';
 
+//TODO useFetch https://use-http.com
+//TODO SWR?
+//TODO Tanstack Query?
 export function useFetch<R>(
     fn: (...args: any[]) => Promise<R>,
     defaultValue: R | null = null,
@@ -16,7 +19,7 @@ export function useFetch<R>(
         (...args: Parameters<typeof fn>) => {
             const promise = fn(...args);
             // https://react.dev/reference/react/useTransition#react-doesnt-treat-my-state-update-after-await-as-a-transition
-            startTransition(() => promise.then(setData).catch(setError));
+            startTransition(() => promise.then(setData).catch(setError)); //FIXME sub-chain...
             return promise;
         },
         [fn],
