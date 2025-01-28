@@ -1,19 +1,17 @@
 {
   "name": "@kirill.konshin/react-utils",
+  "description": "",
   "version": "0.0.6",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js"
-  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
+    "clean": "rm -rf .tscache dist",
+    "build": "tsup",
     "build:index": "cti create ./src",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js"
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js"
   },
   "devDependencies": {
     "zod": "^3.24.1"
@@ -27,5 +25,26 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./apiCall": {
+      "types": "./dist/apiCall.d.ts",
+      "require": "./dist/apiCall.cjs",
+      "import": "./dist/apiCall.mjs"
+    },
+    "./useFetch": {
+      "types": "./dist/useFetch.d.ts",
+      "require": "./dist/useFetch.cjs",
+      "import": "./dist/useFetch.mjs"
+    },
+    "./useFetcher": {
+      "types": "./dist/useFetcher.d.ts",
+      "require": "./dist/useFetcher.cjs",
+      "import": "./dist/useFetcher.mjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  }
 }

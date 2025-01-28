@@ -1,22 +1,17 @@
 {
   "name": "@kirill.konshin/next-utils",
+  "description": "",
   "version": "0.0.7",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js",
-    "./appLink": "./build/appLink.js",
-    "./measure": "./build/measure.js",
-    "./useIsInner": "./build/useIsInner.js"
-  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
+    "clean": "rm -rf .tscache dist",
+    "build": "tsup",
     "build:index": "cti create ./src",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js"
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js"
   },
   "dependencies": {
     "@kirill.konshin/utils": "^0.0.8"
@@ -33,5 +28,36 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./appLink": {
+      "types": "./dist/appLink.d.ts",
+      "require": "./dist/appLink.cjs",
+      "import": "./dist/appLink.mjs"
+    },
+    "./measure": {
+      "types": "./dist/measure.d.ts",
+      "require": "./dist/measure.cjs",
+      "import": "./dist/measure.mjs"
+    },
+    "./noSSR": {
+      "types": "./dist/noSSR.d.ts",
+      "require": "./dist/noSSR.cjs",
+      "import": "./dist/noSSR.mjs"
+    },
+    "./redirect": {
+      "types": "./dist/redirect.d.ts",
+      "require": "./dist/redirect.cjs",
+      "import": "./dist/redirect.mjs"
+    },
+    "./useIsInner": {
+      "types": "./dist/useIsInner.d.ts",
+      "require": "./dist/useIsInner.cjs",
+      "import": "./dist/useIsInner.mjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  }
 }

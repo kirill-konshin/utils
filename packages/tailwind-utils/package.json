@@ -1,19 +1,17 @@
 {
   "name": "@kirill.konshin/tailwind-utils",
+  "description": "",
   "version": "0.0.0",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js"
-  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
+    "clean": "rm -rf .tscache dist",
+    "build": "tsup",
     "build:index": "cti create ./src",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js"
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js"
   },
   "devDependencies": {
     "tailwindcss": "^4.0.0"
@@ -27,5 +25,21 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./fullpage": {
+      "types": "./dist/fullpage.d.ts",
+      "require": "./dist/fullpage.cjs",
+      "import": "./dist/fullpage.mjs"
+    },
+    "./responsiveHelper": {
+      "types": "./dist/responsiveHelper.d.ts",
+      "require": "./dist/responsiveHelper.cjs",
+      "import": "./dist/responsiveHelper.mjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  }
 }

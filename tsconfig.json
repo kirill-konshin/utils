@@ -14,7 +14,6 @@
     "skipLibCheck": true,
     "strict": false,
     "strictNullChecks": true,
-    "incremental": true,
     "declaration": true,
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },

@@ -5,6 +5,7 @@
 .turbo
 .vscode
 build
+dist
 node_modules
 npm-debug*
 yarn-error*

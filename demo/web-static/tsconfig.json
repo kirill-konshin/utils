@@ -7,6 +7,7 @@
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "useDefineForClassFields": true,
+    "incremental": true,
     "plugins": [
       {
         "name": "next"

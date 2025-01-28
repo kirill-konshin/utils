@@ -1,19 +1,17 @@
 {
   "name": "@kirill.konshin/bootstrap-utils",
+  "description": "",
   "version": "0.0.0",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js"
-  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
+    "clean": "rm -rf .tscache dist",
+    "build": "tsup",
     "build:index": "cti create ./src",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
@@ -44,5 +42,61 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./adaptiveContainer": {
+      "types": "./dist/adaptiveContainer.d.ts",
+      "require": "./dist/adaptiveContainer.cjs",
+      "import": "./dist/adaptiveContainer.mjs"
+    },
+    "./error": {
+      "types": "./dist/error.d.ts",
+      "require": "./dist/error.cjs",
+      "import": "./dist/error.mjs"
+    },
+    "./field": {
+      "types": "./dist/field.d.ts",
+      "require": "./dist/field.cjs",
+      "import": "./dist/field.mjs"
+    },
+    "./globalLoading": {
+      "types": "./dist/globalLoading.d.ts",
+      "require": "./dist/globalLoading.cjs",
+      "import": "./dist/globalLoading.mjs"
+    },
+    "./loading": {
+      "types": "./dist/loading.d.ts",
+      "require": "./dist/loading.cjs",
+      "import": "./dist/loading.mjs"
+    },
+    "./responsiveHelper": {
+      "types": "./dist/responsiveHelper.d.ts",
+      "require": "./dist/responsiveHelper.cjs",
+      "import": "./dist/responsiveHelper.mjs"
+    },
+    "./screen": {
+      "types": "./dist/screen.d.ts",
+      "require": "./dist/screen.cjs",
+      "import": "./dist/screen.mjs"
+    },
+    "./toaster": {
+      "types": "./dist/toaster.d.ts",
+      "require": "./dist/toaster.cjs",
+      "import": "./dist/toaster.mjs"
+    },
+    "./useModal": {
+      "types": "./dist/useModal.d.ts",
+      "require": "./dist/useModal.cjs",
+      "import": "./dist/useModal.mjs"
+    },
+    "./useWrappedForm": {
+      "types": "./dist/useWrappedForm.d.ts",
+      "require": "./dist/useWrappedForm.cjs",
+      "import": "./dist/useWrappedForm.mjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  }
 }

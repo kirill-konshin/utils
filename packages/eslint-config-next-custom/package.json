@@ -1,5 +1,6 @@
 {
   "name": "@kirill.konshin/eslint-config-next-custom",
+  "description": "",
   "version": "0.3.2",
   "type": "module",
   "main": "index.js",
@@ -27,6 +28,5 @@
     "access": "public"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
-  "license": "MIT",
-  "description": ""
+  "license": "MIT"
 }

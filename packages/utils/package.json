@@ -1,24 +1,17 @@
 {
   "name": "@kirill.konshin/utils",
+  "description": "",
   "version": "0.0.8",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js",
-    "./cache": "./build/cache.js",
-    "./errors": "./build/errors.js",
-    "./measure": "./build/measure.js",
-    "./mutex": "./build/mutex.js",
-    "./worker": "./build/worker.js"
-  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
+    "clean": "rm -rf .tscache dist",
+    "build": "tsup",
     "build:index": "cti create ./src",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js"
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js"
   },
   "dependencies": {
     "colors": "^1.4.0",
@@ -32,5 +25,36 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./cache": {
+      "types": "./dist/cache.d.ts",
+      "require": "./dist/cache.cjs",
+      "import": "./dist/cache.mjs"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "require": "./dist/errors.cjs",
+      "import": "./dist/errors.mjs"
+    },
+    "./measure": {
+      "types": "./dist/measure.d.ts",
+      "require": "./dist/measure.cjs",
+      "import": "./dist/measure.mjs"
+    },
+    "./mutex": {
+      "types": "./dist/mutex.d.ts",
+      "require": "./dist/mutex.cjs",
+      "import": "./dist/mutex.mjs"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "require": "./dist/worker.cjs",
+      "import": "./dist/worker.mjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  }
 }

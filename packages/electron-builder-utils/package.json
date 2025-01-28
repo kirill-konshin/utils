@@ -1,21 +1,17 @@
 {
   "name": "@kirill.konshin/electron-builder-utils",
+  "description": "",
   "version": "0.0.1",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js",
-    "./images": "./build/images.js",
-    "./builder": "./build/builder.js"
-  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
+    "clean": "rm -rf .tscache dist",
+    "build": "tsup",
     "build:index": "cti create ./src",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js"
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js"
   },
   "dependencies": {
     "psd": "^3.4.0",
@@ -34,5 +30,21 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./builder": {
+      "types": "./dist/builder.d.ts",
+      "require": "./dist/builder.cjs",
+      "import": "./dist/builder.mjs"
+    },
+    "./images": {
+      "types": "./dist/images.d.ts",
+      "require": "./dist/images.cjs",
+      "import": "./dist/images.mjs"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  }
 }
