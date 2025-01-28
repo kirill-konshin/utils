@@ -1,21 +1,33 @@
 import type { Configuration, MacConfiguration } from 'electron-builder';
 import type { GithubOptions, S3Options } from 'builder-util-runtime';
 
-const isGithubTag = process.env.GITHUB_REF_TYPE === 'tag';
-const isGithubMaster = process.env.GITHUB_REF_TYPE === 'branch' && process.env.GITHUB_REF_NAME === 'master';
-const isDevPublish = process.env.AWS_URL?.includes(':9000');
-const isNoAutoDiscovery = process.env.CSC_IDENTITY_AUTO_DISCOVERY === 'false';
+const {
+    GITHUB_REF_TYPE,
+    GITHUB_REF_NAME,
+    GITHUB_RUN_ID,
+    GITHUB_REF,
+    AWS_URL,
+    AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY,
+    GH_TOKEN,
+    CSC_IDENTITY_AUTO_DISCOVERY,
+} = process.env;
+
+const isGithubTag = GITHUB_REF_TYPE === 'tag';
+const isGithubMaster = GITHUB_REF_TYPE === 'branch' && GITHUB_REF_NAME === 'master';
+const isDevPublish = AWS_URL?.includes(':9000');
+const isNoAutoDiscovery = CSC_IDENTITY_AUTO_DISCOVERY === 'false';
 const isSkipPublish = !isDevPublish && !isGithubMaster && !isGithubTag;
 
 //FIXME Refine logic, tags should be versions, not channels, use branches? See how Changesets does it
-const channel = isGithubTag ? 'latest' : process.env.GITHUB_REF_NAME; // https://www.electron.build/tutorials/release-using-channels.html
+const channel = isGithubTag ? 'latest' : GITHUB_REF_NAME; // https://www.electron.build/tutorials/release-using-channels.html
 
 function getVersion() {
     if (isGithubMaster) {
-        return `0.0.${process.env.GITHUB_RUN_ID}`; //TODO Figure out last normal in master and bump it
+        return `0.0.${GITHUB_RUN_ID}`; //TODO Figure out last normal in master and bump it
     }
     if (isGithubTag) {
-        return process.env.GITHUB_REF!.split('/').pop();
+        return GITHUB_REF!.split('/').pop();
     }
     return `0.0.${Date.now()}`; //TODO Read from package.json?
 }
@@ -46,9 +58,17 @@ function getTarget() {
 
 export function builerConfig(options: {
     config: Configuration;
-    bucket?: string;
-    githubReleases: { owner: string; repo: string };
+    s3?: Pick<S3Options, 'bucket'> & Partial<S3Options>; //TODO Omit?
+    githubReleases: Pick<GithubOptions, 'owner' | 'repo'> & Partial<GithubOptions>;
 }): Configuration {
+    if (options.s3 && (!AWS_URL || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY)) {
+        throw new Error('Missing AWS configuration');
+    }
+
+    if (options.githubReleases && !GH_TOKEN) {
+        throw new Error('Missing AWS configuration');
+    }
+
     const config: Configuration = {
         files: [
             '**/*',
@@ -81,25 +101,23 @@ export function builerConfig(options: {
             ],
         },
         publish: [
-            options.bucket &&
-                process.env.AWS_ACCESS_KEY_ID &&
-                process.env.AWS_SECRET_ACCESS_KEY &&
+            options.s3 &&
                 ({
                     provider: 's3',
-                    bucket: options.bucket,
-                    endpoint: process.env.AWS_URL,
+                    endpoint: AWS_URL,
                     channel,
+                    ...options.s3, // bucket
                 } as S3Options),
             options.githubReleases &&
-                process.env.GH_TOKEN &&
+                GH_TOKEN &&
                 (isGithubTag || isGithubMaster) &&
                 ({
                     provider: 'github',
                     private: true,
-                    token: process.env.GH_TOKEN,
-                    ...options.githubReleases,
+                    token: GH_TOKEN,
                     releaseType: isGithubTag ? 'release' : 'draft',
                     channel,
+                    ...options.githubReleases, // repo, owner
                 } as GithubOptions),
         ].filter(Boolean) as never,
         extraMetadata: {
@@ -119,11 +137,11 @@ export function builerConfig(options: {
         isSkipPublish,
         isNoAutoDiscovery,
         channel,
-        GITHUB_RUN_ID: process.env.GITHUB_RUN_ID,
-        GITHUB_REF_TYPE: process.env.GITHUB_REF_TYPE,
-        GITHUB_REF_NAME: process.env.GITHUB_REF_NAME,
-        CSC_IDENTITY_AUTO_DISCOVERY: process.env.CSC_IDENTITY_AUTO_DISCOVERY,
-        AWS_URL: process.env.AWS_URL,
+        GITHUB_RUN_ID: GITHUB_RUN_ID,
+        GITHUB_REF_TYPE: GITHUB_REF_TYPE,
+        GITHUB_REF_NAME: GITHUB_REF_NAME,
+        CSC_IDENTITY_AUTO_DISCOVERY: CSC_IDENTITY_AUTO_DISCOVERY,
+        AWS_URL: AWS_URL,
     });
 
     console.log('Electron Builder configuration', JSON.stringify(config, null, 2));

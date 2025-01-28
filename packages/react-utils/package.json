@@ -14,9 +14,6 @@
     "start": "yarn build --watch --preserveWatchOutput",
     "wait": "wait-on build/index.js"
   },
-  "dependencies": {
-    "classnames": "^2.5.1"
-  },
   "devDependencies": {
     "@types/react": "^19.0.7",
     "react": "^19.0.0",

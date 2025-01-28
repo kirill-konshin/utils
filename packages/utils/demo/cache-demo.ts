@@ -78,7 +78,11 @@ class Dialog<R> {
 // Worker
 
 class RespondersBase<R> {
-    create<M extends keyof R, S extends ZodType<any, any, any>, F extends (context: Context<R, M, 'response'>, input: z.infer<S>) => any>(
+    create<
+        M extends keyof R,
+        S extends ZodType<any, any, any>,
+        F extends (context: Context<R, M, 'response'>, input: z.infer<S>) => any,
+    >(
         message: M, // <--- this is needed just to tell TS what message this is
         schema: S,
         responder: F,
@@ -180,11 +184,11 @@ const createSchema = <S extends ResSchema>(s: S): ResSchemaFinal<S> => {
  *
  * Validation works, but navigation does not, plus it's not valid code to use responders2 before creation
  */
-function create<S extends ResSchemaFinal<ResSchema>, M extends keyof S, F extends (key: S[M][0], input: S[M][1]) => S[M][2]>( // context: Context<S, M, 'response'>
-    schema: S,
-    message: M,
-    responder: F,
-): F {
+function create<
+    S extends ResSchemaFinal<ResSchema>,
+    M extends keyof S,
+    F extends (key: S[M][0], input: S[M][1]) => S[M][2],
+>(schema: S, message: M, responder: F): F { // context: Context<S, M, 'response'>
     return responder as any;
 }
 
@@ -295,7 +299,9 @@ export type RespondersMap<R extends Record<string, (...args: any[]) => any>> = {
  * Broken completely
  */
 const createObject = <R extends Record<string, (...args: any[]) => any>>(
-    creator: (create: <K extends keyof R>(key: K, responder: (context: Context<R, K, any>, input: any) => any) => R[K]) => R,
+    creator: (
+        create: <K extends keyof R>(key: K, responder: (context: Context<R, K, any>, input: any) => any) => R[K],
+    ) => R,
 ): {
     [K in keyof R]: (key: K, input: Parameters<R[K]>[1]) => Awaited<ReturnType<R[K]>>;
 } => {

@@ -1,5 +1,11 @@
 # @kirill-konshin/electron-utils
 
+## 0.0.5
+
+### Patch Changes
+
+- Bugfixes
+
 ## 0.0.4
 
 ### Patch Changes

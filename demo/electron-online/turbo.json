@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "clean": {
+      "cache": false
+    },
+    "build": {
+      "dependsOn": ["clean", "^build"],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*", "assets/**/*"],
+      "outputs": ["dist/**/*"],
+      "env": ["CSC_KEY_PASSWORD", "CSC_IDENTITY_AUTO_DISCOVERY"]
+    },
+    "deploy": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "start": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["@demo/web-static#wait-localhost"]
+    }
+  }
+}

@@ -1,8 +1,8 @@
-import { open } from 'psd';
+import psd from 'psd';
 import sharp from 'sharp';
 import path from 'node:path';
 
-export default async function generateImages({
+export async function generateImages({
     iconPsdPath,
     dmgBackgroundPsdPath,
     electronAssetsPath,
@@ -13,10 +13,10 @@ export default async function generateImages({
     electronAssetsPath: string;
     webPublicPath: string;
 }) {
-    const iconPsd = await open(iconPsdPath);
+    const iconPsd = await psd.open(iconPsdPath);
     await iconPsd.image!.saveAsPng(path.join(electronAssetsPath, 'icon.png'));
 
-    const bgPsd = await open(dmgBackgroundPsdPath);
+    const bgPsd = await psd.open(dmgBackgroundPsdPath);
     await bgPsd.image!.saveAsPng(path.join(electronAssetsPath, 'background@2x.png'));
 
     const iconPng = sharp(path.join(electronAssetsPath, 'icon.png'));
@@ -26,6 +26,8 @@ export default async function generateImages({
 
     await iconPng.toFile(path.join(electronAssetsPath, 'splash.webp'));
     await iconPng.toFile(path.join(electronAssetsPath, 'icon.icns'));
+
+    //TODO Crop without icon BG
     await iconPng.toFile(path.join(webPublicPath, 'icon.png'));
     await iconPng.resize(32).toFile(path.join(webPublicPath, 'favicon.ico'));
 }

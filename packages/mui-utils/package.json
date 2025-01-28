@@ -1,0 +1,49 @@
+{
+  "name": "@kirill.konshin/mui-utils",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "build/index.js",
+  "module": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": "./build/index.js"
+  },
+  "scripts": {
+    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
+    "build": "tsc --build",
+    "start": "yarn build --watch --preserveWatchOutput",
+    "wait": "wait-on build/index.js",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "^3.2.4",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.4.1",
+    "@mui/styled-engine": "^6.4.0",
+    "@storybook/addon-essentials": "^8.5.2",
+    "@storybook/addon-interactions": "^8.5.2",
+    "@storybook/addon-onboarding": "^8.5.2",
+    "@storybook/blocks": "^8.5.2",
+    "@storybook/react": "^8.5.2",
+    "@storybook/react-vite": "^8.5.2",
+    "@storybook/test": "^8.5.2",
+    "@types/react": "^19.0.7",
+    "react": "^19.0.0",
+    "storybook": "^8.5.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "wait-on": "^8.0.2"
+  },
+  "peerDependencies": {
+    "@mui/material": "^6",
+    "react": "^18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "description": ""
+}

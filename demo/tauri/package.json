@@ -1,0 +1,25 @@
+{
+  "name": "@demo/tauri",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "main": "src/index.js",
+  "author": {
+    "name": "Kirill Konshin",
+    "email": "kirill@konshin.org",
+    "url": "https://konshin.org"
+  },
+  "description": "Tauri",
+  "scripts": {
+    "clean": "rm -rf ./src-tauri/target/debug/bundle",
+    "start": "tauri dev",
+    "build-demo": "tauri build --debug",
+    "update": "cd src-tauri && cargo update"
+  },
+  "devDependencies": {
+    "@demo/web-static": "*",
+    "@kirill.konshin/electron-builder-utils": "*",
+    "@tauri-apps/cli": "^2.2.7",
+    "dotenv-cli": "^8.0.0"
+  }
+}

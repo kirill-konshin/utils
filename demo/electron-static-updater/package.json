@@ -1,0 +1,33 @@
+{
+  "name": "@demo/electron-static-updater",
+  "productName": "Electron Static Updater",
+  "description": "Electron Static Updater",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "main": "src/index.mjs",
+  "author": {
+    "name": "Kirill Konshin",
+    "email": "kirill@konshin.org",
+    "url": "https://konshin.org"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "start": "NODE_ENV=development electron .",
+    "images": "node images.mjs",
+    "build-demo": "CSC_LINK=cert/cert.p12 electron-builder",
+    "deploy": "open ./dist/Electron Static Updater-0.0.0-arm64.dmg",
+    "open": "./dist/mac-arm64/Electron Static Updater.app/Contents/MacOS/Electron Static Updater",
+    "minio": "dotenv minio server $(pwd)/node_modules/.cache/minio -- --console-address :9001"
+  },
+  "dependencies": {
+    "@kirill.konshin/electron-utils": "*"
+  },
+  "devDependencies": {
+    "@demo/web-static": "*",
+    "@kirill.konshin/electron-builder-utils": "*",
+    "dotenv-cli": "^8.0.0",
+    "electron": "34.0.1",
+    "electron-builder": "^26.0.0"
+  }
+}

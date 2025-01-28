@@ -1,0 +1,39 @@
+{
+  "name": "@kirill.konshin/react-native-utils",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "build/index.js",
+  "module": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": "./build/index.js"
+  },
+  "scripts": {
+    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
+    "build": "tsc --build",
+    "start": "yarn build --watch --preserveWatchOutput",
+    "wait": "wait-on build/index.js"
+  },
+  "dependencies": {
+    "expo-file-system": "^18.0.7",
+    "expo-sharing": "^13.0.1",
+    "expo-updates": "^0.26.13"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.7",
+    "react": "^19.0.0",
+    "react-native": "^0.77.0",
+    "typescript": "^5.7.3",
+    "wait-on": "^8.0.2"
+  },
+  "peerDependencies": {
+    "react": "^18",
+    "react-native": "^0.77.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "description": ""
+}

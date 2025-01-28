@@ -17,3 +17,5 @@ yarn-error*
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
+
+*storybook.log

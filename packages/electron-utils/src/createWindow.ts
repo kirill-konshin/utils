@@ -1,15 +1,31 @@
-import path from 'path';
-import { Menu, app, BrowserWindow, shell, protocol, ProtocolRequest, ProtocolResponse, Rectangle } from 'electron';
-import defaultMenu from 'electron-default-menu';
-import Store from 'electron-store';
+import path from 'node:path';
 import https from 'node:https';
 import http from 'node:http';
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import url from 'node:url';
+import { Menu, app, BrowserWindow, shell, protocol, Rectangle } from 'electron';
+import defaultMenu from 'electron-default-menu';
+import Store from 'electron-store';
 import { checkForUpdates } from './updater.js';
 
 export const isDev = process.env['NODE_ENV'] === 'development';
 export const appPath = app.getAppPath();
+
+// See https://cs.chromium.org/chromium/src/net/base/net_error_list.h
+const FILE_NOT_FOUND = -6;
+
+const getPath = async (path_, file = '') => {
+    try {
+        const result = await fsp.stat(path_);
+
+        if (result.isFile()) return path_;
+
+        if (result.isDirectory()) return getPath(path.join(path_, `${file}.html`));
+    } catch {
+        /* empty */
+    }
+};
 
 export function createWindow({
     width = 1000,
@@ -20,8 +36,9 @@ export function createWindow({
     onOpen,
     onClose,
     localhostUrl = 'http://localhost:3000',
-    productionUrl = '',
+    productionUrl = '', // in this mode Electron acts as a browser for remote app
     webPath = path.resolve(appPath, 'web'), // must conform to what is in electron-builder.js files section
+    useStaticInDev = false,
     updater = false,
     rememberBounds = true,
 }: {
@@ -35,10 +52,37 @@ export function createWindow({
     localhostUrl?: string;
     productionUrl?: string;
     webPath?: string;
+    useStaticInDev?: boolean;
     updater?: boolean;
     rememberBounds?: boolean;
 } = {}) {
     let mainWindow: BrowserWindow | null = null;
+
+    console.log('[APP] Starting Electron', {
+        isDev,
+        appPath,
+        useStaticInDev,
+        localhostUrl,
+        productionUrl,
+        webPath,
+        updater,
+        rememberBounds,
+        quitOnClose,
+        disableSecurity,
+        disableSecurityWarnings,
+    });
+
+    if (!productionUrl && !webPath) {
+        throw new Error('productionUrl or webPath must be defined');
+    }
+
+    if (productionUrl && webPath) {
+        throw new Error('productionUrl and webPath cannot be used together');
+    }
+
+    if (!localhostUrl) {
+        throw new Error('localhostUrl must be defined');
+    }
 
     const store = new Store<{ bounds: Rectangle }>({
         schema: {
@@ -69,10 +113,6 @@ export function createWindow({
     };
 
     const createWindow = async () => {
-        if (productionUrl && webPath) {
-            throw new Error('productionUrl and webPath cannot be used together');
-        }
-
         mainWindow = new BrowserWindow({
             width,
             height,
@@ -83,58 +123,73 @@ export function createWindow({
                 webSecurity: !disableSecurity,
                 devTools: true,
             },
-            ...(!isDev && rememberBounds ? store.get('bounds') : {}),
+            ...(rememberBounds ? store.get('bounds') : {}),
         });
 
-        mainWindow.on(
-            'move',
-            () => !isDev && rememberBounds && mainWindow && store.set('bounds', mainWindow.getBounds()),
-        );
+        mainWindow.on('move', () => rememberBounds && mainWindow && store.set('bounds', mainWindow.getBounds()));
 
         mainWindow.once('ready-to-show', () => isDev && openDevTools());
 
-        let interceptor;
+        // Static interceptor
 
-        if (webPath && localhostUrl && !productionUrl) {
-            protocol.interceptStreamProtocol(
-                'http',
-                (interceptor = (
-                    request: ProtocolRequest,
-                    callback: (response: NodeJS.ReadableStream | ProtocolResponse) => void,
-                ) => {
-                    if (request.url.startsWith(localhostUrl)) {
-                        let fileUrl = url.parse(request.url, false).pathname;
+        let interceptor: (() => void) | null = null;
 
-                        if (fileUrl === '/') fileUrl = 'index.html';
+        if (webPath && (!isDev || useStaticInDev)) {
+            console.log(`[APP] Static Server Enabled, ${localhostUrl} will be intercepted to ${webPath}`);
 
-                        if (!fileUrl) return false;
+            //TODO https://localhost:3000
+            // @see https://github.com/sindresorhus/electron-serve/blob/main/index.js
+            protocol.interceptStreamProtocol('http', (request, callback) => {
+                if (request.url.startsWith(localhostUrl)) {
+                    let fileUrl = url.parse(request.url, false).pathname;
 
-                        // return {path: path.join(webPath, fileUrl)};
-                        callback(fs.createReadStream(path.join(webPath, fileUrl)));
+                    if (!fileUrl) return callback({ error: FILE_NOT_FOUND });
 
-                        return true;
-                    }
+                    if (fileUrl === '/') fileUrl = 'index.html';
 
-                    // return {url: request.url};
-                    (request.url.startsWith('https') ? https : http).get(request.url, callback);
+                    const filePath = path.join(webPath, fileUrl);
+
+                    const relativePath = path.relative(webPath, fileUrl);
+
+                    const isSafe = !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+
+                    if (!isSafe && !isDev) return callback({ error: FILE_NOT_FOUND });
+
+                    // const finalPath = await getPath(filePath, options.file);
+                    // const fileExtension = path.extname(filePath);
+
+                    console.log('[APP] Static Server', fileUrl, '->', filePath);
+
+                    // return {path: path.join(webPath, fileUrl)};
+                    callback(fs.createReadStream(filePath));
 
                     return true;
-                }),
-            );
+                }
+
+                // return {url: request.url};
+                (request.url.startsWith('https') ? https : http).get(request.url, callback);
+
+                return true;
+            });
+
+            interceptor = () => protocol.uninterceptProtocol('http');
         }
 
         mainWindow.on('closed', () => {
-            if (interceptor) protocol.uninterceptProtocol('http');
+            interceptor?.();
             onClose?.(mainWindow as never);
             mainWindow = null;
             interceptor = null;
         });
 
         // External URLs
+
         mainWindow.webContents.setWindowOpenHandler(({ url }) => {
             shell.openExternal(url).catch((e) => console.error(e));
             return { action: 'deny' };
         });
+
+        // Menu
 
         const menu = defaultMenu(app, shell);
 
@@ -157,7 +212,7 @@ export function createWindow({
         onOpen?.(mainWindow);
 
         if (!onOpen && localhostUrl) {
-            await mainWindow.loadURL(productionUrl && !isDev ? productionUrl : localhostUrl + '/');
+            await mainWindow.loadURL(productionUrl && !isDev ? productionUrl : `${localhostUrl}/`);
         }
 
         console.log('[APP] Main Window Open');
@@ -172,7 +227,6 @@ export function createWindow({
     app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && !mainWindow && createWindow());
 
     return {
-        app,
         get mainWindow() {
             return mainWindow;
         },
