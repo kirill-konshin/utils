@@ -16,11 +16,6 @@
     "wait": "wait-on build/index.js"
   },
   "devDependencies": {
-    "@types/react": "^19.0.7",
-    "create-ts-index": "^1.14.0",
-    "react": "^19.0.0",
-    "typescript": "^5.7.3",
-    "wait-on": "^8.0.2",
     "zod": "^3.24.1"
   },
   "peerDependencies": {

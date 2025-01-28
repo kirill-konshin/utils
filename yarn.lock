@@ -3630,16 +3630,11 @@ __metadata:
     "@storybook/react": "npm:^8.5.2"
     "@storybook/react-vite": "npm:^8.5.2"
     "@storybook/test": "npm:^8.5.2"
-    "@types/react": "npm:^19.0.7"
     bootstrap: "npm:^5.3.3"
-    create-ts-index: "npm:^1.14.0"
-    react: "npm:^19.0.0"
     react-bootstrap: "npm:^2.10.8"
     react-hook-form: "npm:^7.54.2"
     storybook: "npm:^8.5.2"
-    typescript: "npm:^5.7.3"
     vite: "npm:^6.0.11"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     bootstrap: ^5
     react: ^18
@@ -3656,8 +3651,6 @@ __metadata:
     electron-builder: "npm:^25.1.8"
     psd: "npm:^3.4.0"
     sharp: "npm:^0.33.5"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     electron: ^34.0.0
   languageName: unknown
@@ -3672,8 +3665,6 @@ __metadata:
     electron-default-menu: "npm:^1.0.2"
     electron-store: "npm:^10.0.0"
     electron-updater: "npm:^6.3.9"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     electron: ^34.0.0
   languageName: unknown
@@ -3693,7 +3684,6 @@ __metadata:
     eslint-config-prettier: "npm:^10.0.1"
     eslint-plugin-react-hooks: "npm:^5.1.0"
     globals: "npm:^15.14.0"
-    typescript: "npm:^5.7.3"
   peerDependencies:
     next: ^15
   languageName: unknown
@@ -3715,12 +3705,8 @@ __metadata:
     "@storybook/react": "npm:^8.5.2"
     "@storybook/react-vite": "npm:^8.5.2"
     "@storybook/test": "npm:^8.5.2"
-    "@types/react": "npm:^19.0.7"
-    react: "npm:^19.0.0"
     storybook: "npm:^8.5.2"
-    typescript: "npm:^5.7.3"
     vite: "npm:^6.0.11"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     "@mui/material": ^6
     react: ^18
@@ -3732,11 +3718,7 @@ __metadata:
   resolution: "@kirill.konshin/next-utils@workspace:packages/next-utils"
   dependencies:
     "@kirill.konshin/utils": "npm:^0.0.8"
-    "@types/react": "npm:^19.0.7"
     next: "npm:^15.1.6"
-    react: "npm:^19.0.0"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     next: ^15
     react: ^18
@@ -3747,14 +3729,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/react-native-utils@workspace:packages/react-native-utils"
   dependencies:
-    "@types/react": "npm:^19.0.7"
     expo-file-system: "npm:^18.0.7"
     expo-sharing: "npm:^13.0.1"
     expo-updates: "npm:^0.26.13"
-    react: "npm:^19.0.0"
     react-native: "npm:^0.77.0"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     react: ^18
     react-native: ^0.77.0
@@ -3765,10 +3743,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/react-utils@workspace:packages/react-utils"
   dependencies:
-    "@types/react": "npm:^19.0.7"
-    react: "npm:^19.0.0"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
     zod: "npm:^3.24.1"
   peerDependencies:
     react: ^18
@@ -3780,11 +3754,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/tailwind-utils@workspace:packages/tailwind-utils"
   dependencies:
-    "@types/react": "npm:^19.0.7"
-    react: "npm:^19.0.0"
     tailwindcss: "npm:^4.0.0"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
   peerDependencies:
     react: ^18
     tailwindcss: ^4
@@ -3797,11 +3767,16 @@ __metadata:
   dependencies:
     "@changesets/cli": "npm:^2.27.11"
     "@eslint/compat": "npm:^1.2.5"
+    "@types/react": "npm:^19.0.7"
+    create-ts-index: "npm:^1.14.0"
     eslint: "npm:^9.18.0"
     husky: "npm:^9.1.7"
     lint-staged: "npm:^15.4.1"
     prettier: "npm:^3.4.2"
+    react: "npm:^19.0.0"
     turbo: "npm:^2.3.3"
+    typescript: "npm:^5.7.3"
+    wait-on: "npm:^8.0.2"
   languageName: unknown
   linkType: soft
 
@@ -3812,8 +3787,6 @@ __metadata:
     "@types/lodash": "npm:^4.17.14"
     colors: "npm:^1.4.0"
     many-keys-map: "npm:^2.0.1"
-    typescript: "npm:^5.7.3"
-    wait-on: "npm:^8.0.2"
   languageName: unknown
   linkType: soft
 
