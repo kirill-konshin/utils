@@ -2,10 +2,7 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
-    "clean": {
-      "cache": false
-    },
-    "build": {
+    "build:demo": {
       "dependsOn": ["clean", "^build"],
       "inputs": ["$TURBO_DEFAULT$", "src/**/*", "node_modules/web-static/out/**/*", "assets/**/*"],
       "outputs": ["dist/**/*"],
@@ -15,10 +12,10 @@
       "dependsOn": ["build"],
       "cache": false
     },
-    "start": {
+    "start:demo": {
       "persistent": true,
       "cache": false,
-      "dependsOn": ["@demo/web-static#wait"],
+      "dependsOn": ["^wait-localhost"],
       "passThroughEnv": ["DEBUG"]
     }
   }

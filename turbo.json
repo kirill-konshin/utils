@@ -3,12 +3,19 @@
   "globalDependencies": ["tsconfig.json"],
   "tasks": {
     "start": {
+      "persistent": true,
       "cache": false,
-      "persistent": true
+      "dependsOn": ["^wait", "build:index"]
     },
     "build": {
-      "cache": false,
-      "dependsOn": ["^build"]
+      "outputs": ["build/**/*"],
+      "dependsOn": ["^build", "build:index"]
+    },
+    "build:index": {
+      "outputs": ["src/index.ts"]
+    },
+    "wait": {
+      "cache": false
     },
     "//#lint:all": {
       "cache": false

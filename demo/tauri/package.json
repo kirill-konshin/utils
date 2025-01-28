@@ -12,8 +12,8 @@
   "description": "Tauri",
   "scripts": {
     "clean": "rm -rf ./src-tauri/target/debug/bundle",
-    "start": "tauri dev",
-    "build-demo": "tauri build --debug",
+    "start:demo": "tauri dev",
+    "build:demo": "tauri build --debug",
     "update": "cd src-tauri && cargo update"
   },
   "devDependencies": {

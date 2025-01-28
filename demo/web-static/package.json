@@ -6,9 +6,9 @@
   "main": "index.js",
   "scripts": {
     "clean": "rm -rf ./out/*",
-    "start": "next dev",
+    "start:demo": "next dev",
     "start:secure": "yarn start --experimental-https",
-    "build-demo": "next build",
+    "build:demo": "next build",
     "serve": "serve ./out -l 3000",
     "wait": "wait-on out/index.html",
     "wait-localhost": "wait-on http://localhost:3000"

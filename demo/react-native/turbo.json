@@ -4,9 +4,7 @@
   "tasks": {
     "build:demo": {
       "dependsOn": ["clean", "^build"],
-      "inputs": ["$TURBO_DEFAULT$", "src/**/*", "assets/**/*"],
-      "outputs": ["dist/**/*"],
-      "env": ["CSC_KEY_PASSWORD", "CSC_IDENTITY_AUTO_DISCOVERY"]
+      "outputs": ["dist/**/*"]
     },
     "deploy": {
       "dependsOn": ["build"],
@@ -14,8 +12,7 @@
     },
     "start:demo": {
       "persistent": true,
-      "cache": false,
-      "dependsOn": ["^wait-localhost"]
+      "cache": false
     }
   }
 }

@@ -1,2 +1,2 @@
-export * from './builder.js';
-export * from './images.js';
+export * from './builder';
+export * from './images';

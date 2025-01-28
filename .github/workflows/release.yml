@@ -11,6 +11,8 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    env:
+      TURBO_CACHE_DIR: node_modules/.cache/turbo
 
     # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
     if: github.repository == 'kirill-konshin/utils'

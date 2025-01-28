@@ -11,9 +11,9 @@
   },
   "scripts": {
     "clean": "rm -rf ./dist",
-    "start": "NODE_ENV=development electron .",
+    "start:demo": "NODE_ENV=development electron .",
     "images": "node images.mjs",
-    "build-demo": "CSC_LINK=cert/cert.p12 electron-builder",
+    "build:demo": "CSC_LINK=cert/cert.p12 electron-builder",
     "deploy": "open ./dist/Electron Online-0.0.0-arm64.dmg",
     "open": "./dist/mac-arm64/Electron Online.app/Contents/MacOS/Electron Online"
   },

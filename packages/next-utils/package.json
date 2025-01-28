@@ -14,6 +14,7 @@
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
     "build": "tsc --build",
+    "build:index": "cti create ./src",
     "start": "yarn build --watch --preserveWatchOutput",
     "wait": "wait-on build/index.js"
   },
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.7",
+    "create-ts-index": "^1.14.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "typescript": "^5.7.3",

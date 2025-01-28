@@ -1,0 +1,9 @@
+{
+  "addNewline": true,
+  "fileExcludePatterns": [
+    "*.stories.*"
+  ],
+  "verbose": true,
+  "withoutBackupFile": true,
+  "withoutComment": true
+}

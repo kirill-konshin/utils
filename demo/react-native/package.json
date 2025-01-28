@@ -9,17 +9,17 @@
     "url": "https://konshin.org"
   },
   "scripts": {
-    "start": "dotenv expo start",
+    "start:demo": "dotenv expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "ios:prebuild": "expo prebuild -p ios",
     "ios:build": "expo run:ios --configuration Release",
     "ios:xcode": "xed ios",
-    "build-demo": "eas build --platform all",
-    "build:list": "eas build:list",
-    "build:submit": "eas submit --platform all",
-    "build:dev": "eas submit --platform all --profile development",
-    "build:sim": "eas submit --platform ios --profile development-simulator"
+    "build:demo": "eas build --platform all",
+    "eas:list": "eas build:list",
+    "eas:submit": "eas submit --platform all",
+    "eas:dev": "eas submit --platform all --profile development",
+    "eas:sim": "eas submit --platform ios --profile development-simulator"
   },
   "license": "ISC",
   "dependencies": {

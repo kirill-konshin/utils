@@ -3632,6 +3632,7 @@ __metadata:
     "@storybook/test": "npm:^8.5.2"
     "@types/react": "npm:^19.0.7"
     bootstrap: "npm:^5.3.3"
+    create-ts-index: "npm:^1.14.0"
     react: "npm:^19.0.0"
     react-bootstrap: "npm:^2.10.8"
     react-hook-form: "npm:^7.54.2"
@@ -8448,6 +8449,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"create-ts-index@npm:^1.14.0":
+  version: 1.14.0
+  resolution: "create-ts-index@npm:1.14.0"
+  dependencies:
+    chalk: "npm:^4.1.2"
+    dayjs: "npm:^1.10.7"
+    debug: "npm:^4.3.3"
+    deepmerge: "npm:^4.2.2"
+    fast-glob: "npm:^3.2.7"
+    fp-ts: "npm:^2.11.5"
+    glob: "npm:^7.2.0"
+    json5: "npm:^2.2.0"
+    merge: "npm:^2.1.1"
+    minimatch: "npm:^3.0.4"
+    my-easy-fp: "npm:^0.9.0"
+    tslib: "npm:^2.3.1"
+    yargs: "npm:^17.3.0"
+  bin:
+    cti: dist/cti.js
+  checksum: 10c0/719b31fbc2b527489e7248f38f8df65814cf0f22946000e8083bafc62702a13a333eeb44c79cf88e9fca4ee293585f07b33e390589968e995fc8b2890b28219d
+  languageName: node
+  linkType: hard
+
 "cross-fetch@npm:^3.1.5":
   version: 3.2.0
   resolution: "cross-fetch@npm:3.2.0"
@@ -8589,6 +8613,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dayjs@npm:^1.10.7":
+  version: 1.11.13
+  resolution: "dayjs@npm:1.11.13"
+  checksum: 10c0/a3caf6ac8363c7dade9d1ee797848ddcf25c1ace68d9fe8678ecf8ba0675825430de5d793672ec87b24a69bf04a1544b176547b2539982275d5542a7955f35b7
+  languageName: node
+  linkType: hard
+
 "debounce-fn@npm:^6.0.0":
   version: 6.0.0
   resolution: "debounce-fn@npm:6.0.0"
@@ -8670,7 +8701,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deepmerge@npm:^4.3.1":
+"deepmerge@npm:^4.2.2, deepmerge@npm:^4.3.1":
   version: 4.3.1
   resolution: "deepmerge@npm:4.3.1"
   checksum: 10c0/e53481aaf1aa2c4082b5342be6b6d8ad9dfe387bc92ce197a66dea08bd4265904a087e75e464f14d1347cf2ac8afe1e4c16b266e0561cc5df29382d3c5f80044
@@ -10551,7 +10582,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-glob@npm:^3.2.5, fast-glob@npm:^3.2.9":
+"fast-glob@npm:^3.2.5, fast-glob@npm:^3.2.7, fast-glob@npm:^3.2.9":
   version: 3.3.3
   resolution: "fast-glob@npm:3.3.3"
   dependencies:
@@ -10852,6 +10883,13 @@ __metadata:
     combined-stream: "npm:^1.0.8"
     mime-types: "npm:^2.1.12"
   checksum: 10c0/bb102d570be8592c23f4ea72d7df9daa50c7792eb0cf1c5d7e506c1706e7426a4e4ae48a35b109e91c85f1c0ec63774a21ae252b66f4eb981cb8efef7d0463c8
+  languageName: node
+  linkType: hard
+
+"fp-ts@npm:^2.11.5":
+  version: 2.16.9
+  resolution: "fp-ts@npm:2.16.9"
+  checksum: 10c0/704fcc2e792bd17cb653e7b62b5d9d905c04327776df8bf2a1f67e1c6823b06c7c36036345279ac04f0b6b7214ad01f91f109f548e144c9f866a491392fbfbcc
   languageName: node
   linkType: hard
 
@@ -11241,7 +11279,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^7.1.1, glob@npm:^7.1.3, glob@npm:^7.1.4, glob@npm:^7.1.6":
+"glob@npm:^7.1.1, glob@npm:^7.1.3, glob@npm:^7.1.4, glob@npm:^7.1.6, glob@npm:^7.2.0":
   version: 7.2.3
   resolution: "glob@npm:7.2.3"
   dependencies:
@@ -12938,7 +12976,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json5@npm:^2.2.2, json5@npm:^2.2.3":
+"json5@npm:^2.2.0, json5@npm:^2.2.2, json5@npm:^2.2.3":
   version: 2.2.3
   resolution: "json5@npm:2.2.3"
   bin:
@@ -13634,6 +13672,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"merge@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "merge@npm:2.1.1"
+  checksum: 10c0/9e722a88f661fb4d32bfbab37dcc10c2057d3e3ec7bda5325a13cbfb82a59916963ec99374cca7f5bd3ff8c65a6ffbd9e1061bc0c45c6e3bf211c78af659cb44
+  languageName: node
+  linkType: hard
+
 "metro-babel-transformer@npm:0.81.0":
   version: 0.81.0
   resolution: "metro-babel-transformer@npm:0.81.0"
@@ -14248,6 +14293,16 @@ __metadata:
     ncp: "npm:~2.0.0"
     rimraf: "npm:~2.4.0"
   checksum: 10c0/5da59a9f4ec16da0867289b5018c81c25c59b06bb9da717bc7bd0b40363d6653dc88d6da32a9434fd7416bfc3f67184c306ea44d3856ff97f3214cc96960efcd
+  languageName: node
+  linkType: hard
+
+"my-easy-fp@npm:^0.9.0":
+  version: 0.9.0
+  resolution: "my-easy-fp@npm:0.9.0"
+  dependencies:
+    debug: "npm:^4.1.1"
+    tslib: "npm:1.11.1"
+  checksum: 10c0/ab62ef5fe4453224ee8b6c617cd5d5d9045d5d09907978c578f90d24ea042967c5aa8b49fc348e8af88e92cfcc34c4455b574e339f3e0771337737a3b855b4f1
   languageName: node
   linkType: hard
 
@@ -18172,6 +18227,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tslib@npm:1.11.1":
+  version: 1.11.1
+  resolution: "tslib@npm:1.11.1"
+  checksum: 10c0/053e9d4bf2725a9383cbc5e8b18d0ded808f2288790c9ca40d7e3f553c051e3a010fb9f0647bd17d866f5a711a3d6cb4bf1b61360a82f0ed098431707c069ca8
+  languageName: node
+  linkType: hard
+
 "tslib@npm:2.4.1":
   version: 2.4.1
   resolution: "tslib@npm:2.4.1"
@@ -18186,7 +18248,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.0.1, tslib@npm:^2.1.0, tslib@npm:^2.4.0, tslib@npm:^2.4.1, tslib@npm:^2.5.0, tslib@npm:^2.8.0":
+"tslib@npm:^2.0.1, tslib@npm:^2.1.0, tslib@npm:^2.3.1, tslib@npm:^2.4.0, tslib@npm:^2.4.1, tslib@npm:^2.5.0, tslib@npm:^2.8.0":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62
@@ -19396,7 +19458,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs@npm:^17.0.1, yargs@npm:^17.6.2":
+"yargs@npm:^17.0.1, yargs@npm:^17.3.0, yargs@npm:^17.6.2":
   version: 17.7.2
   resolution: "yargs@npm:17.7.2"
   dependencies:

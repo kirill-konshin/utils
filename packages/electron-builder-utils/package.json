@@ -13,6 +13,7 @@
   "scripts": {
     "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
     "build": "tsc --build",
+    "build:index": "cti create ./src",
     "start": "yarn build --watch --preserveWatchOutput",
     "wait": "wait-on build/index.js"
   },
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@types/psd": "^3.4.3",
+    "create-ts-index": "^1.14.0",
     "electron": "^34.0.1",
     "electron-builder": "^25.1.8",
     "typescript": "^5.7.3",

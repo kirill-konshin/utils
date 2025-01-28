@@ -1,2 +1,2 @@
-export * from './createWindow.js';
-export * from './updater.js';
+export * from './createWindow';
+export * from './updater';

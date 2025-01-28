@@ -14,7 +14,7 @@
     "release": "changeset publish",
     "changeset": "changeset",
     "----- TURBO -----": "",
-    "start": "turbo run start",
+    "start": "turbo run start --concurrency=15",
     "build": "turbo run build --concurrency=1",
     "serve": "turbo run serve"
   },

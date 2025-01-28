@@ -1,21 +1,10 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "allowJs": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext", "webworker"],
-    "module": "esnext",
     "moduleResolution": "node",
     "noEmit": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "strict": false,
     "downlevelIteration": true,
-    "incremental": true,
     "experimentalDecorators": true,
     "useDefineForClassFields": true,
     "plugins": [
