@@ -56,10 +56,8 @@ jobs:
       - name: Test
         run: yarn test
 
-      # https://josh-ops.com/posts/github-code-coverage/
-      - name: 'Report Coverage'
-        # if: always()
-        uses:  davelosert/vitest-coverage-report-action@v2
+      #TODO https://josh-ops.com/posts/github-code-coverage/
+      #TODO https://github.com/marketplace/actions/vitest-coverage-report
 
       # https://github.com/changesets/action?tab=readme-ov-file#without-publishing
       #- name: Create Release Pull Request

@@ -1,5 +1,8 @@
 import { defineConfig } from 'tsup';
-import { fixExports, entryGlob, formats } from './exports';
+import { fixExports, entryGlob, formats } from './exports.mjs';
+
+//FIXME https://github.com/egoist/tsup/issues/945 dts is slow
+//TODO https://api-extractor.com/pages/setup/invoking/ instead of dts
 
 export default defineConfig({
     entry: [entryGlob],
@@ -10,6 +13,6 @@ export default defineConfig({
     clean: true,
     dts: true,
     async onSuccess() {
-        await fixExports();
+        // await fixExports();
     },
 });
