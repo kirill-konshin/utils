@@ -8,6 +8,11 @@
     },
     "build:index": {
       "outputs": ["src/**/*/index.ts"]
+    },
+    "start": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["build"]
     }
   }
 }

@@ -15,7 +15,7 @@
     "start:demo": {
       "persistent": true,
       "cache": false,
-      "dependsOn": ["^wait-localhost"],
+      "dependsOn": ["^wait", "^wait-localhost"],
       "passThroughEnv": ["DEBUG"]
     }
   }

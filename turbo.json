@@ -5,16 +5,16 @@
     "clean": {
       "cache": false
     },
-    "start": {
-      "persistent": true,
-      "cache": false,
-      "dependsOn": ["^wait"]
-    },
     "wait": {
       "cache": false
     },
     "//#lint:all": {
       "cache": false
+    },
+    "start:demo": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["^wait"]
     }
   }
 }

@@ -23,6 +23,7 @@
     "@changesets/cli": "^2.27.11",
     "@eslint/compat": "^1.2.5",
     "@types/react": "^19.0.7",
+    "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.18.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.4.1",
@@ -30,6 +31,8 @@
     "react": "^19.0.0",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vite-plugin-dts": "^4.5.0",
     "wait-on": "^8.0.2"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
