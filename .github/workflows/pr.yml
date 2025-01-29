@@ -20,12 +20,10 @@ jobs:
       TURBO_CACHE_DIR: node_modules/.cache/turbo
 
     steps:
-
-      # https://github.com/changesets/changesets/issues/517#issuecomment-1239303017
       - name: Checkout Repo
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Needed for Changesets to find `main` branch
+          fetch-depth: 0 # https://github.com/changesets/changesets/issues/517#issuecomment-1239303017
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v3
@@ -50,14 +48,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
+      #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Lint
         run: yarn lint:all
 
       - name: Test
         run: yarn test
 
-      #TODO https://josh-ops.com/posts/github-code-coverage/
-      #TODO https://github.com/marketplace/actions/vitest-coverage-report
+      #TODO Coverage
+      # https://josh-ops.com/posts/github-code-coverage/
+      # https://github.com/marketplace/actions/vitest-coverage-report
+      # https://github.com/marketplace/actions/coverage-report-as-comment-clover
 
       # https://github.com/changesets/action?tab=readme-ov-file#without-publishing
       #- name: Create Release Pull Request

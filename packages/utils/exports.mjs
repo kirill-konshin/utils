@@ -17,8 +17,18 @@ export const formats = {
   esm: ['import', 'mjs', 'd.ts'],
 };
 
-// export const entryGlob = 'src/**/!(*.stories).{ts,tsx}';
 export const entryGlob = 'src/*/index.ts';
+export const excludeGlob = 'src/**/*.{stories,test}.{ts,tsx}';
+export const includeGlob = 'src/**/!(*.stories|*.test).{ts,tsx}';
+
+export const external = [
+  ...[...Object.keys(pkg.dependencies), ...Object.keys(pkg.devDependencies)].map((dep) => new RegExp(`^${dep}(/.*)?`)),
+  ...Object.keys(pkg.dependencies),
+  ...Object.keys(pkg.devDependencies),
+  /node_modules/,
+  /^node:.*/,
+  /builder-util-runtime/,
+];
 
 export const entry = globSync(entryGlob);
 
@@ -71,4 +81,4 @@ export async function fixExports() {
   // console.log(pkg.exports);
 }
 
-await fixExports();
+if (process.env.FIX) await fixExports();

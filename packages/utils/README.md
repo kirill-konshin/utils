@@ -16,25 +16,38 @@ import { createWindow } from '@kirill.konshin/utils/dist/electron';
 
 https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37bec28fe
 
-```bash
-python3 -m timeit -n 1 -r 10 -s 'import os' 'os.system("yarn build:rollup")'
-TIMEFORMAT='%R'; for i in {1..5}; do time yarn build:rollup; done | awk '{sum+=$1} END {print "Average time:", sum/NR, "sec"}'
-npx average-time "yarn build:rollup" 5
+```
+  'yarn build:bare': '4.7',
+  'yarn build:vite': '4.0',
+  'yarn build:rollup': '4.0',
+  'yarn build:tsup': '10.1',
+  'yarn build:unbuild': '4.5'
 ```
 
 - `tsup`
-  - 17 sec
-- `vite`
-  - 7.7 sec
-  - Quirks with watch mode
-  - Seem to reemit all files all the time
-  - Comes with `vitest`
-- `rollup` with SWC
-  - 6.9 sec
-- `turbopack`
-  - not yet available outside Next.js https://turbo.build/pack/docs#quickstart
+    - slow
+    - ✅ Minimal config
 - `swc` + `tsc`
-  - 5.5 sec | 8.4 sec without `incremental`
-- https://qwik.dev/
-- https://tsdx.io/ Jared Palmer, I know him, project is dead
+    - ❌ A bit slower than rollup/vite
+    - ⚠️ Lots of configs
+- `rollup+swc`
+    - ⚠️ Quirks with watch mode
+    - ⚠️ Seem to reemit all files all the time
+- `vite`
+    - ✅ Fast
+    - ✅ Comes with `vitest`
+    - ⚠️ Based on Rollup
+    - ⚠️ Awkward configuration, half Vite half Rollup
 - `unbuild`
+    - ❌ Slower than vite/rollup+swc
+    - ⚠️ Based on Rollup
+    - ✅ Minimal config
+- `bun`
+    - ❌ DTS is slow
+    - ❌ Build failed
+    - ❌ Does not work as standalone bundler
+- `turbopack`
+    - ❌ Not yet available outside Next.js https://turbo.build/pack/docs#quickstart
+- https://qwik.dev/
+- https://tsdx.io/ Jared Palmer, I know him
+    - ❌ Dead project

@@ -7,7 +7,14 @@
     "declarationMap": true,
     "declarationDir": "dist",
     "incremental": false,
-    "allowJs": true
+    "allowJs": true,
+    /* asads */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
   "include": ["src"],
   "exclude": ["**/*.test.ts", "**/*.stories.ts", "**/*.stories.tsx"]

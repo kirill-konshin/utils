@@ -3,45 +3,23 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "outputs": ["dist/**/*"],
-      "dependsOn": ["^build", "clean", "build:swc", "build:tsc"]
+      "dependsOn": ["^build", "build:vite", "build:exports"]
+    },
+    "build:exports": {
+      "outputs": ["package.json"],
+      "dependsOn": ["build:vite"]
     },
     "build:index": {
       "outputs": ["src/**/*/index.ts"]
     },
-    "build:swc": {
-      "outputs": ["dist/**/*"],
-      "dependsOn": ["clean","build:index"]
-    },
-    "build:tsc": {
-      "outputs": ["dist/**/*"],
-      "dependsOn": ["clean","build:index"]
-    },
-    "build:tsup": {
-      "outputs": ["dist/**/*"],
-      "dependsOn": ["clean","build:index"]
-    },
     "build:vite": {
       "outputs": ["dist/**/*"],
-      "dependsOn": ["clean","build:index"]
-    },
-    "build:rollup": {
-      "outputs": ["dist/**/*"],
-      "dependsOn": ["clean","build:index"]
+      "dependsOn": ["build:index"]
     },
     "start": {
       "persistent": true,
-      "cache": false
-    },
-    "start:swc": {
-      "persistent": true,
       "cache": false,
-      "dependsOn": ["clean","build:index"]
-    },
-    "start:tsc": {
-      "persistent": true,
-      "cache": false,
-      "dependsOn": ["clean","build:index"]
+      "dependsOn": ["build:index", "build:exports"]
     }
   }
 }
