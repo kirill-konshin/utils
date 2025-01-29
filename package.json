@@ -17,6 +17,7 @@
     "----- TURBO -----": "",
     "start": "turbo run start",
     "build": "turbo run build --concurrency=1",
+    "test": "turbo run test --concurrency=1",
     "serve": "turbo run serve"
   },
   "devDependencies": {

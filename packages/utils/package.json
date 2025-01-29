@@ -12,7 +12,8 @@
     "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/core/index.mjs",
-    "test": "vitest --coverage",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },

@@ -8,6 +8,9 @@
     "wait": {
       "cache": false
     },
+    "test": {
+      "outputs": ["coverage/**/*"]
+    },
     "//#lint:all": {
       "cache": false
     },

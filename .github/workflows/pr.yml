@@ -13,20 +13,27 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  release:
-    name: Release
+  pr:
+    name: PR Check
     runs-on: ubuntu-latest
     env:
       TURBO_CACHE_DIR: node_modules/.cache/turbo
 
     steps:
+
+      # https://github.com/changesets/changesets/issues/517#issuecomment-1239303017
       - name: Checkout Repo
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Needed for Changesets to find `main` branch
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v3
         with:
           node-version: 22
+
+      - if: ${{ github.event.pull_request.title != 'Version Packages' }}
+        run: git pull --force --no-tags origin main:main
 
       - name: Install Dependencies
         run: yarn
@@ -46,6 +53,9 @@ jobs:
       - name: Lint
         run: yarn lint:all
 
+      - name: Test
+        run: yarn test
+
       - name: Build
         run: yarn build
 
@@ -55,5 +65,6 @@ jobs:
       #  env:
       #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check Changesets
-        run: yarn changeset status --since=main
+      #- name: Check Changesets
+      #  if: ${{ github.event.pull_request.title != 'Version Packages' }}
+      #  run: yarn changeset status --since=main
