@@ -23,7 +23,6 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@kirill.konshin/react-native-utils": "*",
     "@kirill.konshin/utils": "*",
     "expo": "^52.0.28",
     "expo-apple-authentication": "^7.1.3",

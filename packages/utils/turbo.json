@@ -2,5 +2,12 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
+    "build": {
+      "outputs": ["dist/**/*"],
+      "dependsOn": ["^build", "build:index"]
+    },
+    "build:index": {
+      "outputs": ["src/**/*/index.ts"]
+    }
   }
 }

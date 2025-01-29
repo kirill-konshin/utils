@@ -1,4 +1,4 @@
-const { builerConfig } = require('@kirill.konshin/electron-builder-utils');
+const { builerConfig } = require('@kirill.konshin/utils/electron-builder');
 
 // await generateImages({
 //     iconPsdPath: 'icon.psd',

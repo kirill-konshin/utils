@@ -1,5 +1,5 @@
 import path from 'path';
-import { createWindow, appPath, isDev } from '@kirill.konshin/electron-utils';
+import { createWindow, appPath, isDev } from '@kirill.konshin/utils/electron';
 
 if (process.env['SKIP_ELECTRON']) {
   console.log('Skipping Electron');

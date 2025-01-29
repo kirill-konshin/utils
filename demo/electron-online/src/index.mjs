@@ -1,4 +1,4 @@
-import { createWindow } from '@kirill.konshin/electron-utils';
+import { createWindow } from '@kirill.konshin/utils/electron';
 
 createWindow({
   title: 'Electron Online',

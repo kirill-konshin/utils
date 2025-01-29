@@ -1,4 +1,4 @@
-import { builerConfig } from '@kirill.konshin/electron-builder-utils';
+import { builerConfig } from '@kirill.konshin/utils/electron-builder';
 
 module.exports = builerConfig({
   config: {

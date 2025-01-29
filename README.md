@@ -12,7 +12,7 @@ Repo is using hybrid NX-like dependency management strategy:
 
 ### Turbo
 
-All common library tasks are defined in root `turbo.json`: `clean`, `build`, `build:index`, `start` & `wait`.
+All common library tasks are defined in root `turbo.json`: `clean`, `build`, `start` & `wait`.
 
 ### TypeScript
 

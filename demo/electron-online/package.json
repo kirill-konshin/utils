@@ -18,10 +18,9 @@
     "open": "./dist/mac-arm64/Electron Online.app/Contents/MacOS/Electron Online"
   },
   "dependencies": {
-    "@kirill.konshin/electron-utils": "*"
+    "@kirill.konshin/utils": "*"
   },
   "devDependencies": {
-    "@kirill.konshin/electron-builder-utils": "*",
     "electron": "34.0.1",
     "electron-builder": "^26.0.0"
   }

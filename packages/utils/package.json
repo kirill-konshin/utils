@@ -1,24 +1,104 @@
 {
   "name": "@kirill.konshin/utils",
-  "description": "",
+  "description": "Utilities",
   "version": "0.0.8",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "scripts": {
     "clean": "rm -rf .tscache dist",
     "build": "tsup",
-    "build:index": "cti create ./src",
+    "build:index": "cti create ./src/*",
+    "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
-    "wait": "wait-on ./dist/index.js"
+    "wait": "wait-on ./dist/core/index.js",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
   },
   "dependencies": {
     "colors": "^1.4.0",
-    "many-keys-map": "^2.0.1"
+    "expo-file-system": "^18.0.7",
+    "expo-sharing": "^13.0.1",
+    "expo-updates": "^0.26.13",
+    "many-keys-map": "^2.0.1",
+    "psd": "^3.4.0",
+    "react-hook-form": "^7.54.2",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.14"
+    "@arethetypeswrong/cli": "^0.17.3",
+    "@chromatic-com/storybook": "^3.2.4",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.4.1",
+    "@mui/styled-engine": "^6.4.0",
+    "@storybook/addon-essentials": "^8.5.2",
+    "@storybook/addon-interactions": "^8.5.2",
+    "@storybook/addon-onboarding": "^8.5.2",
+    "@storybook/blocks": "^8.5.2",
+    "@storybook/react": "^8.5.2",
+    "@storybook/react-vite": "^8.5.2",
+    "@storybook/test": "^8.5.2",
+    "@types/psd": "^3.4.3",
+    "bootstrap": "^5.3.3",
+    "bootstrap-icons": "^1.11.3",
+    "create-ts-index": "^1.14.0",
+    "electron": "^34.0.1",
+    "electron-builder": "^25.1.8",
+    "electron-default-menu": "^1.0.2",
+    "electron-store": "^10.0.0",
+    "electron-updater": "^6.3.9",
+    "next": "^15.1.6",
+    "react-bootstrap": "^2.10.8",
+    "react-native": "^0.77.0",
+    "sass-embedded": "^1.83.4",
+    "storybook": "^8.5.2",
+    "tailwindcss": "^4.0.0",
+    "tsup": "^8.3.6",
+    "vite": "^6.0.11",
+    "zod": "^3.24.1"
+  },
+  "peerDependencies": {
+    "@mui/material": "^6",
+    "bootstrap": "^5",
+    "bootstrap-icons": "^1",
+    "electron": "^34",
+    "next": "^15",
+    "react": "^19",
+    "react-bootstrap": "^2",
+    "react-native": "^0.77",
+    "tailwindcss": "^4.0.0",
+    "zod": "^3"
+  },
+  "peerDependenciesMeta": {
+    "@mui/material": {
+      "optional": true
+    },
+    "bootstrap": {
+      "optional": true
+    },
+    "bootstrap-icons": {
+      "optional": true
+    },
+    "electron": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-bootstrap": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "tailwind": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "access": "public"
@@ -26,35 +106,108 @@
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
   "exports": {
-    "./cache": {
-      "types": "./dist/cache.d.ts",
-      "require": "./dist/cache.cjs",
-      "import": "./dist/cache.mjs"
+    "./bootstrap": {
+      "require": {
+        "require": "./dist/bootstrap/index.cjs",
+        "types": "./dist/bootstrap/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/bootstrap/index.js",
+        "types": "./dist/bootstrap/index.d.cts"
+      }
     },
-    "./errors": {
-      "types": "./dist/errors.d.ts",
-      "require": "./dist/errors.cjs",
-      "import": "./dist/errors.mjs"
+    "./core": {
+      "require": {
+        "require": "./dist/core/index.cjs",
+        "types": "./dist/core/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/core/index.js",
+        "types": "./dist/core/index.d.cts"
+      }
     },
-    "./measure": {
-      "types": "./dist/measure.d.ts",
-      "require": "./dist/measure.cjs",
-      "import": "./dist/measure.mjs"
+    "./electron": {
+      "require": {
+        "require": "./dist/electron/index.cjs",
+        "types": "./dist/electron/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/electron/index.js",
+        "types": "./dist/electron/index.d.cts"
+      }
     },
-    "./mutex": {
-      "types": "./dist/mutex.d.ts",
-      "require": "./dist/mutex.cjs",
-      "import": "./dist/mutex.mjs"
+    "./electron-builder": {
+      "require": {
+        "require": "./dist/electron-builder/index.cjs",
+        "types": "./dist/electron-builder/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/electron-builder/index.js",
+        "types": "./dist/electron-builder/index.d.cts"
+      }
     },
-    "./worker": {
-      "types": "./dist/worker.d.ts",
-      "require": "./dist/worker.cjs",
-      "import": "./dist/worker.mjs"
+    "./mui": {
+      "require": {
+        "require": "./dist/mui/index.cjs",
+        "types": "./dist/mui/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/mui/index.js",
+        "types": "./dist/mui/index.d.cts"
+      }
+    },
+    "./next": {
+      "require": {
+        "require": "./dist/next/index.cjs",
+        "types": "./dist/next/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/next/index.js",
+        "types": "./dist/next/index.d.cts"
+      }
+    },
+    "./react": {
+      "require": {
+        "require": "./dist/react/index.cjs",
+        "types": "./dist/react/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/react/index.js",
+        "types": "./dist/react/index.d.cts"
+      }
+    },
+    "./react-native": {
+      "require": {
+        "require": "./dist/react-native/index.cjs",
+        "types": "./dist/react-native/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/react-native/index.js",
+        "types": "./dist/react-native/index.d.cts"
+      }
+    },
+    "./tailwind": {
+      "require": {
+        "require": "./dist/tailwind/index.cjs",
+        "types": "./dist/tailwind/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/tailwind/index.js",
+        "types": "./dist/tailwind/index.d.cts"
+      }
     },
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.mjs"
+      "require": {
+        "require": "./dist/core/index.cjs",
+        "types": "./dist/core/index.d.ts"
+      },
+      "import": {
+        "import": "./dist/core/index.js",
+        "types": "./dist/core/index.d.cts"
+      }
     }
-  }
+  },
+  "main": "./dist/core/index.cjs",
+  "module": "./dist/core/index.js",
+  "types": "./dist/core/index.d.cts"
 }

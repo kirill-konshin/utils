@@ -4,7 +4,7 @@ import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth0, Auth0Provider } from 'react-native-auth0';
 import Constants from 'expo-constants';
-import { shareDialog, Update, useAppState } from '@kirill.konshin/react-native-utils';
+import { shareDialog, Update, useAppState } from '@kirill.konshin/utils/react-native';
 
 const styles = StyleSheet.create({
     webview: {

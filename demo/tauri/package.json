@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@demo/web-static": "*",
-    "@kirill.konshin/electron-builder-utils": "*",
+    "@kirill.konshin/utils": "*",
     "@tauri-apps/cli": "^2.2.7",
     "dotenv-cli": "^8.0.0"
   }

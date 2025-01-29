@@ -1,0 +1,86 @@
+$primary: darken(#fd7e14, 6%) !default; // in order to accomodate MCR=3
+$secondary: #0d6efd !default;
+$danger: #dc3545 !default;
+$warning: #fd7e14 !default;
+$success: #198754 !default;
+
+$theme-colors: (
+    'primary': $primary,
+    'secondary': $secondary,
+    'success': $success,
+    // "info":       $info,
+    'warning': $warning,
+    'danger': $danger,
+    // non-bootstrap colors
+    'light': #dddddd,
+    'dark': #2c2414,
+);
+
+$min-contrast-ratio: 3 !default; // 4.5 produces black on orange @see https://stackoverflow.com/a/68303393/5125659
+
+@import 'bootstrap/scss/functions.scss';
+@import 'bootstrap/scss/variables.scss';
+@import 'bootstrap/scss/mixins.scss';
+@import 'bootstrap/scss/bootstrap.scss';
+
+// Nav
+
+.btn-nav {
+    @extend .btn-outline-primary; // just vars to control styling
+}
+
+.main-nav .btn-nav {
+    border-width: 0;
+
+    @include media-breakpoint-down(md) {
+        --bs-btn-active-color: var(--bs-primary);
+        --bs-btn-hover-color: var(--bs-primary);
+        background: none !important;
+        padding: 0;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    &.disabled {
+        color: var(--bs-gray-600);
+    }
+}
+
+// Dropdowns
+
+.dropdown-toggle-no-arrow::after,
+.dropdown-toggle-no-arrow > .dropdown-toggle::after {
+    display: none !important;
+}
+
+.dropdown > button {
+    display: block; // fixes small padding on dropdowns
+}
+
+// Tables
+
+.table {
+    //fixes table borders & margins
+    margin-bottom: 0;
+
+    & > :not(caption) > * > * {
+        background: none;
+    }
+
+    & > :not(caption) > tr:last-of-type > * {
+        border-bottom: none;
+    }
+}
+
+// Badges
+
+.badge {
+    --bs-badge-font-weight: normal;
+}
+
+// Icons
+
+.icon-thick {
+    webkit-text-stroke: 1px;
+    text-stroke: 1px;
+}

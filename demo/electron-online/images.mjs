@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { generateImages } from '@kirill.konshin/electron-builder-utils';
+import { generateImages } from '@kirill.konshin/utils/electron-builder';
 
 await generateImages({
   iconPsdPath: path.resolve(process.cwd(), 'assets-src/icon.psd'),
