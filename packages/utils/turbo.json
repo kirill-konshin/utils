@@ -6,8 +6,7 @@
       "dependsOn": ["^build", "build:vite", "build:exports"]
     },
     "build:exports": {
-      "outputs": ["package.json"],
-      "dependsOn": ["build:vite"]
+      "outputs": ["package.json"]
     },
     "build:index": {
       "outputs": ["src/**/*/index.ts"]

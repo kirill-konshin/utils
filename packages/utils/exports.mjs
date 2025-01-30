@@ -5,7 +5,7 @@ import { globSync } from 'glob';
 
 export const pkgPath = path.join(process.cwd(), 'package.json');
 
-const distDir = './dist';
+export const distDir = './dist';
 
 //TODO Re-read in fixExports
 // import pkg from './package.json' assert { type: 'json' };
@@ -20,11 +20,10 @@ export const formats = {
 export const entryGlob = 'src/*/index.ts';
 export const excludeGlob = 'src/**/*.{stories,test}.{ts,tsx}';
 export const includeGlob = 'src/**/!(*.stories|*.test).{ts,tsx}';
+export const foldersGlob = 'src/*/';
 
 export const external = [
   ...[...Object.keys(pkg.dependencies), ...Object.keys(pkg.devDependencies)].map((dep) => new RegExp(`^${dep}(/.*)?`)),
-  ...Object.keys(pkg.dependencies),
-  ...Object.keys(pkg.devDependencies),
   /node_modules/,
   /^node:.*/,
   /builder-util-runtime/,
@@ -33,7 +32,7 @@ export const external = [
 export const entry = globSync(entryGlob);
 
 export async function fixExports() {
-  const modules = globSync('src/*/').map((file) => path.basename(file));
+  const modules = globSync(foldersGlob).map((file) => path.basename(file));
 
   pkg.exports = {};
 

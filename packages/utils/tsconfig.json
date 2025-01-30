@@ -8,7 +8,7 @@
     "declarationDir": "dist",
     "incremental": false,
     "allowJs": true,
-    /* asads */
+    /* Build-specific options */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,

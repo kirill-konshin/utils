@@ -3754,6 +3754,7 @@ __metadata:
     bun: "npm:^1.2.1"
     bun-plugin-dts: "npm:^0.3.0"
     chokidar: "npm:^4.0.3"
+    clsx: "npm:^2.1.1"
     colors: "npm:^1.4.0"
     create-ts-index: "npm:^1.14.0"
     electron: "npm:^34.0.1"

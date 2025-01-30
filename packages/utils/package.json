@@ -12,8 +12,8 @@
     "build:rollup": "rollup --config rollup.config.mjs",
     "build:unbuild": "unbuild",
     "build:bare": "yarn clean && yarn build:swc && yarn build:tsc",
-    "build:swc": "swc src --out-dir dist --strip-leading-paths",
-    "build:tsc": "tsc --declaration --emitDeclarationOnly",
+    "build:swc": "swc src --out-dir dist-bare --strip-leading-paths",
+    "build:tsc": "tsc --declaration --emitDeclarationOnly --outDir dist-bare",
     "build:check-types": "attw --pack .",
     "build:index": "cti create ./src/*",
     "build:exports": "FIX=true node exports.mjs",
@@ -30,6 +30,7 @@
     "storybook:build": "storybook build"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "colors": "^1.4.0",
     "expo-file-system": "^18.0.7",
     "expo-sharing": "^13.0.1",
