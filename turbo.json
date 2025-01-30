@@ -11,6 +11,10 @@
     "test": {
       "outputs": ["coverage/**/*"]
     },
+    "start": {
+      "persistent": true,
+      "cache": false
+    },
     "//#lint:all": {
       "cache": false
     },

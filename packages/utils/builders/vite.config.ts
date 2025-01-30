@@ -1,10 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
-import { fixExports, formats, entry, external, distDir, generateIndex } from './vite.exports';
+import { fixExports, formats, entry, external, distDir } from './exports.mjs';
 
 // https://rbardini.com/how-to-build-ts-library-with-vite/
-// https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
 
 export default defineConfig({
     build: {
@@ -25,17 +24,13 @@ export default defineConfig({
             },
         },
     },
-    resolve: { extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'] }, // https://vite.dev/guide/performance#reduce-resolve-operations
     plugins: [
         react(),
-        dts(), //TODO Check https://github.com/alloc/vite-dts
+        dts(),
         {
-            name: 'Generate Index & Exports',
-            async buildStart() {
-                await generateIndex();
-            },
-            async closeBundle() {
-                await fixExports();
+            name: 'Generate Exports',
+            async buildEnd() {
+                // await fixExports();
             },
         },
     ],
