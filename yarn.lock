@@ -3723,7 +3723,6 @@ __metadata:
     "@chromatic-com/storybook": "npm:^3.2.4"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
-    "@microsoft/api-extractor": "npm:^7.49.1"
     "@mui/material": "npm:^6.4.2"
     "@mui/styled-engine": "npm:^6.4.2"
     "@storybook/addon-essentials": "npm:^8.5.2"

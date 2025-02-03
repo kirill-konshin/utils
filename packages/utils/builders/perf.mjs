@@ -46,11 +46,12 @@ const cmds = [
   // 'yarn build:index && yarn build:vite   && yarn build:exports',
   // 'yarn build:index && yarn build:rollup && yarn build:exports',
   // 'yarn build:index && yarn build:tsup   && yarn build:exports',
-  'yarn build:bare',
-  'yarn build:vite',
-  'yarn build:rollup',
-  'yarn build:tsup',
-  'yarn build:unbuild',
+  // 'yarn build:bare',
+  // 'yarn build:vite',
+  // 'yarn build:rollup',
+  // 'yarn build:tsup',
+  // 'yarn build:unbuild',
+  'yarn build:rslib',
 ];
 
 let results = {};

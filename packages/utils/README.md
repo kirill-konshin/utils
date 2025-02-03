@@ -22,6 +22,7 @@ https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37
   'yarn build:rollup': '4.0',
   'yarn build:tsup': '10.1',
   'yarn build:unbuild': '4.5'
+  'yarn build:rslib': '3.9'
 ```
 
 - `tsup`
@@ -38,6 +39,10 @@ https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37
     - ✅ Comes with `vitest`
     - ⚠️ Based on Rollup
     - ⚠️ Awkward configuration, half Vite half Rollup
+- `rslib` aka `rsbuild`, from MF authors
+    - ✅ Fast
+    - ✅ Minimal config
+    - ⚠️ Something wrong with the types
 - `unbuild`
     - ❌ Slower than vite/rollup+swc
     - ⚠️ Based on Rollup

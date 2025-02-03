@@ -1,4 +1,4 @@
-import * as fs from 'node:fs/promises';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as process from 'node:process';
 import { globSync } from 'glob';
@@ -11,9 +11,9 @@ export const distDir = './dist';
 //TODO Re-read in fixExports
 // import pkg from './package.json' assert { type: 'json' };
 // export { pkg };
-export const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'));
+export const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 
-export const rootPkg = JSON.parse(await fs.readFile(path.resolve('../../package.json'), 'utf-8'));
+export const rootPkg = JSON.parse(fs.readFileSync(path.resolve('../../package.json'), 'utf-8'));
 
 export const formats = {
     // cjs: ['require', 'js', 'd.ts'],
@@ -104,7 +104,7 @@ export async function fixExports() {
 
     // Write
 
-    await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2));
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     console.log('Updated package.json with exports');
     // console.log(pkg);
