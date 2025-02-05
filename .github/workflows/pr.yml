@@ -63,10 +63,7 @@ jobs:
       - name: Test
         run: yarn test
 
-      #TODO Coverage
       # https://josh-ops.com/posts/github-code-coverage/
-      # https://github.com/marketplace/actions/vitest-coverage-report
-      # https://github.com/marketplace/actions/coverage-report-as-comment-clover
       - name: Code Coverage Summary Report
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
@@ -84,6 +81,9 @@ jobs:
 
       - name: Write to Job Summary
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Build
+        run: yarn build
 
       # https://github.com/changesets/action?tab=readme-ov-file#without-publishing
       #- name: Create Release Pull Request
