@@ -37,7 +37,8 @@ https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37
 - `vite`
     - ✅ Fast
     - ✅ Comes with `vitest`
-    - ⚠️ Based on Rollup
+    - ✅ Comes with Storybook plugin
+    - ⚠️ Based on Rollup, inherits its quirks
     - ⚠️ Awkward configuration, half Vite half Rollup
 - `rslib` aka `rsbuild`, from MF authors
     - ✅ Fast
@@ -45,7 +46,7 @@ https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37
     - ⚠️ Something wrong with the types
 - `unbuild`
     - ❌ Slower than vite/rollup+swc
-    - ⚠️ Based on Rollup
+    - ⚠️ Based on Rollup, inherits its quirks
     - ✅ Minimal config
 - `bun`
     - ❌ DTS is slow

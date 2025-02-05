@@ -25,6 +25,11 @@ export default defineConfig({
             },
         },
     },
+    test: {
+        coverage: {
+            reporter: ['text', 'html', 'cobertura'],
+        } as any,
+    },
     resolve: { extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'] }, // https://vite.dev/guide/performance#reduce-resolve-operations
     plugins: [
         react(),

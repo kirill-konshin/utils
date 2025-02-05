@@ -1,10 +1,7 @@
+import { join, dirname } from 'node:path';
 import type { StorybookConfig } from '@storybook/react-vite';
 
-import { join, dirname } from 'path';
-
-function getAbsolutePath(value: string): any {
-    return dirname(require.resolve(join(value, 'package.json')));
-}
+const getAbsolutePath = (value: string) => dirname(require.resolve(join(value, 'package.json')));
 
 //TODO https://github.com/tuchk4/storybook-readme
 const config: StorybookConfig = {
