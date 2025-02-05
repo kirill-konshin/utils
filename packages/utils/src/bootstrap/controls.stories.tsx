@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { cloneElement, useCallback, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from '@storybook/test';
 
 import { Select, Control, Range, Checkbox } from './controls';
+
+const defaultOptions = { num: 1, bool: false, select: 'bar' };
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
 const meta = {
@@ -12,9 +14,23 @@ const meta = {
     },
     tags: ['autodocs'],
     argTypes: {},
-    args: { options: { foo: 1, bar: 0 }, setOptions: fn(), defaultOptions: { foo: 1, bar: 0 } },
+    args: { options: { ...defaultOptions }, setOptions: fn(), defaultOptions: { ...defaultOptions }, name: 'unused' },
     render: function Demo(args) {
-        return <>{args.children}</>;
+        const [options, setOptionsRaw] = useState(args.options);
+
+        const setOptions = useCallback(
+            (options) =>
+                setOptionsRaw((currentOptions) => {
+                    return { ...currentOptions, ...options };
+                }),
+            [],
+        );
+
+        const controlProps = { options, setOptions, defaultOptions };
+
+        const { children, name, ...safeArgs } = args;
+
+        return <div style={{ width: '300px' }}>{cloneElement(children as any, { ...safeArgs, ...controlProps })}</div>;
     },
 } satisfies Meta<typeof Control>;
 
@@ -22,16 +38,25 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// export const Vertical: Story = {
-//     args: {
-//         children: <Control label="Label" />,
-//     },
-// };
+export const RangeControl: Story = {
+    args: {
+        children: <Range name="Num" min={0} max={1} />,
+    },
+};
 
-// export const Horizontal: Story = {
-//     args: {
-//         label: 'Label',
-//         children: <FormControl placeholder="Input" />,
-//         horizontal: true,
-//     },
-// };
+export const CheckboxControl: Story = {
+    args: {
+        children: <Checkbox name="Bool" />,
+    },
+};
+
+export const SelectControl: Story = {
+    args: {
+        children: (
+            <Select name="Select">
+                <option value="foo">Foo</option>
+                <option value="bar">Bar</option>
+            </Select>
+        ),
+    },
+};
