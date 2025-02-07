@@ -1,5 +1,11 @@
 # @kirill.konshin/utils
 
+## 0.0.9
+
+### Patch Changes
+
+- 89690b2: Demos, consolidated packages, tests, Vite, perf tests
+
 ## 0.0.8
 
 ### Patch Changes
