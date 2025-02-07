@@ -199,8 +199,9 @@ export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
     }
 
     delete(key: Key) {
-        const has = this.has(key);
-        if (has) this.dispose(this.get(key) as Val, key);
+        const val = this.get(key);
+        const has = typeof val !== 'undefined';
+        if (has) this.dispose(val, key);
         super.delete(key);
         return has;
     }
