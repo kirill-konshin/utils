@@ -2,7 +2,7 @@
 
 import React, { ComponentProps, FC } from 'react';
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import Link, { LinkProps } from 'next/link';
 import clsx from 'clsx';
 
 //TODO Test this
@@ -11,7 +11,8 @@ export const AppLink: FC<
         children: any;
         exact?: boolean;
         activeClassName?: any;
-    } & ComponentProps<typeof Link>
+    } & LinkProps &
+        ComponentProps<typeof Link>
 > = function AppLink({
     href,
     children,

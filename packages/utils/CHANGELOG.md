@@ -1,5 +1,11 @@
 # @kirill.konshin/utils
 
+## 0.0.12
+
+### Patch Changes
+
+- AppLink types
+
 ## 0.0.11
 
 ### Patch Changes
