@@ -1,5 +1,17 @@
 # @kirill.konshin/utils
 
+## 0.0.11
+
+### Patch Changes
+
+- Demos, consolidated packages, tests, Vite, perf tests
+
+## 0.0.10
+
+### Patch Changes
+
+- Demos, consolidated packages, tests, Vite, perf tests
+
 ## 0.0.9
 
 ### Patch Changes

@@ -5,7 +5,9 @@
 .turbo
 .vscode
 build
+code-coverage-results.md
 dist
+dist-*
 node_modules
 npm-debug*
 yarn-error*
