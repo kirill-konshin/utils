@@ -1,5 +1,11 @@
 # @kirill.konshin/utils
 
+## 0.0.14
+
+### Patch Changes
+
+- Preserve directives for Vite
+
 ## 0.0.13
 
 ### Patch Changes
