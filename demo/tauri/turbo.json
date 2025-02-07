@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build:demo": {
+      "outputs": ["src-tauri/targe/debug/bundle"],
+      "dependsOn": ["^build"]
+    }
+  }
+}

@@ -11,6 +11,8 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    env:
+      TURBO_CACHE_DIR: node_modules/.cache/turbo
 
     # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
     if: github.repository == 'kirill-konshin/utils'
@@ -40,11 +42,42 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
+      #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Install Dependencies
         run: yarn
 
       - name: Lint
         run: yarn lint:all
+
+      - name: Test
+        run: yarn test
+
+      # https://josh-ops.com/posts/github-code-coverage/
+      - name: Code Coverage Summary Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: 'packages/*/coverage/cobertura-coverage.xml'
+          badge: true
+          format: 'markdown'
+          output: 'both'
+
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: code-coverage-results.md
+
+      - name: Write to Job Summary
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
 
       - name: Build
         run: yarn build

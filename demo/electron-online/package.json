@@ -1,0 +1,27 @@
+{
+  "name": "@demo/electron-online",
+  "productName": "Electron Online",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.mjs",
+  "author": {
+    "name": "Kirill Konshin",
+    "email": "kirill@konshin.org",
+    "url": "https://konshin.org"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "start:demo": "NODE_ENV=development electron .",
+    "images": "node images.mjs",
+    "build:demo": "CSC_LINK=cert/cert.p12 electron-builder",
+    "deploy": "open ./dist/Electron Online-0.0.0-arm64.dmg",
+    "open": "./dist/mac-arm64/Electron Online.app/Contents/MacOS/Electron Online"
+  },
+  "dependencies": {
+    "@kirill.konshin/utils": "*"
+  },
+  "devDependencies": {
+    "electron": "34.0.1",
+    "electron-builder": "^26.0.0"
+  }
+}

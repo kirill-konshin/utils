@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "target": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext", "webworker"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "strictNullChecks": true,
+    "plugins": [{ "name": "typescript-plugin-css-modules" }]
+  },
+  "include": ["src"]
+}

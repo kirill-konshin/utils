@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 import { RespondersBase, WorkerDialog } from '../src/worker';
 
 class Responders extends RespondersBase<Responders> {

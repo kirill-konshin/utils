@@ -2,19 +2,26 @@
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["tsconfig.json"],
   "tasks": {
-    "start": {
-      "cache": false,
-      "persistent": true
+    "clean": {
+      "cache": false
     },
-    "build": {
-      "cache": false,
-      "dependsOn": ["^build"]
+    "wait": {
+      "cache": false
+    },
+    "test": {
+      "outputs": ["coverage/**/*"]
+    },
+    "start": {
+      "persistent": true,
+      "cache": false
     },
     "//#lint:all": {
       "cache": false
     },
-    "clean": {
-      "cache": false
+    "start:demo": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["^wait"]
     }
   }
 }

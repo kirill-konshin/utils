@@ -1,37 +1,181 @@
 {
   "name": "@kirill.konshin/utils",
+  "description": "Utilities",
   "version": "0.0.8",
   "type": "module",
-  "main": "build/index.js",
-  "module": "build/index.js",
-  "types": "build/index.d.ts",
-  "exports": {
-    ".": "./build/index.js",
-    "./cache": "./build/cache.js",
-    "./errors": "./build/errors.js",
-    "./measure": "./build/measure.js",
-    "./mutex": "./build/mutex.js",
-    "./worker": "./build/worker.js"
-  },
   "scripts": {
-    "clean": "rm -rf .tscache tsconfig.tsbuildinfo build",
-    "build": "tsc --build",
-    "start": "yarn build --watch --preserveWatchOutput",
-    "wait": "wait-on build/index.js"
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vite build",
+    "build:index": "cti create ./src/*",
+    "build:check-types": "attw --pack .",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/core/index.mjs",
+    "----- TEST -----": "",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "colors": "^1.4.0",
-    "many-keys-map": "^2.0.1"
+    "expo-file-system": "^18.0.7",
+    "expo-sharing": "^13.0.1",
+    "expo-updates": "^0.26.13",
+    "many-keys-map": "^2.0.1",
+    "psd": "^3.4.0",
+    "react-hook-form": "^7.54.2",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.14",
-    "typescript": "^5.7.3",
-    "wait-on": "^8.0.2"
+    "@arethetypeswrong/cli": "^0.17.3",
+    "@chromatic-com/storybook": "^3.2.4",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.4.2",
+    "@mui/styled-engine": "^6.4.2",
+    "@storybook/addon-essentials": "^8.5.2",
+    "@storybook/addon-interactions": "^8.5.2",
+    "@storybook/addon-onboarding": "^8.5.2",
+    "@storybook/blocks": "^8.5.2",
+    "@storybook/react": "^8.5.2",
+    "@storybook/react-vite": "^8.5.2",
+    "@storybook/test": "^8.5.2",
+    "@types/psd": "^3.4.3",
+    "@vitest/coverage-v8": "^3.0.4",
+    "bootstrap": "^5.3.3",
+    "bootstrap-icons": "^1.11.3",
+    "create-ts-index": "^1.14.0",
+    "electron": "^34.0.1",
+    "electron-builder": "^25.1.8",
+    "electron-default-menu": "^1.0.2",
+    "electron-store": "^10.0.1",
+    "electron-updater": "^6.4.0",
+    "glob": "^11.0.1",
+    "next": "^15.1.6",
+    "react-bootstrap": "^2.10.8",
+    "react-native": "^0.77.0",
+    "sass-embedded": "^1.83.4",
+    "storybook": "^8.5.2",
+    "tailwindcss": "^4.0.1",
+    "vite": "^6.0.11",
+    "vitest": "^3.0.4",
+    "zod": "^3.24.1"
+  },
+  "peerDependencies": {
+    "@mui/material": "^6",
+    "bootstrap": "^5",
+    "bootstrap-icons": "^1",
+    "electron": "^34",
+    "next": "^15",
+    "react": "^19",
+    "react-bootstrap": "^2",
+    "react-native": "^0.77",
+    "tailwindcss": "^4",
+    "zod": "^3"
+  },
+  "peerDependenciesMeta": {
+    "@mui/material": {
+      "optional": true
+    },
+    "bootstrap": {
+      "optional": true
+    },
+    "bootstrap-icons": {
+      "optional": true
+    },
+    "electron": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-bootstrap": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "tailwindcss": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "access": "public"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": ""
+  "exports": {
+    "./tailwind": {
+      "import": {
+        "import": "./dist/tailwind/index.mjs",
+        "types": "./dist/tailwind/index.d.ts"
+      }
+    },
+    "./react-native": {
+      "import": {
+        "import": "./dist/react-native/index.mjs",
+        "types": "./dist/react-native/index.d.ts"
+      }
+    },
+    "./react": {
+      "import": {
+        "import": "./dist/react/index.mjs",
+        "types": "./dist/react/index.d.ts"
+      }
+    },
+    "./next": {
+      "import": {
+        "import": "./dist/next/index.mjs",
+        "types": "./dist/next/index.d.ts"
+      }
+    },
+    "./mui": {
+      "import": {
+        "import": "./dist/mui/index.mjs",
+        "types": "./dist/mui/index.d.ts"
+      }
+    },
+    "./electron-builder": {
+      "import": {
+        "import": "./dist/electron-builder/index.mjs",
+        "types": "./dist/electron-builder/index.d.ts"
+      }
+    },
+    "./electron": {
+      "import": {
+        "import": "./dist/electron/index.mjs",
+        "types": "./dist/electron/index.d.ts"
+      }
+    },
+    "./core": {
+      "import": {
+        "import": "./dist/core/index.mjs",
+        "types": "./dist/core/index.d.ts"
+      }
+    },
+    "./bootstrap": {
+      "import": {
+        "import": "./dist/bootstrap/index.mjs",
+        "types": "./dist/bootstrap/index.d.ts"
+      }
+    },
+    ".": {
+      "import": {
+        "import": "./dist/core/index.mjs",
+        "types": "./dist/core/index.d.ts"
+      }
+    }
+  },
+  "main": "./dist/core/index.mjs",
+  "module": "./dist/core/index.mjs",
+  "types": "./dist/core/index.d.ts"
 }

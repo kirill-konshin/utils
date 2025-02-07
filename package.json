@@ -1,10 +1,11 @@
 {
   "name": "@kirill.konshin/utils-monorepo",
+  "description": "Utils Monorepo",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.0.0",
   "scripts": {
     "----- LINT -----": "",
-    "prepare": "husky install",
+    "prepare": "husky",
     "eslint": "DEBUG=eslint:eslint eslint --cache --cache-location node_modules/.cache/eslint --fix",
     "prettier": "prettier --write",
     "lint:all": "yarn eslint . && yarn prettier .",
@@ -16,23 +17,31 @@
     "----- TURBO -----": "",
     "start": "turbo run start",
     "build": "turbo run build --concurrency=1",
+    "test": "turbo run test --concurrency=1",
     "serve": "turbo run serve"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.11",
+    "@changesets/cli": "^2.27.12",
     "@eslint/compat": "^1.2.5",
-    "eslint": "^9.18.0",
+    "@types/react": "^19.0.8",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.19.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.4.1",
+    "lint-staged": "^15.4.3",
     "prettier": "^3.4.2",
-    "turbo": "^2.3.3"
+    "react": "^19.0.0",
+    "turbo": "^2.3.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vite-plugin-dts": "^4.5.0",
+    "wait-on": "^8.0.2"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "description": "",
   "packageManager": "yarn@4.5.1",
   "workspaces": {
     "packages": [
+      "demo/*",
       "packages/*"
     ]
   }

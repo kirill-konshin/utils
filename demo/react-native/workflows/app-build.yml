@@ -1,0 +1,72 @@
+# https://blog.devops.dev/ci-cd-on-github-for-expo-projects-288c517ff14a
+name: App Submission
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        type: choice
+        description: Build profile to use
+        options:
+          - production
+          - development
+          - preview
+defaults:
+  run:
+    shell: bash
+    working-directory: web/app
+
+jobs:
+  build-and-submit:
+    name: Build and submit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check for EXPO_TOKEN
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "You must provide an EXPO_TOKEN secret linked to this project's Expo account in this repo's secrets. Learn more: https://docs.expo.dev/eas-update/github-actions"
+            exit 1
+          fi
+
+      - name: Check for EXPO_APPLE_APP_SPECIFIC_PASSWORD
+        run: |
+          if [ -z "${{ secrets.EXPO_APPLE_APP_SPECIFIC_PASSWORD }}" ]; then
+            echo "You must provide an EXPO_APPLE_APP_SPECIFIC_PASSWORD to deploy to testflight"
+          fi
+
+      - name: Check for EXPO_APPLE_ID
+        run: |
+          if [ -z "${{ secrets.EXPO_APPLE_ID }}" ]; then
+            echo "You must provide an EXPO_APPLE_ID to deploy to testflight"
+          fi
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build and Submit
+        run: eas build --platform all --non-interactive --auto-submit # --profile=${{ github.event.inputs.profile }}
+        env:
+          BUILD_SUBMIT: true
+          BUILD_NUMBER: ${{ github.event.inputs.buildNumber }}

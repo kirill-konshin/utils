@@ -5,6 +5,7 @@
 .turbo
 .vscode
 build
+dist
 node_modules
 npm-debug*
 yarn-error*
@@ -17,3 +18,5 @@ yarn-error*
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
+
+*storybook.log

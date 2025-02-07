@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "build:vite", "build:exports"]
+    },
+    "build:exports": {
+      "outputs": ["package.json"]
+    },
+    "build:index": {
+      "outputs": ["src/**/*/index.ts"]
+    },
+    "build:vite": {
+      "outputs": ["dist/**/*"],
+      "dependsOn": ["build:index"]
+    },
+    "start": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["build:index", "build:exports"]
+    }
+  }
+}
