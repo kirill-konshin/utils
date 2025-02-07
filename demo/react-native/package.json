@@ -2,6 +2,7 @@
   "name": "@demo/react-native",
   "version": "1.0.3",
   "description": "",
+  "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "author": {
     "name": "Kirill Konshin",
