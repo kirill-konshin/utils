@@ -16,8 +16,8 @@ export const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 export const rootPkg = JSON.parse(fs.readFileSync(path.resolve('../../package.json'), 'utf-8'));
 
 export const formats = {
-    // cjs: ['require', 'js', 'd.ts'],
-    esm: ['import', 'mjs', 'd.ts'],
+    // cjs: ['require', 'cjs', 'd.ts'],
+    esm: ['import', 'js', 'd.ts'],
 };
 
 export const entryGlob = 'src/*/index.ts';
