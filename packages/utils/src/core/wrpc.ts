@@ -1,14 +1,27 @@
 import { getTransferrable } from './worker';
-import type { ReadableStream as RS } from 'node:stream/web';
+
+export function makeAbortController(signal?: AbortSignal): [AbortController, AbortSignal] {
+    const controller = new AbortController();
+    return [controller, AbortSignal.any([controller.signal, signal].filter(Boolean) as AbortSignal[])];
+}
+
+export function rejectOnSignal(promise: Promise<any>, signal?: AbortSignal) {
+    return Promise.race([
+        promise,
+        new Promise<Event['data']>((resolve, reject) => {
+            signal?.addEventListener('abort', () => reject('RaceAborted:' + signal.reason), { once: true });
+        }),
+    ]);
+}
 
 export type Responders = { [key: string]: (arg?: any) => Generator<any> | AsyncGenerator<any> | Promise<any> | any };
 
 export type Context = {
     message: string;
     id: string;
-    signal?: string;
+    signalName?: string;
     done?: boolean;
-    abort?: boolean;
+    abort?: string;
     error?: boolean;
     ack?: boolean;
     promise?: boolean;
@@ -27,6 +40,7 @@ export type WorkerLike = {
 };
 
 function send(worker: WorkerLike, ctx: Context, payload?: any) {
+    console.log('SEND', (worker as any).self ? 'WORKER' : 'MAIN', ctx, payload);
     worker.postMessage({ ctx, payload }, getTransferrable(payload)); //TODO Transeferable
 }
 
@@ -34,7 +48,7 @@ function listen(
     worker: WorkerLike,
     context: Context | null,
     listener: (event: Event['data']) => void,
-    signal?: AbortSignal,
+    signal: AbortSignal,
     once: boolean = false,
 ) {
     worker.addEventListener(
@@ -47,9 +61,25 @@ function listen(
     );
 }
 
-function waitFor(worker: WorkerLike, ctx: Context, fn: (data: Event['data']) => boolean, signal?: AbortSignal) {
-    return new Promise<void>((res) => {
-        listen(worker, ctx, (data) => fn(data) && res(), signal, true);
+function waitFor(
+    worker: WorkerLike,
+    ctx: Context,
+    condition: (data: Event['data']) => boolean = (data) => true,
+    signal: AbortSignal,
+) {
+    const [controller, innerSignal] = makeAbortController(signal);
+
+    return new Promise<Event['data']>((res) => {
+        listen(
+            worker,
+            ctx,
+            (data) => {
+                if (!condition(data)) return;
+                res(data);
+                controller.abort('WaitFinished');
+            },
+            innerSignal,
+        );
     });
 }
 
@@ -66,84 +96,65 @@ export function createResponder<T extends Responders>(worker: WorkerLike, respon
 
             if (!responder) return;
 
-            const subController = new AbortController();
+            const [subController, subSignal] = makeAbortController(mainController.signal);
 
             // always recover signal so that promises also can abort
-            if (ctx.signal) payload[ctx.signal] = subController.signal;
-
-            listen(
-                worker,
-                ctx,
-                (data2) => {
-                    if (!data2?.ctx?.abort) return;
-                    subController.abort('Abort');
-                    // console.log('RESPONDER ABORT', ctx);
-                },
-                subController.signal,
-            );
+            if (ctx.signalName) payload[ctx.signalName] = subController.signal;
 
             // Function, AsyncFunction
             const isGenerator =
                 responder.constructor.name === 'GeneratorFunction' ||
                 responder.constructor.name === 'AsyncGeneratorFunction';
 
-            // console.log('>>> RESPONDER START', ctx, isGenerator, responder.constructor.name);
+            console.log('RESPONDER START', ctx, isGenerator, responder.constructor.name);
 
             // PROMISE
 
             if (!isGenerator) {
                 try {
-                    send(worker, { ...ctx, promise: true }, await responder(payload));
+                    send(worker, { ...ctx, promise: true }, await rejectOnSignal(responder(payload), subSignal));
+                    console.log('RESPONDER RESOLVED');
                 } catch (e) {
+                    console.error('RESPONDER REJECTED', e);
                     send(worker, { ...ctx, promise: true, error: true }, e);
                 }
+                return;
             }
 
             // GENERATOR
 
+            listen(
+                worker,
+                ctx,
+                (data) => {
+                    if (!data.ctx.abort) return;
+                    subController.abort(data.ctx.abort);
+                    console.log('RESPONDER GOT ABORT', data.ctx.abort, ctx);
+                },
+                subSignal,
+            );
+
             try {
-                // NOT NEEDED, sync generators work just fine as is
-                // if (syncGenerator){
-                // const iterator = responder(data);
-                // let res;
-                // do {
-                //     res = iterator.next();
-                //     console.log('>>> RESPONDER SEND', res);
-                //     send(worker, { ...ctx, done: res.done }, res.value);
-                // } while (!res.done && !ctrl.signal.aborted);
-                // }
+                let res: any;
+                const iterator = responder(payload);
+                do {
+                    res = await rejectOnSignal(iterator.next(), subSignal);
 
-                //FIXME for...of swallows return, but this might be expected
-                // let res;
-                // const it = responder(data);
-                // do {
-                //     res = await it.next();
-                //     send(worker, ctx, res.value);
-                // } while (!res.done);
+                    send(worker, { ...ctx, done: res.done }, res.value);
 
-                for await (const res of responder(payload)) {
-                    //FIXME This still lags since iterator can move on while signal is delivered
-                    if (subController.signal.aborted) {
-                        console.log('RESPONDER ABORT -> BREAK', subController.signal.aborted);
-                        break;
-                    }
-                    console.log('>>> RESPONDER SEND', subController.signal.aborted, res, ctx);
+                    await rejectOnSignal(
+                        waitFor(worker, ctx, (data) => !!data.ctx.ack, subSignal),
+                        subSignal,
+                    );
 
-                    send(worker, ctx, res);
-
-                    await waitFor(worker, ctx, ({ ctx }) => !!ctx?.ack, subController.signal);
-
-                    console.log('ACK');
-                }
+                    console.log('RESPONDER ACK');
+                } while (!res.done && !subSignal.aborted);
             } catch (e) {
-                // console.error('>>> RESPONDER ERROR', e);
-                send(worker, { ...ctx, error: true }, e);
+                console.error('RESPONDER ERROR', e);
+                if (!subSignal.aborted) send(worker, { ...ctx, error: true, done: true }, e);
+            } finally {
+                console.info('RESPONDER DONE');
             }
-
-            // console.warn('>>> RESPONDER DONE');
-            send(worker, { ...ctx, done: true });
-
-            if (!subController.signal.aborted) subController.abort('Done'); // stop listening
         },
         mainController.signal,
     );
@@ -163,152 +174,99 @@ export function createCaller<T extends Responders>(worker: WorkerLike, responder
 
                 let signal: AbortSignal = null as any;
 
-                const mainController = new AbortController();
-
                 if (payload) {
                     for (const [key, value] of Object.entries(payload)) {
                         if (value instanceof AbortSignal) {
-                            ctx.signal = key;
+                            ctx.signalName = key;
                             signal = value;
                             // console.log('CALLER FOUND SIGNAL', key);
                         }
                     }
                 }
 
-                //FIXME Need to explicitly mark generators/promises
-                // Main code does not have access to anything other than types from worker
-                // We can use something like `if (self) createResponder(self, { ... });` in worker and export, but it can drag unwanted code into main if tree-shaking fails
-                // See below commented first-value approach
-                // if (!generators[prop as any]) {
-                //     const promise = Promise.withResolvers();
-                //     listen(
-                //         worker,
-                //         ctx,
-                //         (res) => {
-                //             console.log('FIRST VALUE PROMISE');
-                //             promise[res.ctx.error ? 'reject' : 'resolve'](res.data);
-                //             controller.abort('Resolved');
-                //         },
-                //         signal,
-                //         true,
-                //     );
-                //     send(worker, ctx, data);
-                //     return promise.promise;
-                // }
+                const [mainController, mainSignal] = makeAbortController(signal);
 
-                //TODO Optimize
-                const cancel = (silent = false) => {
-                    console.log('CALLER CANCEL');
-                    mainController.abort('Cancel'); // stop listening, worker will acknowledge
-                    if (!silent) send(worker, { ...ctx, abort: true });
+                const cancel = (notify: boolean, reason: string = '') => {
+                    if (mainController.signal.aborted) return;
+                    console.log('CALLER CANCEL', reason, notify);
+                    if (reason) mainController.abort(reason); // stop listening
+                    if (notify) send(worker, { ...ctx, abort: reason }); // worker will break & acknowledge, but it's not important
                 };
 
-                let firstProcessed = false;
+                // Generator
 
-                const promise = Promise.withResolvers();
+                const [promiseController, promiseSignal] = makeAbortController(mainSignal);
 
-                let iterator: AsyncIterableIterator<Event['data']> = null as any;
-
-                // function makeRangeIterator(start = 0, end = Infinity, step = 1) {
-                //   let nextIndex = start;
-                //   let iterationCount = 0;
-                //
-                //   const rangeIterator = {
-                //     next() {
-                //       let result;
-                //       if (nextIndex < end) {
-                //         result = { value: nextIndex, done: false };
-                //         nextIndex += step;
-                //         iterationCount++;
-                //         return result;
-                //       }
-                //       return { value: iterationCount, done: true };
-                //     },
-                //   };
-                //   return rangeIterator;
-                // }
-
-                const stream = new ReadableStream<Event['data']>({
-                    start(readController) {
-                        if (mainController.signal.aborted) return;
-
-                        //TODO Optimize
-                        signal?.addEventListener('abort', () => {
-                            readController.close(); // force close on abort signal
-                            cancel();
-                        });
-
-                        //TODO Optimize
-                        const done = (reason: string) => {
-                            readController.close();
-                            mainController.abort(reason);
-                        };
-
-                        listen(
-                            worker,
-                            ctx,
-                            ({ ctx: ctxIn, payload: payloadIn }) => {
-                                // prevent further cycles once closed/cancelled/aborted, worker abort ack will be ignored
-                                // this will leave promise pending forever
-                                if (mainController.signal.aborted) return;
-
-                                // console.log('CALLER EVENT', controller.signal.aborted, res);
-
-                                if (!firstProcessed) {
-                                    firstProcessed = true;
-                                    if (ctxIn.promise) {
-                                        promise[ctxIn.error ? 'reject' : 'resolve'](payloadIn);
-                                        done('Resolved');
-                                        return;
-                                    } else {
-                                        promise.resolve(iterator); // just in case
-                                    }
-                                }
-
-                                if (ctxIn.error) {
-                                    // console.log('CALLER ERROR', res.data);
-                                    readController.error(payloadIn);
-                                    cancel(true);
-                                    return;
-                                }
-
-                                // normal flow
-                                if (ctxIn.done) {
-                                    // console.log('CALLER DONE VIA RESPONDER -> CLOSE');
-                                    done('Done');
-                                    return;
-                                }
-
-                                readController.enqueue(payloadIn); // can happen multiple times before for...of reaches second iteration
-                            },
-                            mainController.signal,
-                        );
+                const promise = waitFor(worker, ctx, (data) => !!data.ctx.promise, promiseSignal).then(
+                    ({ ctx, payload }) => {
+                        if (ctx.error) throw payload;
+                        return payload;
                     },
-                    pull(readController) {
-                        send(worker, { ...ctx, ack: true }); // acknowledge
-                    },
-                    // when break statement in for...of, will result in abort signal
-                    cancel() {
-                        // console.log('CALLER CANCEL');
-                        cancel();
-                    },
-                });
+                );
+
+                async function* generator() {
+                    try {
+                        console.log('CALLER GENERATOR START');
+                        promiseController.abort('GeneratorUsed');
+
+                        do {
+                            const data = await rejectOnSignal(waitFor(worker, ctx, undefined, mainSignal), mainSignal);
+
+                            const { ctx: ctxIn, payload: payloadIn } = data;
+
+                            console.log('CALLER EVENT', mainSignal.aborted, ctxIn, payloadIn);
+
+                            if (ctxIn.promise) {
+                                //  && !ctxIn.error
+                                // cancel(false, 'Resolved');
+                                // return payloadIn;
+                                throw new Error('Unexpected promise in generator');
+                            }
+
+                            if (ctxIn.error) {
+                                // console.log('CALLER ERROR', res.data);
+                                cancel(false, 'Error');
+                                throw payloadIn;
+                            }
+
+                            if (ctxIn.done) {
+                                return payloadIn;
+                            } else {
+                                yield payloadIn;
+                                if (!mainSignal.aborted) send(worker, { ...ctx, ack: true });
+                            }
+                        } while (!mainSignal.aborted);
+                    } finally {
+                        // prevent further cycles in worker once main is closed/cancelled/aborted
+                        console.log('CALLER DONE');
+                        cancel(true, mainSignal.aborted ? mainSignal.reason : 'DoneOrBreak');
+                    }
+                }
+
+                const iterator = generator();
 
                 send(worker, ctx, payload);
 
-                iterator = (stream as RS).values(); // stream['values']() or stream[Symbol.asyncIterator]()
-
-                // This forces `for await (const x of __await__ caller.x()) {}`
-                // return promise.promise;
+                let started;
 
                 // FIXME Nasty hack, return both iterator and promise
                 //  Consuming code will get all, but IDE should show only proper type
-                return {
-                    ...iterator,
-                    then: promise.promise.then.bind(promise.promise),
-                    catch: promise.promise.catch.bind(promise.promise),
-                    finally: promise.promise.finally.bind(promise.promise),
-                };
+                // return new Proxy(iterator, {
+                //     get(target, prop, receiver) {
+                //         if (prop === 'then' || prop === 'catch' || prop === 'finally') {
+                //             console.log('PROMISE ACCESS');
+                //             // kick off generator on first access
+                //             // if (!started) started = iterator.next().then(({ value }) => value);
+                //             // return started[prop].bind(started);
+                //         }
+                //         // return Reflect.get(target, prop, receiver);
+                //         return target[prop].bind(target);
+                //     },
+                // });
+                iterator['then'] = promise.then.bind(promise);
+                iterator['catch'] = promise.catch.bind(promise);
+                iterator['finally'] = promise.finally.bind(promise);
+                return iterator;
             }
 
             //TODO mimic-function(gen, fn); but no access to original

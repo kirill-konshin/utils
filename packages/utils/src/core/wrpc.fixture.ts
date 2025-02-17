@@ -28,6 +28,9 @@ export const responder = createResponder(self, {
     promise: async function () {
         return { test: 'test' };
     },
+    promiseError: async function () {
+        throw new Error('Test');
+    },
 });
 
 // self.onmessage = (e) => {

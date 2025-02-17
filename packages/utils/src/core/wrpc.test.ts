@@ -41,7 +41,7 @@ describe(
 
             const fn = vi.fn();
 
-            for await (const data of await caller.test({ n: 3 })) {
+            for await (const data of caller.test({ n: 3 })) {
                 fn(data);
                 console.log('DATA', data);
             }
@@ -53,18 +53,10 @@ describe(
             expect(fn).toBeCalledTimes(4);
         });
 
-        test.skip('iterator', async () => {
+        test('do ... while', async () => {
             const { caller } = createWorker();
 
             const fn = vi.fn();
-
-            // const iterator = caller.test({ n: 3 });
-            // let res;
-            // do {
-            //     res = await iterator.next();
-            //     console.log('DATA', res);
-            //     fn(res);
-            // } while (!res.done);
 
             let res;
             const it = caller.test({ n: 3 });
@@ -107,7 +99,7 @@ describe(
             for await (const data of caller.test({ n: 3, signal: controller.signal })) {
                 fn(data);
                 console.log('DATA', data);
-                controller.abort('Aborted'); // now stable via ACK
+                controller.abort('Test');
             }
 
             expect(fn).nthCalledWith(1, { progress: 0.3333333333333333 });
@@ -126,14 +118,29 @@ describe(
 
         test('promise', async () => {
             const { caller } = createWorker();
+            const promise = caller.promise();
+            await new Promise((res) => setTimeout(res, 100)); // introduce delay
+            await expect(promise).resolves.toEqual({ test: 'test' });
+        });
 
-            await expect(caller.promise()).resolves.toEqual({ test: 'test' });
+        test('promise error', async () => {
+            const { caller } = createWorker();
+            await expect(caller.promiseError()).rejects.toThrowError('Test');
+        });
+
+        test('promise as generator', async () => {
+            const { caller } = createWorker();
+            await expect(async () => {
+                // @ts-ignore
+                for await (const data of caller.promise()) {
+                    console.log('DATA', data);
+                }
+            }).rejects.toThrowError('Unexpected promise in generator');
         });
 
         test('stop', async () => {
             const { caller, mainWorker } = createWorker();
 
-            // mainWorker.postMessage({ msg: 'stop' });
             await getWorkerInfo(mainWorker, 'stop');
 
             const fn = vi.fn();

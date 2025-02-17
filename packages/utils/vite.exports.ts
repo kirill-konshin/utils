@@ -104,7 +104,7 @@ export async function fixExports() {
 
     // Write
 
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
     console.log('Updated package.json with exports');
     // console.log(pkg);
