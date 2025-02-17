@@ -36,7 +36,7 @@ https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37
     - ⚠️ Seem to reemit all files all the time
 - `vite`
     - ✅ Fast
-    - ✅ Comes with `vitest`
+    - ✅ Comes with `vitest` (reasoning https://youtu.be/w9xQRJXKrV0)
     - ✅ Comes with Storybook plugin
     - ⚠️ Based on Rollup, inherits its quirks
     - ⚠️ Awkward configuration, half Vite half Rollup

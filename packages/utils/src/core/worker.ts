@@ -2,7 +2,7 @@ export function isTransferable(obj: any): boolean {
     return transferrable.some((t) => obj instanceof t) ? obj : null;
 }
 
-function getTransferrable(data: any = {}): Transferable[] {
+export function getTransferrable(data: any = {}): Transferable[] {
     if (!data) return [];
     return Object.values<any>(data)
         .reduce((r, v) => {
@@ -12,25 +12,24 @@ function getTransferrable(data: any = {}): Transferable[] {
 }
 
 // @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects
-const transferrable =
-    typeof window !== 'undefined'
-        ? [
-              ArrayBuffer,
-              MessagePort,
-              ReadableStream,
-              WritableStream,
-              TransformStream,
-              // WebTransportReceiveStream, // ReferenceError: WebTransportReceiveStream is not defined
-              // WebTransportSendStream, // ReferenceError: WebTransportReceiveStream is not defined
-              // AudioData, // TS2304: Cannot find name AudioData
-              ImageBitmap,
-              VideoFrame,
-              OffscreenCanvas,
-              RTCDataChannel,
-              MediaSourceHandle,
-              // MIDIAccess, // ReferenceError: MIDIAccess is not defined
-          ].filter(Boolean)
-        : [];
+const transferrable = [
+    global.ArrayBuffer,
+    global.MessagePort,
+    global.ReadableStream,
+    global.WritableStream,
+    global.TransformStream,
+    // WebTransportReceiveStream, // ReferenceError: WebTransportReceiveStream is not defined
+    // WebTransportSendStream, // ReferenceError: WebTransportReceiveStream is not defined
+    // AudioData, // TS2304: Cannot find name AudioData
+    global.ImageBitmap,
+    global.VideoFrame,
+    global.OffscreenCanvas,
+    global.RTCDataChannel,
+    global.MediaSourceHandle,
+    // MIDIAccess, // ReferenceError: MIDIAccess is not defined
+].filter(Boolean);
+
+// Types
 
 type WebWorker = Worker | (Window & typeof globalThis) | (WorkerGlobalScope & typeof globalThis);
 
@@ -44,6 +43,7 @@ export type Ctx<R, K extends keyof R> = {
     id: string;
     parentId?: string;
     message: K;
+    done: boolean;
 };
 
 type Data<R, M extends keyof R> = MethodReturn<R, M> | MethodArg<R, M> | Error;
@@ -56,35 +56,37 @@ type Listener<R, M extends keyof R, D extends Data<R, M> = Data<R, M>, S extends
     event: Event<R, M>,
 ) => void | Promise<void>;
 
+// Constants
+
 const ALL = '*';
 
-let id = 0;
-
-function getID() {
-    return (++id).toString();
-}
+const RESPONDER = Symbol('responder');
 
 function checkClosed(obj: any, label: string = 'external') {
-    if (obj?.closed) throw new Error(`Context is closed ${this.info} (${label})`, { cause: obj });
+    if (obj?.closed) throw new Error(`Context ${obj.id} is closed (${label})`, { cause: obj });
 }
 
 function checkMessage(obj: any, message: any) {
     if (!message) throw new Error('New context must have message', { cause: obj });
 }
 
+// Classes
+
 export class WorkerDialog<R extends RespondersBase<any>> {
     readonly contexts = new Set<Context<R, keyof R>>();
     protected closed = false;
+    protected currentId = 0; // IDs are intentionally not global
 
     constructor(
         public worker: WebWorker,
         public responders: R,
         public name: string,
+        public debug: number = 0, // 0 - none, 1 - general messages, 2 - sub/unsub, 3 - transport TODO Object?
     ) {
         if (!this.worker) return; // Next.js SSR
 
         for (const message in this.responders) {
-            if (['constructor', 'create'].includes(message)) continue;
+            if (!this.responders?.[message]?.[RESPONDER]) continue;
 
             // root context with id=all
             const rootContext = new ResponseContext<R, typeof message>(this, message, ALL);
@@ -94,33 +96,40 @@ export class WorkerDialog<R extends RespondersBase<any>> {
                 // create sub context with ID
                 const responseContext = context.withMessage(message, event.data.ctx.id);
 
-                console.log('Root Listener', rootContext.info, {
-                    rootContext: context,
-                    data,
-                    responseContext,
-                    event,
-                    responder: this.responders[message],
-                });
+                /* v8 ignore start */
+                if (this.debug)
+                    console.log('Root Listener', rootContext.info, {
+                        rootContext: context,
+                        data,
+                        responseContext,
+                        event,
+                        responder: this.responders[message],
+                    });
+                /* v8 ignore stop */
 
                 try {
-                    responseContext.send(await (this.responders[message] as any)(data, responseContext));
+                    responseContext.send(await (this.responders[message] as any)(data, responseContext), true);
                     responseContext.close('root.listener');
                 } catch (e) {
-                    console.error(`Error in responder ${responseContext.info}`, { e });
-                    responseContext.send(e);
+                    /* v8 ignore next */
+                    if (this.debug) console.error(`Error in responder ${responseContext.info}`, { e });
+                    responseContext.send(e, true);
                 }
-            });
+            }, true);
         }
+    }
+
+    getID() {
+        return (++this.currentId).toString();
     }
 
     close() {
         for (const context of this.contexts) context.close('root');
         this.contexts.clear();
-        this.worker.onmessage = null;
     }
 
     withMessage<M extends keyof R>(message: M) {
-        return new RequestContext<R, M>(this, message, getID());
+        return new RequestContext<R, M>(this, message, this.getID()); // always new context
     }
 }
 
@@ -129,6 +138,7 @@ export class RespondersBase<R> {
         message: M,
         responder: F,
     ): F {
+        responder[RESPONDER] = true;
         return responder as any;
     }
 }
@@ -144,17 +154,19 @@ abstract class Context<R, M extends keyof R> {
         public id: string | undefined,
         public parent: Context<R, keyof R> | undefined | null = null,
     ) {
-        checkClosed(this.dialog, 'newContext');
-        checkClosed(this.parent, 'newContext');
+        checkClosed(dialog, 'newContext');
+        checkClosed(parent, 'newContext');
         checkMessage(this, message);
-        this.id = parent?.id === ALL ? getID() : id ? id : this.parent?.id;
+        this.id = id ?? parent?.id;
         if (!this.id) throw new Error('ID is required', { cause: this });
+        this.dialog.contexts.add(this);
     }
 
     abstract withMessage<M2 extends keyof R>(message: M2, id?: string): Context<R, M2>;
 
     close(reason: string = 'external') {
-        // console.log('Closing', this.id, reason, this);
+        /* v8 ignore next */
+        if (this.dialog.debug >= 2) console.log('Closing', this.info, reason, this);
 
         this.dialog.contexts.delete(this);
 
@@ -171,33 +183,44 @@ abstract class Context<R, M extends keyof R> {
     }
 
     get info() {
-        return this.dialog.name + '.' + this.parent?.id + '.' + this.id + '.' + this.message.toString();
+        return `${this.dialog.name}:${this.parent?.id ?? ALL}/${this.id}:${this.message.toString()}[${this.closed ? 'closed' : 'open'},${this.type}]`;
     }
 
-    protected postMessage(data?: Data<R, M>) {
+    get debugInfo() {
+        return {
+            id: this.id,
+            parentId: this.parent?.id,
+            message: this.message,
+            closed: this.closed,
+            type: this.type,
+            listeners: this.unsub.size,
+        };
+    }
+
+    abstract type: 'request' | 'response' | string;
+
+    protected postMessage(data?: Data<R, M>, done = false) {
         checkClosed(this, 'postMessage');
 
         const transfer = getTransferrable(data);
 
-        // console.log('postMessage', this.id, this, { mergedCtx, data, transfer });
+        const ctx = {
+            done,
+            id: this.id,
+            parentId: this.parent?.id,
+            message: this.message,
+        };
 
-        this.dialog.worker.postMessage(
-            {
-                data,
-                ctx: {
-                    id: this.id,
-                    parentId: this.parent?.id,
-                    message: this.message,
-                },
-            },
-            transfer,
-        );
+        /* v8 ignore next */
+        if (this.dialog.debug >= 3) console.log('postMessage', this.info, { ctx, data, transfer }, this);
+
+        this.dialog.worker.postMessage({ data, ctx }, transfer);
 
         return data;
     }
 
-    send(data?: Data<R, M>) {
-        return this.postMessage(data);
+    send(data?: Data<R, M>, done = false) {
+        return this.postMessage(data, done);
     }
 
     /**
@@ -216,33 +239,44 @@ abstract class Context<R, M extends keyof R> {
      * un(); // closes
      * ```
      */
-    listen(callback: Listener<R, M>): () => void {
+    listen(callback: Listener<R, M>, done = false): () => void {
         checkClosed(this, 'listen');
 
-        let workerListener: any;
+        const controller = new AbortController();
 
         this.dialog.worker.addEventListener(
             'message',
-            (workerListener = async (event: Event<R, M>) => {
+            async (event: Event<R, M>) => {
                 try {
                     const {
                         data: { ctx, data },
                     } = event;
 
-                    if (!ctx || (this.id !== ALL && this.id !== ctx.id) || this.message !== ctx.message) return; // unknown message from devtools etc., or different context
+                    if (
+                        !ctx ||
+                        (this.id !== ALL && this.id !== ctx.id) ||
+                        this.message !== ctx.message ||
+                        (done && !ctx.done)
+                    )
+                        return; // unknown message from devtools etc., or different context
 
-                    console.log('Shared listener event', this.info, this, event);
+                    /* v8 ignore next */
+                    if (this.dialog.debug) console.log('Listener event', this.info, event, this);
 
                     await callback(data, this, event); // Requests can come here, but they're typed in responders
                 } catch (e) {
-                    console.error(`Error in listener ${this.info}`, this, { event, e });
+                    /* v8 ignore next */
+                    if (this.dialog.debug) console.error(`Error in listener ${this.info}`, this, { event, e });
+                    //TODO Respond with error?
                 }
-            }),
+            },
+            { signal: controller.signal },
         );
 
         const unsub = () => {
-            // console.log('Stop listening', this.id, this);
-            this.dialog.worker.removeEventListener('message', workerListener);
+            /* v8 ignore next */
+            if (this.dialog.debug >= 2) console.log('Stop listening', this.info, this);
+            controller.abort();
             this.unsub.delete(unsub);
         };
 
@@ -253,16 +287,18 @@ abstract class Context<R, M extends keyof R> {
 }
 
 class RequestContext<R, M extends keyof R> extends Context<R, M> {
+    type = 'request';
+
     withMessage<M2 extends keyof R>(message: M2, id?: string): RequestContext<R, M2> {
         return new RequestContext<R, M2>(this.dialog, message, id, this);
     }
 
-    send(data?: MethodArg<R, M>): MethodArg<R, M> {
-        return super.send(data) as any;
+    send(data?: MethodArg<R, M>, done = false): MethodArg<R, M> {
+        return super.send(data, done) as any;
     }
 
-    listen(callback: Listener<R, M, MethodReturn<R, M>, RequestContext<R, M>>): () => void {
-        return super.listen(callback);
+    listen(callback: Listener<R, M, MethodReturn<R, M>, RequestContext<R, M>>, done = false): () => void {
+        return super.listen(callback, done);
     }
 
     /**
@@ -280,13 +316,16 @@ class RequestContext<R, M extends keyof R> extends Context<R, M> {
         data?: MethodArg<R, M>,
         callback?: (context: RequestContext<R, M>) => void,
     ): Promise<MethodReturn<R, M>> {
+        checkClosed(this, 'fetch');
+
         const res = await Promise.all([
             callback?.(this),
             this.expect(), // will be closed in expect -> listener -> unsub
-            this.send(data),
+            this.send(data, true),
         ]);
 
-        // console.log('Fetch', this.id, this.contexts, this.ownContexts);
+        /* v8 ignore next */
+        if (this.dialog.debug >= 2) console.log('Fetch', this.info, this);
 
         this.close('fetch');
 
@@ -302,26 +341,29 @@ class RequestContext<R, M extends keyof R> extends Context<R, M> {
                 try {
                     if ((data as any) instanceof Error) throw data;
                     responseListener();
-                    // console.log('Expect', this.id, this, eventData);
+                    /* v8 ignore next */
+                    if (this.dialog.debug >= 3) console.log('Expect', this.info, data, this);
                     resolve(data as any);
                 } catch (e) {
                     reject(e);
                 }
-            });
+            }, true);
         });
     }
 }
 
 class ResponseContext<R, M extends keyof R> extends Context<R, M> {
+    type = 'response';
+
     withMessage<M2 extends keyof R>(message: M2, id?: string): ResponseContext<R, M2> {
         return new ResponseContext<R, M2>(this.dialog, message, id, this);
     }
 
-    listen(callback: Listener<R, M, MethodArg<R, M>, ResponseContext<R, M>>): () => void {
-        return super.listen(callback);
+    listen(callback: Listener<R, M, MethodArg<R, M>, ResponseContext<R, M>>, done = false): () => void {
+        return super.listen(callback, done);
     }
 
-    send(data?: MethodReturn<R, M>): MethodReturn<R, M> {
-        return super.send(data) as any;
+    send(data?: MethodReturn<R, M>, done = false): MethodReturn<R, M> {
+        return super.send(data, done) as any;
     }
 }

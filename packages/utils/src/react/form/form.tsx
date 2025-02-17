@@ -1,4 +1,6 @@
 import { typeToFlattenedError, z, SafeParseReturnType, TypeOf } from 'zod';
+import { createContext, useContext, useMemo } from 'react';
+import clsx from 'clsx';
 
 const nonEmpty = 'This field cannot be empty';
 
@@ -23,16 +25,25 @@ export type Validation<S extends ZodObject> =
           errors?: Errors<S>;
       };
 
-export function create<S extends ZodObject>(schema: S) {
-    const getShape = () =>
-        (schema as z.ZodObject<any>).shape || (schema as z.ZodEffects<z.ZodObject<any>>).sourceType().shape;
+export const FormContext = createContext<{
+    schema: ZodObject;
+}>(null as never);
 
-    if (!getShape()) {
+export const Form = <S extends ZodObject>({ schema, children }: { schema: S; children: any }) => {
+    const value = useMemo(() => ({ schema }), [schema]);
+    return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
+};
+
+const getShape = <S extends ZodObject>(schema: S) =>
+    (schema as z.ZodObject<any>).shape || (schema as z.ZodEffects<z.ZodObject<any>>).sourceType().shape;
+
+export function create<S extends ZodObject>(schema: S) {
+    if (!getShape(schema)) {
         throw new Error('Invalid schema: only z.object() or z.object().refine() are supported');
     }
 
     function register(name: keyof TypeOf<S>, data?: MaybeTypeOf<S>, errors?: Errors<S>, mui: boolean = false) {
-        const field = getShape()[name];
+        const field = getShape(schema)[name];
         return {
             name,
             id: name,
@@ -73,35 +84,44 @@ export function create<S extends ZodObject>(schema: S) {
         return { success: true, data };
     }
 
-    //FIXME Context?
-    function Field({
-        children,
-        name,
-        errors,
-        hint,
-    }: {
-        children?: any;
-        name: string;
-        errors?: Validation<S>['errors'];
-        hint?: string;
-    }) {
-        const { description } = getShape()[name];
+    return { register, validate, validationError };
+}
 
-        return (
-            <div className="form-row">
-                {description && <label htmlFor={name}>{description}</label>}
-                {children}
-                {hint && <Hint>{hint}</Hint>}
-                {errors?.[name]?.map((e: string) => (
-                    <Hint error key={e}>
-                        {e}
-                    </Hint>
-                ))}
-            </div>
-        );
-    }
+function Field<S extends ZodObject>({
+    children,
+    name,
+    errors,
+    hint,
+    className,
+    labelProps,
+    ...props
+}: {
+    children?: any;
+    name: keyof TypeOf<S>;
+    errors?: Validation<S>['errors'];
+    hint?: string;
+    className?: string;
+    labelProps?: any;
+}) {
+    const { schema } = useContext(FormContext);
+    const { description } = getShape(schema)[name];
 
-    return { register, validate, Field, validationError };
+    return (
+        <div {...props} className={clsx('form-row', className)}>
+            {description && (
+                <label {...labelProps} htmlFor={name}>
+                    {description}
+                </label>
+            )}
+            {children}
+            {hint && <Hint>{hint}</Hint>}
+            {errors?.[name]?.map((e: string) => (
+                <Hint error key={e}>
+                    {e}
+                </Hint>
+            ))}
+        </div>
+    );
 }
 
 export function Hint({ children, error }: { children: any; error?: boolean }) {

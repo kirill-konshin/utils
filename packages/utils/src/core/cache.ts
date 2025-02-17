@@ -64,6 +64,7 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
 ) {
     const map = new ManyKeysMap<SerializedKey, Val>();
 
+    //TODO Extend ManyKeysMap
     const clear = (...condition: Key | any[]) => {
         if (!condition?.length) {
             map.forEach((value, serializedKey) => {
@@ -114,17 +115,12 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
  *
  * This makes possible to implement various one-off and subsequent transformations.
  *
- * 1. `write`: Before writing to cache, called only once if cache is present and valid
- * 2. `read`: After it's read from cache, always called if cache is valid
- * TODO Better names: once, folloing
- * TODO Better names: memoize, recover
- * TODO Better names: writeTransformer, readTransformer
- * TODO Better names: writeModifier, readModifier
- * TODO Better names: write, read
+ * 1. `write`: Transform value BEFORE writing to cache, called only once if cache IS NOT present or IS NOT valid
+ * 2. `read`: Transform value AFTER it's read from cache, always called if cache IS valid, keep in mind this transform is applied on top of BEFORE
  *
  * Both should return same type or null.
  *
- * If newValue is null, old is returned, and no cache is set.
+ * If `newValue` is null, old is returned, and no cache is set.
  *
  * ```ts
  * class InputCache extends TypedCache<string, ImageBitmap> {
@@ -186,7 +182,7 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
  */
 export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
     constructor(protected readonly name: string) {
-        console.warn('CREATE cache', name);
+        // console.warn('CREATE cache', name);
         super();
     }
 
@@ -206,7 +202,10 @@ export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
         return has;
     }
 
-    // do something with the value and key before removing it
+    /**
+     * Do something with the value and key before removing it from cache
+     * For example, close a file or a bitmap
+     */
     protected dispose(value: Val, key: Key) {}
 
     clear() {

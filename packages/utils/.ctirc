@@ -2,7 +2,8 @@
   "addNewline": true,
   "fileExcludePatterns": [
     "*.stories.*",
-    "*.test.*"
+    "*.test.*",
+    "*.fixture.*"
   ],
   "verbose": false,
   "withoutBackupFile": true,

@@ -3734,6 +3734,7 @@ __metadata:
     "@storybook/test": "npm:^8.5.2"
     "@types/psd": "npm:^3.4.3"
     "@vitest/coverage-v8": "npm:^3.0.4"
+    "@vitest/web-worker": "npm:^3.0.5"
     bootstrap: "npm:^5.3.3"
     bootstrap-icons: "npm:^1.11.3"
     clsx: "npm:^2.1.1"
@@ -6410,6 +6411,17 @@ __metadata:
     loupe: "npm:^3.1.2"
     tinyrainbow: "npm:^1.2.0"
   checksum: 10c0/d4a29ecd8f6c24c790e4c009f313a044d89e664e331bc9c3cfb57fe1380fb1d2999706dbbfc291f067d6c489602e76d00435309fbc906197c0d01f831ca17d64
+  languageName: node
+  linkType: hard
+
+"@vitest/web-worker@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "@vitest/web-worker@npm:3.0.5"
+  dependencies:
+    debug: "npm:^4.4.0"
+  peerDependencies:
+    vitest: 3.0.5
+  checksum: 10c0/976782715e6680aca437082f9bd5c8ea18b48314e5af2bc3aa7a71f3e479fe647d7ca20f86a4e7bfb236a3720b01da5f95789103fed7b962c54dacc0ca391e69
   languageName: node
   linkType: hard
 

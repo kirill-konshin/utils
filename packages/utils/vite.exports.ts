@@ -21,8 +21,8 @@ export const formats = {
 };
 
 export const entryGlob = 'src/*/index.ts';
-export const excludeGlob = 'src/**/*.{stories,test}.{ts,tsx}';
-export const includeGlob = 'src/**/!(*.stories|*.test).{ts,tsx}';
+export const excludeGlob = 'src/**/*.{stories,test,fixture}.{ts,tsx}';
+export const includeGlob = 'src/**/!(*.stories|*.test,fixture).{ts,tsx}';
 export const foldersGlob = 'src/*/';
 
 export const external = [
