@@ -1,6 +1,7 @@
 import { createResponder } from './wrpc';
 
-export const responders = {
+export const responder = createResponder(self, {
+    // note it's not async, and works properly
     test: function* ({ n, buf, signal }: { n: number; signal?: AbortSignal; buf?: ArrayBuffer }) {
         const res: number[] = [];
 
@@ -16,7 +17,9 @@ export const responders = {
         }
 
         //FIXME ADD TO README https://stackoverflow.com/questions/77727664/how-to-get-returned-value-from-async-generator-when-using-for-await
-        return yield { res, progress, aborted: !!signal?.aborted };
+        yield { res, progress, aborted: !!signal?.aborted };
+
+        return 'foo';
     },
     // eslint-disable-next-line require-yield
     error: async function* () {
@@ -25,11 +28,7 @@ export const responders = {
     promise: async function () {
         return { test: 'test' };
     },
-};
-
-// console.log('WORKER', typeof self !== 'undefined' ? self : 'not worker');
-//
-const responder = createResponder(self, responders);
+});
 
 // self.onmessage = (e) => {
 //     console.log('MSG', e);

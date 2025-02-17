@@ -1,10 +1,11 @@
-// import '@vitest/web-worker'; // not needed, emulated for coverage
 import { expect, describe, test, vi } from 'vitest';
 import { RespondersBase, WorkerDialog } from './worker';
 import EventEmitter from 'node:events';
 
 // Prepare
 
+//TODO @vitest/web-worker can ve used, coverage is collected, but this gives more direct access to worker internals
+// class WorkerPeer extends EventEmitter implements WorkerLike {
 class WorkerPeer extends EventEmitter {
     peer: WorkerPeer;
 
@@ -16,9 +17,13 @@ class WorkerPeer extends EventEmitter {
         this.peer?.emit('message', { data });
     }
 
-    addEventListener(event: string, listener: (e: any) => void, controller?: AbortController) {
-        this.on(event, listener);
-        controller?.signal.addEventListener('abort', () => this.off(event, listener));
+    addEventListener(event: string, listener: (e: any) => void, options) {
+        this[options['once'] ? 'once' : 'on'](event, listener);
+        options?.signal?.addEventListener('abort', () => this.off(event, listener));
+    }
+
+    removeEventListener(event: string, listener: (e: any) => void) {
+        this.off(event, listener);
     }
 }
 
