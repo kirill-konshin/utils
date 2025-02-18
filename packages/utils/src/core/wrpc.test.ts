@@ -36,21 +36,50 @@ const getWorkerInfo = async (worker: Worker, msg: string): Promise<any> =>
 describe(
     'WRPC',
     async () => {
-        test('for await ... of', async () => {
+        test('for await ... of return yield', async () => {
             const { caller } = createWorker();
 
             const fn = vi.fn();
 
-            for await (const data of caller.test({ n: 3 })) {
+            for await (const data of caller.returnYield()) {
                 fn(data);
                 console.log('DATA', data);
             }
 
-            expect(fn).nthCalledWith(1, { progress: 0.3333333333333333 });
-            expect(fn).nthCalledWith(2, { progress: 0.6666666666666666 });
-            expect(fn).nthCalledWith(3, { progress: 1 });
-            expect(fn).nthCalledWith(4, { res: [0, 1, 2], progress: 1, aborted: false });
-            expect(fn).toBeCalledTimes(4);
+            expect(fn).nthCalledWith(1, 1);
+            expect(fn).nthCalledWith(2, 2);
+            expect(fn).nthCalledWith(3, 3);
+            expect(fn).toBeCalledTimes(3);
+
+            let res;
+            const it = caller.returnYield();
+            do {
+                res = await it.next(123); // value passed to next are ignored
+                console.log('DATA', res);
+                fn(res);
+            } while (!res.done);
+
+            expect(fn).nthCalledWith(4, { value: 1, done: false });
+            expect(fn).nthCalledWith(5, { value: 2, done: false });
+            expect(fn).nthCalledWith(6, { value: 3, done: false });
+            expect(fn).nthCalledWith(7, { value: undefined, done: true }); // //FIXME ADD TO README https://stackoverflow.com/questions/77727664/how-to-get-returned-value-from-async-generator-when-using-for-await
+            expect(fn).toBeCalledTimes(7);
+        });
+
+        test('for await ... of separate return & yield', async () => {
+            const { caller } = createWorker();
+
+            const fn = vi.fn();
+
+            for await (const data of caller.test()) {
+                fn(data);
+                console.log('DATA', data);
+            }
+
+            expect(fn).nthCalledWith(1, { progress: 0 });
+            expect(fn).nthCalledWith(2, { progress: 0.5 });
+            expect(fn).nthCalledWith(3, { progress: 1, aborted: false });
+            expect(fn).toBeCalledTimes(3);
         });
 
         test('do ... while', async () => {
@@ -59,19 +88,18 @@ describe(
             const fn = vi.fn();
 
             let res;
-            const it = caller.test({ n: 3 });
+            const it = caller.test();
             do {
                 res = await it.next();
                 console.log('DATA', res);
                 fn(res);
             } while (!res.done);
 
-            expect(fn).nthCalledWith(1, { value: { progress: 0.3333333333333333 }, done: false });
-            expect(fn).nthCalledWith(2, { value: { progress: 0.6666666666666666 }, done: false });
-            expect(fn).nthCalledWith(3, { value: { progress: 1 }, done: false });
-            expect(fn).nthCalledWith(4, { value: { res: [0, 1, 2], progress: 1, aborted: false }, done: false });
-            expect(fn).nthCalledWith(5, { value: 'foo', done: true });
-            expect(fn).toBeCalledTimes(5);
+            expect(fn).nthCalledWith(1, { value: { progress: 0 }, done: false });
+            expect(fn).nthCalledWith(2, { value: { progress: 0.5 }, done: false });
+            expect(fn).nthCalledWith(3, { value: { progress: 1, aborted: false }, done: false });
+            expect(fn).nthCalledWith(4, { value: 'foo', done: true });
+            expect(fn).toBeCalledTimes(4);
         });
 
         test('break', async () => {
@@ -79,13 +107,13 @@ describe(
 
             const fn = vi.fn();
 
-            for await (const data of caller.test({ n: 3 })) {
+            for await (const data of caller.test()) {
                 fn(data);
                 console.log('DATA', data);
                 break;
             }
 
-            expect(fn).nthCalledWith(1, { progress: 0.3333333333333333 });
+            expect(fn).nthCalledWith(1, { progress: 0 });
             expect(fn).toBeCalledTimes(1);
         });
 
@@ -96,13 +124,13 @@ describe(
 
             const fn = vi.fn();
 
-            for await (const data of caller.test({ n: 3, signal: controller.signal })) {
+            for await (const data of caller.test({ signal: controller.signal })) {
                 fn(data);
                 console.log('DATA', data);
                 controller.abort('Test');
             }
 
-            expect(fn).nthCalledWith(1, { progress: 0.3333333333333333 });
+            expect(fn).nthCalledWith(1, { progress: 0 });
             expect(fn).toBeCalledTimes(1); // not guaranteed without explicit break, caller generator may receive multiple events and enqueue them while reader only reads one, so second will also be read
         });
 
@@ -147,7 +175,7 @@ describe(
 
             await Promise.race([
                 (async () => {
-                    for await (const data of caller.test({ n: 3 })) {
+                    for await (const data of caller.test()) {
                         fn(data);
                         console.log('DATA', data);
                     }

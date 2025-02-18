@@ -2,24 +2,17 @@ import { createResponder } from './wrpc';
 
 export const responder = createResponder(self, {
     // note it's not async, and works properly
-    test: function* ({ n, buf, signal }: { n: number; signal?: AbortSignal; buf?: ArrayBuffer }) {
-        const res: number[] = [];
-
-        let progress = 0;
-
-        for (const i of Array(n).keys()) {
-            console.log('Iteration', i, signal?.aborted);
-            // await Promise.resolve();
-            if (signal?.aborted) break; //FIXME Still can move forward as events may lag
-            progress = (i + 1) / n;
-            yield { progress };
-            res.push(i);
-        }
-
-        //FIXME ADD TO README https://stackoverflow.com/questions/77727664/how-to-get-returned-value-from-async-generator-when-using-for-await
-        yield { res, progress, aborted: !!signal?.aborted };
-
+    test: function* ({ buf, signal }: { signal?: AbortSignal; buf?: ArrayBuffer } = {}) {
+        yield { progress: 0 };
+        yield { progress: 0.5 };
+        yield { progress: 1, aborted: !!signal?.aborted };
         return 'foo';
+    },
+    // note it's not async, and works properly
+    returnYield: function* () {
+        yield 1;
+        yield 2;
+        return yield 3;
     },
     // eslint-disable-next-line require-yield
     error: async function* () {
