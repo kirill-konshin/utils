@@ -7,12 +7,14 @@ import { fixExports, formats, entry, external, distDir, generateIndex } from './
 // https://rbardini.com/how-to-build-ts-library-with-vite/
 // https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
 
+const isWatch = process.argv.includes('--watch'); // https://github.com/vitejs/vite/discussions/7565#discussioncomment-2939256
+
 export default defineConfig({
     build: {
         ssr: true,
         sourcemap: true,
         outDir: distDir,
-        emptyOutDir: true,
+        emptyOutDir: !isWatch,
         // target: 'esnext',
         lib: {
             entry,
@@ -39,11 +41,16 @@ export default defineConfig({
         {
             name: 'Generate Index & Exports',
             async buildStart() {
-                await generateIndex();
+                if (!isWatch) await generateIndex();
             },
             async closeBundle() {
-                await fixExports();
+                if (!isWatch) await fixExports();
             },
         },
     ],
+    server: {
+        watch: {
+            ignored: ['**/package.json', '**/index.ts'],
+        },
+    },
 });

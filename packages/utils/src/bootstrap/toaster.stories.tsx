@@ -4,7 +4,7 @@ import { fn } from '@storybook/test';
 import { Toaster } from './toaster';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
-const meta = {
+const meta: Meta<typeof Toaster> = {
     title: 'Bootstrap / Toaster',
     component: Toaster,
     parameters: {
@@ -13,7 +13,7 @@ const meta = {
     tags: ['autodocs'],
     argTypes: {},
     args: { onClick: fn() },
-} satisfies Meta<typeof Toaster>;
+};
 
 export default meta;
 

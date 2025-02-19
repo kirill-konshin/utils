@@ -11,21 +11,23 @@ export function getTransferrable(data: any = {}): Transferable[] {
         .filter(Boolean);
 }
 
+const g = globalThis;
+
 // @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects
 const transferrable = [
-    global.ArrayBuffer,
-    global.MessagePort,
-    global.ReadableStream,
-    global.WritableStream,
-    global.TransformStream,
+    g.ArrayBuffer,
+    g.MessagePort,
+    g.ReadableStream,
+    g.WritableStream,
+    g.TransformStream,
     // WebTransportReceiveStream, // ReferenceError: WebTransportReceiveStream is not defined
     // WebTransportSendStream, // ReferenceError: WebTransportReceiveStream is not defined
     // AudioData, // TS2304: Cannot find name AudioData
-    global.ImageBitmap,
-    global.VideoFrame,
-    global.OffscreenCanvas,
-    global.RTCDataChannel,
-    global.MediaSourceHandle,
+    g.ImageBitmap,
+    g.VideoFrame,
+    g.OffscreenCanvas,
+    g.RTCDataChannel,
+    g.MediaSourceHandle,
     // MIDIAccess, // ReferenceError: MIDIAccess is not defined
 ].filter(Boolean);
 

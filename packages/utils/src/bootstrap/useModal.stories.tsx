@@ -1,10 +1,10 @@
 import React, { FC } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useModal, UseModalProps } from './useModal';
-import { Button, ButtonGroup } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
-const meta = {
+const meta: Meta<FC<UseModalProps>> = {
     title: 'Bootstrap / useModal',
     parameters: {
         layout: 'centered',
@@ -34,7 +34,7 @@ const meta = {
         );
     },
     // args: { onSubmit: (e) => e.preventDefault() },
-} satisfies Meta<FC<UseModalProps>>;
+};
 
 export default meta;
 

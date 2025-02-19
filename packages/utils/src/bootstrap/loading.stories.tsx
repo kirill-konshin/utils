@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 
 import { Loading } from './loading';
 
-const meta = {
+const meta: Meta<typeof Loading> = {
     title: 'Bootstrap / Loading',
     component: Loading,
     parameters: {
@@ -14,7 +14,7 @@ const meta = {
         show: { control: 'check' },
         size: { control: 'select', options: ['sm', 'md'] },
     },
-} satisfies Meta<typeof Loading>;
+};
 
 export default meta;
 

@@ -6,7 +6,7 @@ import { FieldGroup } from './field';
 import { FormControl } from 'react-bootstrap';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
-const meta = {
+const meta: Meta<typeof FieldGroup> = {
     title: 'Bootstrap / FieldGroup',
     component: FieldGroup,
     parameters: {
@@ -19,7 +19,7 @@ const meta = {
         horizontal: { control: 'check' },
     },
     args: { onClick: fn() },
-} satisfies Meta<typeof FieldGroup>;
+};
 
 export default meta;
 

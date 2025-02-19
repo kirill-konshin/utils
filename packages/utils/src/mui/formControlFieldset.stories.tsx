@@ -9,7 +9,7 @@ import { FormControlFieldset } from './formControlFieldset';
 import { FormLabelLegend } from './formLabelLegend';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
-const meta = {
+const meta: Meta<typeof GenericControl> = {
     title: 'MUI / FormControlFieldset',
     parameters: {
         layout: 'centered',

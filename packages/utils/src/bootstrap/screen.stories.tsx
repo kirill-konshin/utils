@@ -45,7 +45,7 @@ const lorem = (
     </>
 );
 
-const meta = {
+const meta: Meta<typeof Screen> = {
     title: 'Bootstrap / Screen',
     component: Screen,
     parameters: {
@@ -75,7 +75,7 @@ const meta = {
         ),
         backCb: fn(),
     },
-} satisfies Meta<typeof Screen>;
+};
 
 export default meta;
 

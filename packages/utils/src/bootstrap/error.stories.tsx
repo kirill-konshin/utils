@@ -4,7 +4,7 @@ import { fn } from '@storybook/test';
 import { ErrorAlert } from './error';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
-const meta = {
+const meta: Meta<typeof ErrorAlert> = {
     title: 'Bootstrap / ErrorAlert',
     component: ErrorAlert,
     parameters: {
@@ -16,7 +16,7 @@ const meta = {
         children: { control: 'text' },
     },
     args: { onRetry: fn() },
-} satisfies Meta<typeof ErrorAlert>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -29,6 +29,6 @@ export const String: Story = {
 
 export const ErrorObject: Story = {
     args: {
-        children: new Error('An error occurred'),
+        children: new Error('An error occurred') as any,
     },
 };

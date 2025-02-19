@@ -1,6 +1,6 @@
 import '@vitest/web-worker';
 import { expect, describe, test, vi } from 'vitest';
-import { createCaller } from './wrpc';
+import { wrpc } from './wrpc';
 import type { responder } from './wrpc.fixture'; // DO NOT IMPORT ANYTHING OTHER THAN TYPES!!!
 
 // Prepare
@@ -9,7 +9,7 @@ const createWorker = () => {
     const mainWorker = new Worker(new URL('./wrpc.fixture', import.meta.url), { type: 'module' });
     mainWorker.addEventListener('error', (e) => console.error('Worker Error', e));
 
-    const caller = createCaller(
+    const caller = wrpc().createCaller(
         mainWorker,
         {} as typeof responder.responders, // only types, object will be proxied
     );
@@ -44,6 +44,7 @@ describe(
             for await (const data of caller.returnYield()) {
                 fn(data);
                 console.log('DATA', data);
+                //TODO Test early return
             }
 
             expect(fn).nthCalledWith(1, 1);

@@ -1,6 +1,6 @@
-import { createResponder } from './wrpc';
+import { wrpc } from './wrpc';
 
-export const responder = createResponder(self, {
+export const responder = wrpc().createResponder(self, {
     // note it's not async, and works properly
     test: function* ({ buf, signal }: { signal?: AbortSignal; buf?: ArrayBuffer } = {}) {
         yield { progress: 0 };

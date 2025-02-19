@@ -7,7 +7,7 @@ import { Select, Control, Range, Checkbox } from './controls';
 const defaultOptions = { num: 1, bool: false, select: 'bar' };
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
-const meta = {
+const meta: Meta<typeof Control> = {
     title: 'Bootstrap / Controls',
     parameters: {
         layout: 'centered',
@@ -32,7 +32,7 @@ const meta = {
 
         return <div style={{ width: '300px' }}>{cloneElement(children as any, { ...safeArgs, ...controlProps })}</div>;
     },
-} satisfies Meta<typeof Control>;
+};
 
 export default meta;
 

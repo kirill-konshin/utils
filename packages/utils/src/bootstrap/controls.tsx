@@ -4,7 +4,7 @@ const lcFirst = (str) => str[0].toLowerCase() + str.substring(1, str.length);
 
 const toProperty = (str) => lcFirst(str).split(' ').join('');
 
-interface ControlProps {
+export interface ControlProps {
     value?: any;
     setValue?: (v: any) => void;
     defaultValue?: any;
@@ -22,9 +22,9 @@ interface ControlProps {
     hideValue?: boolean;
 }
 
-type LabelProps = Pick<ControlProps, 'name' | 'value' | 'defaultValue'> & { reset: () => void };
+export type LabelProps = Pick<ControlProps, 'name' | 'value' | 'defaultValue'> & { reset: () => void };
 
-const Label = memo<LabelProps>(function Label({ name, reset, value, defaultValue }) {
+export const Label = memo<LabelProps>(function Label({ name, reset, value, defaultValue }) {
     return (
         <label className="flex-grow-1 mb-0 d-flex align-items-center justify-content-start gap-2">
             {name}

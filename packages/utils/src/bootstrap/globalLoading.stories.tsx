@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 
 import { GlobalLoading } from './globalLoading';
 
-const meta = {
+const meta: Meta<typeof GlobalLoading> = {
     title: 'Bootstrap / GlobalLoading',
     component: GlobalLoading,
     parameters: {
@@ -12,7 +12,7 @@ const meta = {
     argTypes: {
         loading: { control: 'check' },
     },
-} satisfies Meta<typeof GlobalLoading>;
+};
 
 export default meta;
 
