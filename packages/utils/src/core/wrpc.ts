@@ -41,7 +41,7 @@ export type WorkerLike = {
 
 function send(worker: WorkerLike, ctx: Context, payload?: any) {
     // console.log('SEND', (worker as any).self ? 'WORKER' : 'MAIN', ctx, payload);
-    worker.postMessage({ ctx, payload }, getTransferrable(payload)); //TODO Transeferable
+    worker.postMessage({ ctx, payload }, getTransferrable(payload));
 }
 
 function listen(
@@ -90,76 +90,80 @@ export function createResponder<T extends Responders>(worker: WorkerLike, respon
         worker,
         null,
         async ({ ctx, payload = {} }) => {
-            if (!ctx || !ctx.message || !ctx.id || ctx.abort || ctx.ack) return; // ignore invalid and service messages
+            try {
+                if (!ctx || !ctx.message || !ctx.id || ctx.abort || ctx.ack) return; // ignore invalid and service messages
 
-            const responder = responders[ctx.message];
+                const responder = responders[ctx.message];
 
-            if (!responder) return;
+                if (!responder) throw new Error('Unknown responder', { cause: ctx });
 
-            const [subController, subSignal] = deriveController(mainController.signal);
+                const [subController, subSignal] = deriveController(mainController.signal);
 
-            // always recover signal so that promises also can abort
-            if (ctx.signalName) payload[ctx.signalName] = subSignal;
+                // always recover signal so that promises also can abort
+                if (ctx.signalName) payload[ctx.signalName] = subSignal;
 
-            // Function, AsyncFunction
-            const isGenerator =
-                responder.constructor.name === 'GeneratorFunction' ||
-                responder.constructor.name === 'AsyncGeneratorFunction';
+                // Function, AsyncFunction
+                const isGenerator =
+                    responder.constructor.name === 'GeneratorFunction' ||
+                    responder.constructor.name === 'AsyncGeneratorFunction';
 
-            if (debug) console.log('RESPONDER START', ctx, isGenerator, responder.constructor.name);
+                if (debug) console.log('RESPONDER START', ctx, isGenerator, responder.constructor.name);
 
-            // PROMISE
+                // PROMISE
 
-            if (!isGenerator) {
-                try {
+                if (!isGenerator) {
+                    // Errors are caught in generic handler
                     send(worker, { ...ctx, promise: true }, await rejectOnSignal(responder(payload), subSignal));
                     if (debug) console.log('RESPONDER RESOLVED');
-                } catch (e) {
-                    if (debug) console.error('RESPONDER REJECTED', e);
-                    send(worker, { ...ctx, promise: true, error: true }, e);
+                    return;
                 }
-                return;
-            }
 
-            // GENERATOR
+                // GENERATOR
 
-            try {
-                // Listen outside the loop to react immediately
-                listen(
-                    worker,
-                    ctx,
-                    (data) => {
-                        if (!data.ctx.abort) return;
-                        subController.abort(data.ctx.abort);
-                        if (debug) console.log('RESPONDER GOT ABORT', data.ctx.abort, ctx);
-                    },
-                    subSignal,
-                );
-
-                let res: any;
-                const iterator = responder(payload);
-                do {
-                    res = await rejectOnSignal(iterator.next(), subSignal);
-
-                    send(worker, { ...ctx, done: res.done }, res.value);
-
-                    if (res.done) {
-                        subController.abort('Done');
-                        break;
-                    }
-
-                    await rejectOnSignal(
-                        waitFor(worker, ctx, (data) => !!data.ctx.ack, subSignal),
+                // Generator-specific error handling
+                try {
+                    // Listen outside the loop to react immediately
+                    listen(
+                        worker,
+                        ctx,
+                        (data) => {
+                            if (!data.ctx.abort) return;
+                            subController.abort(data.ctx.abort);
+                            if (debug) console.log('RESPONDER GOT ABORT', data.ctx.abort, ctx);
+                        },
                         subSignal,
                     );
 
-                    if (debug) console.log('RESPONDER ACK');
-                } while (!res.done && !subSignal.aborted);
-            } catch (e) {
-                if (!subSignal.aborted && !e.message.includes('RaceAborted')) {
-                    if (debug) console.error('RESPONDER ERROR', e);
-                    send(worker, { ...ctx, error: true, done: true }, e);
+                    let res: any;
+                    const iterator = responder(payload);
+                    do {
+                        res = await rejectOnSignal(iterator.next(), subSignal);
+
+                        send(worker, { ...ctx, done: res.done }, res.value);
+
+                        if (res.done) {
+                            subController.abort('Done');
+                            break;
+                        }
+
+                        await rejectOnSignal(
+                            waitFor(worker, ctx, (data) => !!data.ctx.ack, subSignal),
+                            subSignal,
+                        );
+
+                        if (debug) console.log('RESPONDER ACK');
+                    } while (!res.done && !subSignal.aborted);
+                } catch (e) {
+                    if (!subSignal.aborted && !e.message.includes('RaceAborted')) {
+                        if (debug) console.error('RESPONDER ERROR', e);
+                        send(worker, { ...ctx, error: true, done: true }, e);
+                    }
+                } finally {
+                    if (debug) console.info('RESPONDER LOOP DONE');
                 }
+            } catch (e) {
+                if (debug) console.error('RESPONDER ERROR', e);
+                send(worker, { ...ctx, error: true, promise: true }, e); // Generic error handling responds as promise
             } finally {
                 if (debug) console.info('RESPONDER DONE');
             }

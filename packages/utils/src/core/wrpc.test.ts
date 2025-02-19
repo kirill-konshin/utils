@@ -54,7 +54,7 @@ describe(
             let res;
             const it = caller.returnYield();
             do {
-                res = await it.next(123); // value passed to next are ignored
+                res = await it.next(123);
                 console.log('DATA', res);
                 fn(res);
             } while (!res.done);
@@ -62,7 +62,7 @@ describe(
             expect(fn).nthCalledWith(4, { value: 1, done: false });
             expect(fn).nthCalledWith(5, { value: 2, done: false });
             expect(fn).nthCalledWith(6, { value: 3, done: false });
-            expect(fn).nthCalledWith(7, { value: undefined, done: true }); // //FIXME ADD TO README https://stackoverflow.com/questions/77727664/how-to-get-returned-value-from-async-generator-when-using-for-await
+            expect(fn).nthCalledWith(7, { value: undefined, done: true });
             expect(fn).toBeCalledTimes(7);
         });
 
@@ -142,6 +142,12 @@ describe(
                     console.log('DATA', data);
                 }
             }).rejects.toThrowError('Test');
+        });
+
+        test('unknown responder', async () => {
+            const { caller } = createWorker();
+
+            await expect(caller['unknown']()).rejects.toThrowError('Unknown responder');
         });
 
         test('promise', async () => {
