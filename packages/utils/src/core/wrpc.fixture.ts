@@ -14,6 +14,14 @@ export const responder = wrpc().createResponder(self, {
         yield 2;
         return yield 3;
     },
+    bidirectional: function* (prefix = 1): Generator<string, string, number> {
+        let i = 0;
+        while (i < 3) {
+            prefix = (yield prefix + '.' + i) || prefix;
+            i++;
+        }
+        return 'done';
+    },
     // eslint-disable-next-line require-yield
     error: async function* () {
         throw new Error('Test');

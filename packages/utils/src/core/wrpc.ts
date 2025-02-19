@@ -175,8 +175,9 @@ export function wrpc({
                         );
 
                         let res: any;
+                        let nextPayload: any = payload; // does not matter, will be ignored anyway
                         do {
-                            res = await rejectOnSignal(iterator.next(), subSignal);
+                            res = await rejectOnSignal(iterator.next(nextPayload), subSignal);
 
                             send(worker, { ...ctx, done: res.done }, res.value);
 
@@ -185,10 +186,11 @@ export function wrpc({
                                 break;
                             }
 
-                            await rejectOnSignal(
+                            const nextData = await rejectOnSignal(
                                 waitFor(worker, ctx, (data) => !!data.ctx.ack, subSignal),
                                 subSignal,
                             );
+                            nextPayload = nextData.payload;
 
                             log(LogLevel.detail, ctx, 'LOOP ACK');
                         } while (!res.done && !subSignal.aborted);
@@ -310,8 +312,8 @@ export function wrpc({
                                     done = true;
                                     return payloadIn;
                                 } else {
-                                    yield payloadIn;
-                                    if (!mainSignal.aborted) send(worker, { ...ctx, ack: true });
+                                    const nextPayload = yield payloadIn;
+                                    if (!mainSignal.aborted) send(worker, { ...ctx, ack: true }, nextPayload);
                                 }
                             } while (!mainSignal.aborted);
                         } finally {

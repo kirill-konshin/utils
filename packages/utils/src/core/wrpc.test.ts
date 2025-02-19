@@ -55,7 +55,7 @@ describe(
             let res;
             const it = caller.returnYield();
             do {
-                res = await it.next(123);
+                res = await it.next();
                 console.log('DATA', res);
                 fn(res);
             } while (!res.done);
@@ -191,6 +191,20 @@ describe(
             ]);
 
             expect(fn).toBeCalledTimes(0);
+        });
+
+        test('bidirectional', async () => {
+            const { caller } = createWorker();
+
+            const it = caller.bidirectional(1);
+
+            //TODO Readme
+            //  > No log at this step: the first value sent through `next` is lost
+            //  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next#sending_values_to_the_generator
+            await expect(it.next(9)).resolves.toEqual({ value: '1.0', done: false }); // 9 is ignored as yield is not yet reached
+            await expect(it.next(2)).resolves.toEqual({ value: '2.1', done: false });
+            await expect(it.next(3)).resolves.toEqual({ value: '3.2', done: false });
+            await expect(it.next(9)).resolves.toEqual({ value: 'done', done: true }); // 9 is ignored as generator has returned and is done
         });
     },
     { timeout: 1000 },
