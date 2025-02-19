@@ -169,7 +169,7 @@ export function wrpc({
                             (data) => {
                                 if (!data.ctx.abort) return;
                                 subController.abort(data.ctx.abort);
-                                logWarn(2, ctx, 'GOT ABORT');
+                                logWarn(LogLevel.lifecycle, ctx, 'GOT ABORT');
                             },
                             subSignal,
                         );
@@ -247,7 +247,7 @@ export function wrpc({
 
                     const cancel = (notify: boolean, reason: string = '') => {
                         if (mainController.signal.aborted) return;
-                        logWarn(2, ctx, 'CANCEL', reason, notify);
+                        logWarn(LogLevel.lifecycle, ctx, 'CANCEL', reason, notify);
                         if (reason) mainController.abort(reason); // stop listening
                         if (notify) send(worker, { ...ctx, abort: reason }); // worker will break & acknowledge, but it's not important
                     };
@@ -301,7 +301,7 @@ export function wrpc({
                                 }
 
                                 if (ctxIn.error) {
-                                    // logError(debug, 'CALLER', ctx, 'ERROR', data);
+                                    logError(debug, ctx, 'ERROR', data);
                                     cancel(false, 'Error');
                                     throw payloadIn;
                                 }
