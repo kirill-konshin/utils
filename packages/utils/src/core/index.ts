@@ -5,4 +5,5 @@ export * from './ls';
 export * from './measure';
 export * from './mutex';
 export * from './worker';
+export * from './workerUtils';
 export * from './wrpc';

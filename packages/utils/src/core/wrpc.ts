@@ -1,18 +1,6 @@
-import { getTransferrable } from './worker';
+import { getTransferrable } from './workerUtils';
 
-export function deriveController(signal?: AbortSignal): [AbortController, AbortSignal] {
-    const controller = new AbortController();
-    return [controller, AbortSignal.any([controller.signal, signal].filter(Boolean) as AbortSignal[])];
-}
-
-export function rejectOnSignal(promise: Promise<any>, signal?: AbortSignal) {
-    return Promise.race([
-        promise,
-        new Promise<Event['data']>((resolve, reject) => {
-            signal?.addEventListener('abort', () => reject('RaceAborted:' + signal.reason), { once: true, signal });
-        }),
-    ]);
-}
+// Types
 
 export type Responders = { [key: string]: (arg?: any) => Generator<any> | AsyncGenerator<any> | Promise<any> | any };
 
@@ -47,6 +35,24 @@ export enum LogLevel {
     transport = 4,
 }
 
+// Helpers
+
+export function deriveController(signal?: AbortSignal): [AbortController, AbortSignal] {
+    const controller = new AbortController();
+    return [controller, AbortSignal.any([controller.signal, signal].filter(Boolean) as AbortSignal[])];
+}
+
+export function rejectOnSignal(promise: Promise<any>, signal: AbortSignal) {
+    return Promise.race([
+        promise,
+        new Promise<Event['data']>((resolve, reject) => {
+            signal.addEventListener('abort', () => reject('RaceAborted:' + signal.reason), { once: true, signal });
+        }),
+    ]);
+}
+
+// Lib
+
 export function wrpc({
     debug = LogLevel.disabled,
     name = (globalThis as any).importScripts ? 'RESPONDER' : 'CALLER',
@@ -72,6 +78,7 @@ export function wrpc({
         worker.postMessage({ ctx, payload }, getTransferrable(payload));
     }
 
+    //TODO Listener error handling
     function listen(
         worker: WorkerLike,
         context: Context | null,
@@ -83,6 +90,7 @@ export function wrpc({
             'abort',
             () => logWarn(LogLevel.detail, context, 'LISTEN SIGNAL ABORT', signal.reason),
             {
+                signal,
                 once: true,
             },
         );
@@ -105,7 +113,7 @@ export function wrpc({
     ) {
         const [waitController, waitSignal] = deriveController(signal);
 
-        return new Promise<Event['data']>((res) => {
+        return new Promise<Event['data']>((res) =>
             listen(
                 worker,
                 ctx,
@@ -115,14 +123,14 @@ export function wrpc({
                     res(data);
                 },
                 waitSignal,
-            );
-        });
+            ),
+        );
     }
 
     // Responder
 
     //TODO Name arg
-    function createResponder<T extends Responders>(worker: WorkerLike, responders: T, debug = 0) {
+    function createResponder<T extends Responders>(worker: WorkerLike, responders: T) {
         const mainController = new AbortController();
 
         worker.addEventListener('messageerror', (e) => logError(LogLevel.error, null, 'MESSAGE ERROR', e), {
@@ -160,9 +168,9 @@ export function wrpc({
 
                     // GENERATOR
 
-                    // Generator-specific error handling
                     try {
                         // Listen outside the loop to react immediately
+                        // Could be a wait for since abort is a one-off, but listeners are disposed by signal anyway, and we don't need to block the async thread
                         listen(
                             worker,
                             ctx,
@@ -203,6 +211,7 @@ export function wrpc({
                         log(LogLevel.detail, ctx, 'LOOP DONE');
                     }
                 } catch (e) {
+                    // Generator-specific error handling
                     logError(LogLevel.error, ctx, 'ERROR', e);
                     send(worker, { ...ctx, error: true, done: true }, e); // Generic error handling
                 } finally {
@@ -222,7 +231,7 @@ export function wrpc({
     // Caller
 
     //TODO Name arg
-    function createCaller<T extends Responders>(worker: WorkerLike, responders: T, debug = 0): T {
+    function createCaller<T extends Responders>(worker: WorkerLike, responders: T): T {
         worker.addEventListener('messageerror', (e) => logError(LogLevel.error, null, 'MESSAGE ERROR', e));
 
         //TODO Stop
@@ -303,7 +312,7 @@ export function wrpc({
                                 }
 
                                 if (ctxIn.error) {
-                                    logError(debug, ctx, 'ERROR', data);
+                                    logError(LogLevel.error, ctx, 'ERROR', data);
                                     cancel(false, 'Error');
                                     throw payloadIn;
                                 }
