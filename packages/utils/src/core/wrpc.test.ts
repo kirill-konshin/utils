@@ -206,6 +206,20 @@ describe(
             await expect(it.next(3)).resolves.toEqual({ value: '3.2', done: false });
             await expect(it.next(9)).resolves.toEqual({ value: 'done', done: true }); // 9 is ignored as generator has returned and is done
         });
+
+        test.skip('setTimeout & setInterval', async () => {
+            const { caller } = createWorker();
+
+            await caller.setTimeout({ timeout: 10 });
+            caller.setTimeout({ timeout: 10 }).then(() => {});
+
+            let i = 0;
+            for await (const data of caller.setInterval({ timeout: 10 })) {
+                console.log('DATA', data);
+                i++;
+                if (i >= 3) break;
+            }
+        });
     },
     { timeout: 1000 },
 );

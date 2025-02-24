@@ -299,9 +299,9 @@ export function wrpc({
                                     mainSignal,
                                 );
 
-                                const { ctx: ctxIn, payload: payloadIn } = data;
+                                const { ctx: ctxIn, payload: value } = data;
 
-                                log(LogLevel.lifecycle, ctx, 'EVENT', mainSignal.aborted, ctxIn, payloadIn);
+                                log(LogLevel.lifecycle, ctx, 'EVENT', mainSignal.aborted, ctxIn, value);
 
                                 if (ctxIn.promise) {
                                     //  && !ctxIn.error
@@ -314,14 +314,14 @@ export function wrpc({
                                 if (ctxIn.error) {
                                     logError(LogLevel.error, ctx, 'ERROR', data);
                                     cancel(false, 'Error');
-                                    throw payloadIn;
+                                    throw value;
                                 }
 
                                 if (ctxIn.done) {
                                     done = true;
-                                    return payloadIn;
+                                    return value;
                                 } else {
-                                    const nextPayload = yield payloadIn;
+                                    const nextPayload = yield value;
                                     if (!mainSignal.aborted) send(worker, { ...ctx, ack: true }, nextPayload);
                                 }
                             } while (!mainSignal.aborted);

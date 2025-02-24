@@ -32,6 +32,14 @@ export const responder = wrpc().createResponder(self, {
     promiseError: async function () {
         throw new Error('Test');
     },
+    setTimeout: async ({ timeout = 1000 }: { timeout?: number } = {}) =>
+        new Promise((resolve) => setTimeout(resolve, timeout)),
+
+    setInterval: async function* ({ timeout = 1000 }: { timeout?: number } = {}) {
+        while (true) {
+            yield await this.setTimeout(timeout);
+        }
+    },
 });
 
 // self.onmessage = (e) => {
