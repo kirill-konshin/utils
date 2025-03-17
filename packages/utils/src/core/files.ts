@@ -1,4 +1,4 @@
-import saver from 'file-saver';
+import * as saver from 'file-saver';
 
 export const downloadFile = async (filename, text, type = 'application/json') => {
     //FIXME https://github.com/eligrey/FileSaver.js/issues/731
