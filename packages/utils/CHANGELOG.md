@@ -1,5 +1,11 @@
 # @kirill.konshin/utils
 
+## 0.0.16
+
+### Patch Changes
+
+- File Saver patch
+
 ## 0.0.15
 
 ### Patch Changes

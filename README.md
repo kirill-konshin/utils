@@ -17,3 +17,9 @@ All common library tasks are defined in root `turbo.json`: `clean`, `build`, `st
 ### TypeScript
 
 All packages extend root `tsconfig.json`.
+
+### Changesets
+
+Normal flow: create branch, create MR, add changesets, merge MR.
+
+Quick flow: locally run `yarn changeset`, then `yarn changeset version` and then CI will publish.
