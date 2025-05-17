@@ -3,7 +3,19 @@ import { Nav, Navbar } from 'react-bootstrap';
 import { useBreakpoint } from './responsiveHelper';
 import { AdaptiveContainer } from './adaptiveContainer';
 
-export function FooterNavItem({ href, icon, active = false, children = '' }) {
+export type FooterNavItemProps = {
+    href: any;
+    icon: any;
+    active?: boolean | undefined;
+    children?: string | undefined;
+};
+
+export const FooterNavItem: React.FC<FooterNavItemProps> = function FooterNavItem({
+    href,
+    icon,
+    active = false,
+    children = '',
+}) {
     // const pathname = usePathname();
 
     const isFilepath = icon.includes('.');
@@ -30,9 +42,9 @@ export function FooterNavItem({ href, icon, active = false, children = '' }) {
     );
 
     return <Nav.Item style={{ flex: 1 }}>{link}</Nav.Item>;
-}
+};
 
-export function Footer({ children }) {
+export const Footer: React.FC<any> = function Footer({ children }) {
     const { isDesktop } = useBreakpoint();
 
     return (
@@ -46,4 +58,4 @@ export function Footer({ children }) {
             </Navbar>
         </div>
     );
-}
+};

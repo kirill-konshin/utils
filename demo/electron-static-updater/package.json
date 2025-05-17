@@ -13,9 +13,9 @@
   },
   "scripts": {
     "clean": "rm -rf ./dist",
-    "start": "NODE_ENV=development electron .",
+    "start:demo": "NODE_ENV=development electron .",
+    "build:demo": "CSC_LINK=cert/cert.p12 electron-builder",
     "images": "node images.mjs",
-    "build-demo": "CSC_LINK=cert/cert.p12 electron-builder",
     "deploy": "open ./dist/Electron Static Updater-0.0.0-arm64.dmg",
     "open": "./dist/mac-arm64/Electron Static Updater.app/Contents/MacOS/Electron Static Updater",
     "minio": "dotenv minio server $(pwd)/node_modules/.cache/minio -- --console-address :9001"

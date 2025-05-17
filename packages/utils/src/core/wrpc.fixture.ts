@@ -1,15 +1,47 @@
 import { wrpc } from './wrpc';
 
-export const responder = wrpc().createResponder(self, {
+export const responder: {
+    responders: {
+        // note it's not async, and works properly
+        // @ts-ignore
+        test: ({ buf, signal }?: { signal?: AbortSignal; buf?: ArrayBuffer }) => Generator<
+            {
+                progress: number;
+                aborted?: boolean;
+            },
+            string,
+            unknown
+        >;
+        // note it's not async, and works properly
+        returnYield: () => Generator<1 | 3 | 2, any, unknown>;
+        bidirectional: (prefix?: any) => Generator<string, string, number>;
+
+        error: () => AsyncGenerator<never, never, unknown>;
+        promise: () => Promise<{
+            test: string;
+        }>;
+        promiseError: () => Promise<never>;
+        setTimeout: ({ timeout }?: { timeout?: number }) => Promise<unknown>;
+        setInterval: ({ timeout }?: { timeout?: number }) => AsyncGenerator<any, never, unknown>;
+    };
+    stop: () => void;
+} = wrpc().createResponder(self, {
     // note it's not async, and works properly
-    test: function* ({ buf, signal }: { signal?: AbortSignal; buf?: ArrayBuffer } = {}) {
+    test: function* ({ buf, signal }: { signal?: AbortSignal; buf?: ArrayBuffer } = {}): Generator<
+        {
+            progress: number;
+            aborted?: boolean;
+        },
+        string,
+        unknown
+    > {
         yield { progress: 0 };
         yield { progress: 0.5 };
         yield { progress: 1, aborted: !!signal?.aborted };
         return 'foo';
     },
     // note it's not async, and works properly
-    returnYield: function* () {
+    returnYield: function* (): Generator<1 | 3 | 2, any, unknown> {
         yield 1;
         yield 2;
         return yield 3;
@@ -23,13 +55,15 @@ export const responder = wrpc().createResponder(self, {
         return 'done';
     },
     // eslint-disable-next-line require-yield
-    error: async function* () {
+    error: async function* (): AsyncGenerator<never, never, unknown> {
         throw new Error('Test');
     },
-    promise: async function () {
+    promise: async function (): Promise<{
+        test: string;
+    }> {
         return { test: 'test' };
     },
-    promiseError: async function () {
+    promiseError: async function (): Promise<never> {
         throw new Error('Test');
     },
     setTimeout: async ({ timeout = 1000 }: { timeout?: number } = {}) =>

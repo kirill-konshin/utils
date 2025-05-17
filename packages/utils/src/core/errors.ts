@@ -1,5 +1,8 @@
 // @see https://www.youtube.com/watch?v=AdmGHwvgaVs
-export function catchErrors<T, E extends Error = Error>(promise: Promise<T>, errors?: E[]) {
+export function catchErrors<T, E extends Error = Error>(
+    promise: Promise<T>,
+    errors?: E[],
+): Promise<any[] | (T | undefined)[]> {
     return promise
         .then((data) => [undefined, data])
         .catch((error) => {

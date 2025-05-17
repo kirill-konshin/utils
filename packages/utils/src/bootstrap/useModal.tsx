@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, JSX } from 'react';
 import { Button, Modal, ModalProps, Offcanvas, OffcanvasProps, Stack } from 'react-bootstrap';
 
 export type UseModalArgs = { onClose?: any; showOnMount?: boolean };
@@ -14,15 +14,29 @@ export type UseModalProps = {
     containerProps?: ModalProps | OffcanvasProps;
 };
 
-export function useModal({ onClose, showOnMount }: UseModalArgs = {}) {
+export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
+    show: boolean | undefined;
+    close: () => void;
+    open: () => void;
+    ModalDialog: ({
+        children,
+        show,
+        onSubmit,
+        submitButton,
+        cancelButton,
+        offcanvas,
+        title,
+        containerProps,
+    }: ModalProps) => JSX.Element;
+} {
     const [show, setShow] = useState(showOnMount);
 
-    const close = useCallback(() => {
+    const close = useCallback((): void => {
         setShow(false);
         onClose?.();
     }, [onClose]);
 
-    const open = useCallback(() => setShow(true), []);
+    const open = useCallback((): void => setShow(true), []);
 
     const defaultOnSubmit = useCallback(
         (e) => {
@@ -43,7 +57,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}) {
                 offcanvas = false,
                 title = null as any,
                 containerProps = {},
-            }: ModalProps) {
+            }: ModalProps): JSX.Element {
                 const Container = offcanvas ? Offcanvas : Modal;
                 const containerDefaultProps = offcanvas ? { style: { maxWidth: '85%' } } : {};
                 const Body = offcanvas ? Offcanvas.Body : Modal.Body;

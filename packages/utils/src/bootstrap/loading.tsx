@@ -1,16 +1,18 @@
 import { Spinner, SpinnerProps, Stack } from 'react-bootstrap';
 import React from 'react';
 
-export function Loading({
-    children = 'Loading...' as any,
-    show = true,
-    className = '',
-    size,
-}: {
+export type LoadingProps = {
     children?: any;
     show?: boolean;
     className?: string;
     size?: SpinnerProps['size'];
+};
+
+export const Loading: React.FC<LoadingProps> = function Loading({
+    children = 'Loading...' as any,
+    show = true,
+    className = '',
+    size,
 }) {
     if (!show) return null;
     return (
@@ -19,4 +21,4 @@ export function Loading({
             <span>{children}</span>
         </Stack>
     );
-}
+};

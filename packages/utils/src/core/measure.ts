@@ -1,6 +1,13 @@
 import { bold, magenta, cyan, yellow, red, green } from 'colors/safe';
 
-export const colored = {
+export const colored: {
+    important: typeof bold;
+    subject: typeof magenta;
+    arg: typeof cyan;
+    sup: typeof yellow;
+    err: typeof red;
+    ok: typeof green;
+} = {
     important: bold,
     subject: magenta,
     arg: cyan,
@@ -11,7 +18,14 @@ export const colored = {
 
 const noColor = (str) => str;
 
-export const uncolored = {
+export const uncolored: {
+    important: (str: any) => any;
+    subject: (str: any) => any;
+    arg: (str: any) => any;
+    sup: (str: any) => any;
+    err: (str: any) => any;
+    ok: (str: any) => any;
+} = {
     important: noColor,
     subject: noColor,
     arg: noColor,
@@ -20,10 +34,44 @@ export const uncolored = {
     ok: noColor,
 };
 
-export function createMeasurer({ colors = true, prepend = 'LOG', padding = 10 }) {
+export function createMeasurer({
+    colors = true,
+    prepend = 'LOG',
+    padding = 10,
+}: {
+    colors?: boolean;
+    prepend?: string;
+    padding?: number;
+}): {
+    measure: (
+        what: string,
+        step: string,
+        supplemental?: string,
+        ...args: any[]
+    ) => {
+        done: (result?: string, ...args2: any[]) => void;
+        fail: (result?: string, ...args2: any[]) => void;
+        log: (...args2: any[]) => void;
+    };
+    important: (str: any) => any;
+    subject: (str: any) => any;
+    arg: (str: any) => any;
+    sup: (str: any) => any;
+    ok: (str: any) => any;
+    err: (str: any) => any;
+} {
     const { important, subject, arg, sup, ok, err } = colors ? colored : uncolored;
 
-    function measure(what: string, step: string, supplemental: string = '', ...args) {
+    function measure(
+        what: string,
+        step: string,
+        supplemental: string = '',
+        ...args: any[]
+    ): {
+        done: (result?: string, ...args2: any[]) => void;
+        fail: (result?: string, ...args2: any[]) => void;
+        log: (...args2: any[]) => void;
+    } {
         const time = performance.now();
 
         const prefix = [
@@ -34,7 +82,7 @@ export function createMeasurer({ colors = true, prepend = 'LOG', padding = 10 })
             ...args,
         ];
 
-        const done = (result: string = ok('DONE'), ...args2) => {
+        const done = (result: string = ok('DONE'), ...args2: any[]): void => {
             console.log(
                 ...[
                     ...prefix,
@@ -48,9 +96,9 @@ export function createMeasurer({ colors = true, prepend = 'LOG', padding = 10 })
             console.groupEnd();
         };
 
-        const fail = (result: string = err('FAIL'), ...args2) => done(result, ...args2);
+        const fail = (result: string = err('FAIL'), ...args2: any[]): void => done(result, ...args2);
 
-        const log = (...args2) => {
+        const log = (...args2: any[]): void => {
             console.log(...prefix, ...args2);
         };
 

@@ -3,8 +3,29 @@ import { Button, Navbar, Nav, Stack } from 'react-bootstrap';
 import { useBreakpoint } from './responsiveHelper';
 import { AdaptiveContainer } from './adaptiveContainer';
 
+export type ScreenProps = {
+    backBtn?: any;
+    backCb?: any;
+    backIcon?: any;
+    forwardBtn?: any;
+    forwardIcon?: any;
+    forwardCb?: any;
+    children: any;
+    contentClassName?: string;
+    noContentPadding?: boolean;
+    header?: any; // resides on top panel in mobile, does not scroll, before content on desktop
+    footer?: any; // resides on bottom menu panel in mobile, does not scroll, or after content on desktop
+    menu?: any;
+    title?: any;
+    centerContent?: boolean;
+    noHeader?: boolean;
+    noFooter?: boolean;
+    noMenu?: boolean;
+    // noFolders?: boolean;
+};
+
 //TODO Footer -> menu
-export function Screen({
+export const Screen: React.FC<ScreenProps> = function Screen({
     backBtn,
     backCb,
     backIcon,
@@ -23,25 +44,6 @@ export function Screen({
     noFooter = false,
     noMenu = false,
     // noFolders = false,
-}: {
-    backBtn?;
-    backCb?;
-    backIcon?;
-    forwardBtn?;
-    forwardIcon?;
-    forwardCb?;
-    children: any;
-    contentClassName?: string;
-    noContentPadding?: boolean;
-    header?: any; // resides on top panel in mobile, does not scroll, before content on desktop
-    footer?: any; // resides on bottom menu panel in mobile, does not scroll, or after content on desktop
-    menu?: any;
-    title?: any;
-    centerContent?: boolean;
-    noHeader?: boolean;
-    noFooter?: boolean;
-    noMenu?: boolean;
-    // noFolders?: boolean;
 }) {
     // const router = useRouter();
 
@@ -141,4 +143,4 @@ export function Screen({
             )}
         </div>
     );
-}
+};

@@ -4,14 +4,16 @@ import React, { useState } from 'react';
 import { Toast, ToastProps } from 'react-bootstrap';
 // import { useToaster } from '../redux/toasterSlice';
 
-export function Toaster({
-    toast,
-}: { toast: string | { message: string; title?: string; variant?: 'dark' | 'success' | 'danger' } } & ToastProps) {
+export type ToasterProps = {
+    toast: string | { message: string; title?: string; variant?: 'dark' | 'success' | 'danger' };
+} & ToastProps;
+
+export const Toaster: React.FC<ToasterProps> = function Toaster({ toast }) {
     //const { toast, setToast } = useToaster();
     const [dismissed, setDismissed] = useState(false);
 
     const msg = typeof toast === 'string' ? toast : toast?.message;
-    const title = typeof toast === 'string' ? 'Notification' : toast?.title;
+    // const title = typeof toast === 'string' ? 'Notification' : toast?.title;
     const variant = typeof toast === 'string' ? '' : toast?.variant;
 
     return (
@@ -35,4 +37,4 @@ export function Toaster({
             </Toast.Body>
         </Toast>
     );
-}
+};

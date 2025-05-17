@@ -3,17 +3,14 @@
 import React from 'react';
 import { Alert, AlertProps, Button, ButtonProps } from 'react-bootstrap';
 
-//TODO Create MUI-specific?
-export function ErrorAlert({
-    onRetry,
-    children,
-    buttonProps,
-    ...props
-}: {
+export type ErrorAlertProps = {
     children?: Error | string | any;
     onRetry?: () => any;
     buttonProps?: ButtonProps;
-}) {
+};
+
+//TODO Create MUI-specific?
+export const ErrorAlert: React.FC<ErrorAlertProps> = function ErrorAlert({ onRetry, children, buttonProps, ...props }) {
     if (!children) return null;
 
     return (
@@ -37,4 +34,4 @@ export function ErrorAlert({
             )}
         </Alert>
     );
-}
+};

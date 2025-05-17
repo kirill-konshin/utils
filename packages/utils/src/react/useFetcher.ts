@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useFetcher<T = any>(
-    cb,
-    // eslint-disable-next-line no-unused-vars
-    { fetchOnMount = false, onError }: { fetchOnMount?: boolean; onError?: (e: Error) => void } = {}
-) {
+    cb: any,
+
+    { fetchOnMount = false, onError }: { fetchOnMount?: boolean; onError?: (e: Error) => void } = {},
+): {
+    loading: boolean;
+    error: Error | null;
+    data: T | null;
+    trigger: (...args: any[]) => Promise<any>;
+} {
     const [loading, setLoading] = useState(fetchOnMount);
     const [error, setError] = useState<Error | null>(null);
     const [data, setData] = useState<T | null>(null);
@@ -12,7 +17,7 @@ export function useFetcher<T = any>(
     const isMounted = useRef(false);
 
     const trigger = useCallback(
-        async (...args) => {
+        async (...args: any[]): Promise<any> => {
             try {
                 setLoading(true);
                 setError(null);
@@ -29,7 +34,7 @@ export function useFetcher<T = any>(
                 if (isMounted.current) setLoading(false);
             }
         },
-        [cb, onError]
+        [cb, onError],
     );
 
     useEffect(() => {

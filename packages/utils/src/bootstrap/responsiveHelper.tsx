@@ -2,7 +2,11 @@
 
 import React from 'react';
 
-export function useBreakpoint() {
+export function useBreakpoint(): {
+    breakpoint: string;
+    isMobile: boolean;
+    isDesktop: boolean;
+} {
     const [breakpoint, setBreakpoint] = React.useState('xs');
 
     React.useEffect(() => {
@@ -36,7 +40,7 @@ export function useBreakpoint() {
     return { breakpoint, isMobile, isDesktop: !isMobile };
 }
 
-export function ResponsiveHelperBS() {
+export const ResponsiveHelperBS: React.FC = function ResponsiveHelperBS() {
     return (
         <span className="small position-fixed bottom-0 z-3" style={{ fontSize: '9px', right: 1, lineHeight: 1 }}>
             <small className="d-block d-sm-none">XS</small>
@@ -47,4 +51,4 @@ export function ResponsiveHelperBS() {
             <small className="d-none d-xxl-block">XXL</small>
         </span>
     );
-}
+};

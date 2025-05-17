@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
-export function useAppState() {
+export function useAppState(): 'active' | 'background' | 'inactive' | 'unknown' | 'extension' {
     const [appState, setAppState] = useState(AppState.currentState);
 
     useEffect(() => {

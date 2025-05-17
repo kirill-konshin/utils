@@ -1,7 +1,15 @@
 import React from 'react';
 import { Form, FormGroupProps, FormLabelProps, FormTextProps } from 'react-bootstrap';
 
-export function FieldGroup({
+export type FieldGroupProps = FormGroupProps & {
+    label?: any;
+    labelProps?: FormLabelProps;
+    text?: any;
+    textProps?: FormTextProps;
+    horizontal?: boolean;
+};
+
+export const FieldGroup: React.FC<FieldGroupProps> = function FieldGroup({
     label,
     labelProps = {},
     text,
@@ -9,12 +17,6 @@ export function FieldGroup({
     horizontal,
     children,
     ...props
-}: FormGroupProps & {
-    label?: any;
-    labelProps?: FormLabelProps;
-    text?: any;
-    textProps?: FormTextProps;
-    horizontal?: boolean;
 }) {
     if (horizontal) {
         props.className = 'hstack gap-3 ' + (props.className || '');
@@ -32,4 +34,4 @@ export function FieldGroup({
             {text && !horizontal && <Form.Text {...textProps}>{text}</Form.Text>}{' '}
         </Form.Group>
     );
-}
+};

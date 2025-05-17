@@ -44,7 +44,7 @@ function checkMessage(obj: any, message: any) {
 // Classes
 
 export class WorkerDialog<R extends RespondersBase<any>> {
-    readonly contexts = new Set<Context<R, keyof R>>();
+    readonly contexts: Set<Context<R, keyof R>> = new Set();
     protected closed = false;
     protected currentId = 0; // IDs are intentionally not global
 
@@ -90,16 +90,16 @@ export class WorkerDialog<R extends RespondersBase<any>> {
         }
     }
 
-    getID() {
+    getID(): string {
         return (++this.currentId).toString();
     }
 
-    close() {
+    close(): void {
         for (const context of this.contexts) context.close('root');
         this.contexts.clear();
     }
 
-    withMessage<M extends keyof R>(message: M) {
+    withMessage<M extends keyof R>(message: M): RequestContext<R, M> {
         return new RequestContext<R, M>(this, message, this.getID()); // always new context
     }
 }
@@ -116,7 +116,7 @@ export class RespondersBase<R> {
 
 // can only be used to create actual contexts, carries the context data
 abstract class Context<R, M extends keyof R> {
-    protected readonly unsub = new Set<() => void>();
+    protected readonly unsub: Set<() => void> = new Set();
     protected closed = false;
 
     constructor(
@@ -135,7 +135,7 @@ abstract class Context<R, M extends keyof R> {
 
     abstract withMessage<M2 extends keyof R>(message: M2, id?: string): Context<R, M2>;
 
-    close(reason: string = 'external') {
+    close(reason: string = 'external'): void {
         /* v8 ignore next */
         if (this.dialog.debug >= 2) console.log('Closing', this.info, reason, this);
 
@@ -157,7 +157,14 @@ abstract class Context<R, M extends keyof R> {
         return `${this.dialog.name}:${this.parent?.id ?? ALL}/${this.id}:${this.message.toString()}[${this.closed ? 'closed' : 'open'},${this.type}]`;
     }
 
-    get debugInfo() {
+    get debugInfo(): {
+        id?: string;
+        parentId?: string;
+        message: string | number | symbol;
+        closed: boolean;
+        type: string;
+        listeners: number;
+    } {
         return {
             id: this.id,
             parentId: this.parent?.id,
@@ -170,7 +177,7 @@ abstract class Context<R, M extends keyof R> {
 
     abstract type: 'request' | 'response' | string;
 
-    protected postMessage(data?: Data<R, M>, done = false) {
+    protected postMessage(data?: Data<R, M>, done = false): Data<R, M> | undefined {
         checkClosed(this, 'postMessage');
 
         const transfer = getTransferrable(data);
@@ -190,7 +197,7 @@ abstract class Context<R, M extends keyof R> {
         return data;
     }
 
-    send(data?: Data<R, M>, done = false) {
+    send(data?: Data<R, M>, done = false): Data<R, M> | undefined {
         return this.postMessage(data, done);
     }
 
@@ -303,11 +310,11 @@ class RequestContext<R, M extends keyof R> extends Context<R, M> {
         return res[1];
     }
 
-    protected async expect() {
+    protected async expect(): Promise<MethodReturn<R, M>> {
         checkClosed(this, 'expect');
 
         //FIXME Manual promise type
-        return new Promise<MethodReturn<R, M>>((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const responseListener = this.listen(async (data) => {
                 try {
                     if ((data as any) instanceof Error) throw data;

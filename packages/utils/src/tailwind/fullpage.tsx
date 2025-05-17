@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { FC } from 'react';
 
-export const Fullpage = ({ divRef = null, className = '', children, ...props }) => (
+export const Fullpage: FC<any> = ({ divRef = null, className = '', children, ...props }) => (
     <div
         ref={divRef}
         {...props}

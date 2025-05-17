@@ -1,7 +1,7 @@
 import { useForm, FormState } from 'react-hook-form';
 import { useCallback } from 'react';
 
-export const isFormLoading = (formState: FormState<any>) => formState.isLoading || formState.isSubmitting;
+export const isFormLoading = (formState: FormState<any>): boolean => formState.isLoading || formState.isSubmitting;
 
 export const useWrappedForm: typeof useForm = (options) => {
     const form = useForm(options);
@@ -33,8 +33,10 @@ export const useWrappedForm: typeof useForm = (options) => {
  * https://codesandbox.io/s/react-hook-form-nested-portal-6x3fvy?file=/src/App.tsx:1905-2261
  * https://github.com/react-hook-form/react-hook-form/issues/1005#issuecomment-988380981
  */
-export const stopPropagation = (callback) => (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    callback(e);
-};
+export const stopPropagation =
+    (callback: any) =>
+    (e: Event): void => {
+        e.stopPropagation();
+        e.preventDefault();
+        callback(e);
+    };

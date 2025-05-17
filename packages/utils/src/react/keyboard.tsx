@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, createContext, useMemo, useState, Dispatch, SetStateAction, useContext } from 'react';
+import { useEffect, createContext, useMemo, useState, Dispatch, SetStateAction, useContext, FC, Context } from 'react';
 
 const isCtrlOrMeta = (e: KeyboardEvent) => e.metaKey || e.ctrlKey;
 
@@ -8,12 +8,17 @@ const EVENT = 'keydown';
 
 export type Hotkeys = Record<KeyboardEvent['code'], (e: KeyboardEvent) => void>;
 
-export const HotkeysContext = createContext<{
+export type HotkeyContextType = {
+    enabled: boolean;
+    setEnabled: Dispatch<SetStateAction<boolean>>;
+};
+
+export const HotkeysContext: Context<HotkeyContextType> = createContext<{
     enabled: boolean;
     setEnabled: Dispatch<SetStateAction<boolean>>;
 }>(null as never);
 
-export const HotkeysProvider = ({ children }) => {
+export const HotkeysProvider: FC<any> = ({ children }) => {
     const [enabled, setEnabled] = useState(true);
 
     const control = useMemo(() => ({ enabled, setEnabled }), [enabled, setEnabled]);
@@ -21,7 +26,7 @@ export const HotkeysProvider = ({ children }) => {
     return <HotkeysContext.Provider value={control}>{children}</HotkeysContext.Provider>;
 };
 
-export const useHotkeys = (hotkeys: Hotkeys) => {
+export const useHotkeys = (hotkeys: Hotkeys): void => {
     const { enabled } = useContext(HotkeysContext);
 
     useEffect(() => {

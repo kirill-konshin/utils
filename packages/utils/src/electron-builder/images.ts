@@ -12,7 +12,7 @@ export async function generateImages({
     dmgBackgroundPsdPath: string;
     electronAssetsPath: string;
     webPublicPath: string;
-}) {
+}): Promise<void> {
     const iconPsd = await psd.open(iconPsdPath);
     await iconPsd.image!.saveAsPng(path.join(electronAssetsPath, 'icon.png'));
 

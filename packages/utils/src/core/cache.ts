@@ -2,20 +2,20 @@ import ManyKeysMap from 'many-keys-map';
 
 export type MaybePromise<T> = T | Promise<T>;
 
-export const shallowCompare = (prev: any, next: any) =>
+export const shallowCompare = (prev: any, next: any): boolean =>
     Array.from(new Set([...Object.keys(prev), ...Object.keys(next)])).every((key) => prev[key] === next[key]);
 
-export const equal = (prev: any, next: any) => prev === next;
+export const equal = (prev: any, next: any): boolean => prev === next;
 
 const UNUSED = Symbol('UNUSED');
-export const ANY = Symbol('*');
+export const ANY: unique symbol = Symbol('*');
 
 export function createTracker<Dep = any>(whenDifferent: (next: Dep, prev?: Dep) => any, shallow = false) {
     let lastDependency: Dep = UNUSED as any;
 
     const comparator = shallow ? shallowCompare : equal;
 
-    return function tracker(dependency: Dep) {
+    return function tracker(dependency: Dep): Dep | false {
         // console.log('Tracker', lastDependency, dependency);
 
         if (lastDependency !== UNUSED && comparator(lastDependency, dependency)) {
@@ -61,7 +61,14 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
         invalidate?: (prev: Val, ...key: SerializedKey) => boolean;
         dispose?: (prev: Val, ...key: SerializedKey) => void;
     } = {},
-) {
+): {
+    (...args: Key): Promise<{
+        value?: Val;
+        hit: boolean;
+    }>;
+    clear: (...condition: Key | any[]) => void;
+    size: () => number;
+} {
     const map = new ManyKeysMap<SerializedKey, Val>();
 
     //TODO Extend ManyKeysMap
@@ -194,7 +201,7 @@ export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
         return oldValue;
     }
 
-    delete(key: Key) {
+    delete(key: Key): boolean {
         const val = this.get(key);
         const has = typeof val !== 'undefined';
         if (has) this.dispose(val, key);
@@ -206,9 +213,9 @@ export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
      * Do something with the value and key before removing it from cache
      * For example, close a file or a bitmap
      */
-    protected dispose(value: Val, key: Key) {}
+    protected dispose(value: Val, key: Key): void {}
 
-    clear() {
+    clear(): void {
         console.log('CLEAR cache', this.name);
         this.forEach(this.dispose);
         super.clear();

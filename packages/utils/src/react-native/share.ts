@@ -8,7 +8,7 @@ import * as Sharing from 'expo-sharing';
  * @param fileName
  * @returns {Promise<void>}
  */
-export const shareDialog = async (base64, fileName) => {
+export const shareDialog = async (base64: string, fileName: string): Promise<void> => {
     const path = `${FileSystem.documentDirectory}/${fileName}`;
 
     try {

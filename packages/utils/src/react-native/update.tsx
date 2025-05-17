@@ -1,8 +1,8 @@
 import * as Updates from 'expo-updates';
-import { useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
-export function Update({ children }) {
+export const Update: FC<any> = function Update({ children }) {
     //FIXME useUpdates https://blog.expo.dev/feature-preview-updates-js-api-for-expo-updates-3b92beb40dab
     const [updating, setUpdating] = useState(true);
 
@@ -37,4 +37,4 @@ export function Update({ children }) {
     }
 
     return children;
-}
+};

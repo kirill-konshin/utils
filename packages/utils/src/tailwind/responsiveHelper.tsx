@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { FC } from 'react';
 
-export function ResponsiveHelperTW() {
+export const ResponsiveHelperTW: FC<any> = function ResponsiveHelperTW() {
     return (
         <span className="fixed bottom-0 right-2 z-30 leading-none text-xs">
             <small className="hidden xs:max-sm:block">XS</small>
@@ -13,4 +13,4 @@ export function ResponsiveHelperTW() {
             <small className="hidden 2xl:block">XXL</small>
         </span>
     );
-}
+};

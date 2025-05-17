@@ -25,7 +25,7 @@ export type WorkerLike = {
         options?: { signal?: AbortSignal; once?: boolean },
     ) => void;
     removeEventListener: (event: string, listener: (e: any) => void) => void;
-};
+} & any;
 
 export enum LogLevel {
     disabled = 0,
@@ -42,10 +42,10 @@ export function deriveController(signal?: AbortSignal): [AbortController, AbortS
     return [controller, AbortSignal.any([controller.signal, signal].filter(Boolean) as AbortSignal[])];
 }
 
-export function rejectOnSignal(promise: Promise<any>, signal: AbortSignal) {
+export function rejectOnSignal(promise: Promise<any>, signal: AbortSignal): Promise<Event['data']> {
     return Promise.race([
         promise,
-        new Promise<Event['data']>((resolve, reject) => {
+        new Promise((resolve, reject) => {
             signal.addEventListener('abort', () => reject('RaceAborted:' + signal.reason), { once: true, signal });
         }),
     ]);
@@ -56,7 +56,19 @@ export function rejectOnSignal(promise: Promise<any>, signal: AbortSignal) {
 export function wrpc({
     debug = LogLevel.disabled,
     name = (globalThis as any).importScripts ? 'RESPONDER' : 'CALLER',
-} = {}) {
+}: {
+    debug?: LogLevel;
+    name?: string;
+} = {}): {
+    createResponder: <T extends Responders>(
+        worker: WorkerLike,
+        responders: T,
+    ) => {
+        responders: T;
+        stop: () => void;
+    };
+    createCaller: <T extends Responders>(worker: WorkerLike, responders: T) => T;
+} {
     // Logger
 
     function logger(type: string) {
@@ -130,7 +142,13 @@ export function wrpc({
     // Responder
 
     //TODO Name arg
-    function createResponder<T extends Responders>(worker: WorkerLike, responders: T) {
+    function createResponder<T extends Responders>(
+        worker: WorkerLike,
+        responders: T,
+    ): {
+        responders: T;
+        stop: () => void;
+    } {
         const mainController = new AbortController();
 
         worker.addEventListener('messageerror', (e) => logError(LogLevel.error, null, 'MESSAGE ERROR', e), {

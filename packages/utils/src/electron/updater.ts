@@ -47,7 +47,7 @@ autoUpdater.on('update-downloaded', async () => {
     autoUpdater.quitAndInstall();
 });
 
-export function checkForUpdates(menuItem, focusedWindow, event) {
+export function checkForUpdates(menuItem: any): void {
     updateButton = menuItem;
     updateButton.enabled = false;
     autoUpdater.checkForUpdates().catch((e) => console.error('Update error', e));

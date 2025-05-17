@@ -6,7 +6,18 @@ import { z } from 'zod';
 
 const FORM_DEBUG = process.env.NEXT_PUBLIC_FORM_DEBUG === 'true';
 
-export function createClient<S extends z.ZodObject<any>>(schema: S) {
+export function createClient<S extends z.ZodObject<any>>(
+    schema: S,
+): {
+    useValidation: (
+        actionFn: (data: FormData) => Promise<Validation<S>>,
+        initialData?: MaybeTypeOf<S>,
+    ) => [state: Validation<S>, dispatch: (payload: FormData) => void, isPending: boolean];
+    useValidationTransition: (
+        actionFn: (data: FormData) => Promise<Validation<S>>,
+        initialData?: MaybeTypeOf<S>,
+    ) => [Validation<S>, (formData: FormData) => Promise<Validation<S>>, boolean];
+} {
     const { validate } = create(schema);
 
     function useValidationCallback(
@@ -29,7 +40,7 @@ export function createClient<S extends z.ZodObject<any>>(schema: S) {
     function useValidation(
         actionFn: (data: FormData) => Promise<Validation<S>>,
         initialData: MaybeTypeOf<S> = {} as MaybeTypeOf<S>,
-    ) {
+    ): [state: Validation<S>, dispatch: (payload: FormData) => void, isPending: boolean] {
         const cb = useValidationCallback(actionFn);
 
         return useActionState<Validation<S>, FormData>(async (_, data) => cb(data), {

@@ -9,8 +9,8 @@ import defaultMenu from 'electron-default-menu';
 import Store from 'electron-store';
 import { checkForUpdates } from './updater.js';
 
-export const isDev = process.env['NODE_ENV'] === 'development';
-export const appPath = app.getAppPath();
+export const isDev: boolean = process.env['NODE_ENV'] === 'development';
+export const appPath: string = app.getAppPath();
 
 // See https://cs.chromium.org/chromium/src/net/base/net_error_list.h
 const FILE_NOT_FOUND = -6;
@@ -227,7 +227,7 @@ export function createWindow({
     app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && !mainWindow && createWindow());
 
     return {
-        get mainWindow() {
+        get mainWindow(): BrowserWindow | null {
             return mainWindow;
         },
     };

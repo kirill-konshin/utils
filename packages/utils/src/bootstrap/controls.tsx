@@ -24,7 +24,7 @@ export interface ControlProps {
 
 export type LabelProps = Pick<ControlProps, 'name' | 'value' | 'defaultValue'> & { reset: () => void };
 
-export const Label = memo<LabelProps>(function Label({ name, reset, value, defaultValue }) {
+export const Label: React.FC<LabelProps> = memo(function Label({ name, reset, value, defaultValue }) {
     return (
         <label className="flex-grow-1 mb-0 d-flex align-items-center justify-content-start gap-2">
             {name}
@@ -39,7 +39,7 @@ export const Label = memo<LabelProps>(function Label({ name, reset, value, defau
     );
 });
 
-export const Control = memo<ControlProps>(function Control({
+export const Control: React.FC<ControlProps> = memo(function Control({
     value = null,
     setValue,
     defaultValue = null,
@@ -85,7 +85,7 @@ export interface RangeProps extends ControlProps {
     step?: number;
 }
 
-export const Range = memo<RangeProps>(function Range({ min, max, step = 0.1, ...props }) {
+export const Range: React.FC<RangeProps> = memo(function Range({ min, max, step = 0.1, ...props }) {
     return (
         <Control
             inputProps={{
@@ -101,7 +101,7 @@ export const Range = memo<RangeProps>(function Range({ min, max, step = 0.1, ...
     );
 });
 
-export const Checkbox = memo<ControlProps>(function Checkbox(props) {
+export const Checkbox: React.FC<ControlProps> = memo(function Checkbox(props) {
     return (
         <Control
             inputProps={{ type: 'checkbox', property: 'checked', valueExtractor: (e) => e.target.checked }}
@@ -110,7 +110,7 @@ export const Checkbox = memo<ControlProps>(function Checkbox(props) {
     );
 });
 
-export const Select = memo<ControlProps>(function Select({ children, ...props }) {
+export const Select: React.FC<ControlProps> = memo(function Select({ children, ...props }) {
     return (
         <Control inputProps={{ Tag: 'select', className: 'form-select' }} {...props} hideValue={true}>
             {children}

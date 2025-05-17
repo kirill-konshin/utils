@@ -1,9 +1,13 @@
-export const downloadFile = async (filename, text, type = 'application/json') => {
+export const downloadFile = async (file: File): Promise<void> => {
     //FIXME https://github.com/eligrey/FileSaver.js/issues/471
     const { saveAs } = require('file-saver');
 
     //FIXME https://github.com/eligrey/FileSaver.js/issues/731
-    saveAs(new Blob([text], { type }), filename);
+    return saveAs(file, file.name);
+};
+
+export const createFile = async (text: any, filename = 'file.json', type = 'application/json'): Promise<File> => {
+    return new File([new Blob([text], { type })], filename);
 };
 
 export const openFile = (): Promise<string> =>
