@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { FC } from 'react';
 import { Form, FormGroupProps, FormLabelProps, FormTextProps } from 'react-bootstrap';
 
 export type FieldGroupProps = FormGroupProps & {
@@ -9,7 +9,7 @@ export type FieldGroupProps = FormGroupProps & {
     horizontal?: boolean;
 };
 
-export const FieldGroup: React.FC<FieldGroupProps> = function FieldGroup({
+export const FieldGroup: FC<FieldGroupProps> = function FieldGroup({
     label,
     labelProps = {},
     text,

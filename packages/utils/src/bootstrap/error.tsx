@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { FC } from 'react';
 import { Alert, AlertProps, Button, ButtonProps } from 'react-bootstrap';
 
 export type ErrorAlertProps = {
@@ -10,7 +10,7 @@ export type ErrorAlertProps = {
 };
 
 //TODO Create MUI-specific?
-export const ErrorAlert: React.FC<ErrorAlertProps> = function ErrorAlert({ onRetry, children, buttonProps, ...props }) {
+export const ErrorAlert: FC<ErrorAlertProps> = function ErrorAlert({ onRetry, children, buttonProps, ...props }) {
     if (!children) return null;
 
     return (

@@ -1,8 +1,8 @@
-import React, { HTMLInputTypeAttribute, memo } from 'react';
+import React, { HTMLInputTypeAttribute, memo, FC } from 'react';
 
-const lcFirst = (str) => str[0].toLowerCase() + str.substring(1, str.length);
+const lcFirst = (str: string) => str[0].toLowerCase() + str.substring(1, str.length);
 
-const toProperty = (str) => lcFirst(str).split(' ').join('');
+const toProperty = (str: string) => lcFirst(str).split(' ').join('');
 
 export interface ControlProps {
     value?: any;
@@ -24,7 +24,7 @@ export interface ControlProps {
 
 export type LabelProps = Pick<ControlProps, 'name' | 'value' | 'defaultValue'> & { reset: () => void };
 
-export const Label: React.FC<LabelProps> = memo(function Label({ name, reset, value, defaultValue }) {
+export const Label: FC<LabelProps> = memo(function Label({ name, reset, value, defaultValue }) {
     return (
         <label className="flex-grow-1 mb-0 d-flex align-items-center justify-content-start gap-2">
             {name}
@@ -39,7 +39,7 @@ export const Label: React.FC<LabelProps> = memo(function Label({ name, reset, va
     );
 });
 
-export const Control: React.FC<ControlProps> = memo(function Control({
+export const Control: FC<ControlProps> = memo(function Control({
     value = null,
     setValue,
     defaultValue = null,
@@ -47,7 +47,7 @@ export const Control: React.FC<ControlProps> = memo(function Control({
     setOptions,
     defaultOptions = {},
     name,
-    inputProps: { Tag = 'input', property = 'value', valueExtractor = (e) => e.target.value, ...inputProps } = {},
+    inputProps: { Tag = 'input', property = 'value', valueExtractor = (e: any) => e.target.value, ...inputProps } = {},
     hideValue = false,
     children,
 }) {
@@ -66,7 +66,7 @@ export const Control: React.FC<ControlProps> = memo(function Control({
                 {...inputProps}
                 {...{ [property]: value || '' }} // null is needed to make it always controlled
                 className={`${value === defaultValue ? 'opacity-75' : ''} ${inputProps.className}`}
-                onChange={(e) => setValue(valueExtractor(e))}
+                onChange={(e: Event) => setValue(valueExtractor(e))}
             >
                 {children}
             </Tag>
@@ -85,7 +85,7 @@ export interface RangeProps extends ControlProps {
     step?: number;
 }
 
-export const Range: React.FC<RangeProps> = memo(function Range({ min, max, step = 0.1, ...props }) {
+export const Range: FC<RangeProps> = memo(function Range({ min, max, step = 0.1, ...props }) {
     return (
         <Control
             inputProps={{
@@ -94,23 +94,23 @@ export const Range: React.FC<RangeProps> = memo(function Range({ min, max, step 
                 max,
                 step,
                 className: 'form-control-range',
-                valueExtractor: (e) => parseFloat(e.target.value),
+                valueExtractor: (e: any) => parseFloat(e.target.value),
             }}
             {...props}
         />
     );
 });
 
-export const Checkbox: React.FC<ControlProps> = memo(function Checkbox(props) {
+export const Checkbox: FC<ControlProps> = memo(function Checkbox(props) {
     return (
         <Control
-            inputProps={{ type: 'checkbox', property: 'checked', valueExtractor: (e) => e.target.checked }}
+            inputProps={{ type: 'checkbox', property: 'checked', valueExtractor: (e: any) => e.target.checked }}
             {...props}
         />
     );
 });
 
-export const Select: React.FC<ControlProps> = memo(function Select({ children, ...props }) {
+export const Select: FC<ControlProps> = memo(function Select({ children, ...props }) {
     return (
         <Control inputProps={{ Tag: 'select', className: 'form-select' }} {...props} hideValue={true}>
             {children}

@@ -19,7 +19,7 @@ const meta: Meta<typeof Control> = {
         const [options, setOptionsRaw] = useState(args.options);
 
         const setOptions = useCallback(
-            (options) =>
+            (options: any) =>
                 setOptionsRaw((currentOptions) => {
                     return { ...currentOptions, ...options };
                 }),

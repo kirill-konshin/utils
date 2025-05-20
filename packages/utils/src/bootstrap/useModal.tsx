@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, JSX } from 'react';
+import React, { useCallback, useMemo, useState, JSX, FC, memo } from 'react';
 import { Button, Modal, ModalProps, Offcanvas, OffcanvasProps, Stack } from 'react-bootstrap';
 
 export type UseModalArgs = { onClose?: any; showOnMount?: boolean };
@@ -18,16 +18,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
     show: boolean | undefined;
     close: () => void;
     open: () => void;
-    ModalDialog: ({
-        children,
-        show,
-        onSubmit,
-        submitButton,
-        cancelButton,
-        offcanvas,
-        title,
-        containerProps,
-    }: ModalProps) => JSX.Element;
+    ModalDialog: FC<ModalProps>;
 } {
     const [show, setShow] = useState(showOnMount);
 
@@ -39,7 +30,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
     const open = useCallback((): void => setShow(true), []);
 
     const defaultOnSubmit = useCallback(
-        (e) => {
+        (e: any) => {
             e.preventDefault();
             close();
         },
@@ -48,7 +39,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
 
     const ModalDialog = useMemo(
         () =>
-            function ModalDialog({
+            memo(function ModalDialog({
                 children,
                 show,
                 onSubmit = defaultOnSubmit,
@@ -57,7 +48,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
                 offcanvas = false,
                 title = null as any,
                 containerProps = {},
-            }: ModalProps): JSX.Element {
+            }: ModalProps) {
                 const Container = offcanvas ? Offcanvas : Modal;
                 const containerDefaultProps = offcanvas ? { style: { maxWidth: '85%' } } : {};
                 const Body = offcanvas ? Offcanvas.Body : Modal.Body;
@@ -94,7 +85,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
                         </form>
                     </Container>
                 );
-            },
+            }),
         [close, defaultOnSubmit],
     );
 

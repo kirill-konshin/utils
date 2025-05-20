@@ -1,15 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { FC, useEffect, useState } from 'react';
 
 export function useBreakpoint(): {
     breakpoint: string;
     isMobile: boolean;
     isDesktop: boolean;
 } {
-    const [breakpoint, setBreakpoint] = React.useState('xs');
+    const [breakpoint, setBreakpoint] = useState('xs');
 
-    React.useEffect(() => {
+    useEffect(() => {
         const updateBreakpoint = () => {
             const width = window.innerWidth;
             if (width < 576) {
@@ -28,6 +28,7 @@ export function useBreakpoint(): {
         };
 
         updateBreakpoint();
+
         window.addEventListener('resize', updateBreakpoint);
 
         return () => {
@@ -40,7 +41,7 @@ export function useBreakpoint(): {
     return { breakpoint, isMobile, isDesktop: !isMobile };
 }
 
-export const ResponsiveHelperBS: React.FC = function ResponsiveHelperBS() {
+export const ResponsiveHelperBS: FC = function ResponsiveHelperBS() {
     return (
         <span className="small position-fixed bottom-0 z-3" style={{ fontSize: '9px', right: 1, lineHeight: 1 }}>
             <small className="d-block d-sm-none">XS</small>

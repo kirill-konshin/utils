@@ -12,7 +12,7 @@ export const useWrappedForm: typeof useForm = (options) => {
                 try {
                     await onSubmit(data);
                 } catch (e) {
-                    form.setError('root', { type: 'server', message: e.message });
+                    form.setError('root', { type: 'server', message: (e as Error).message });
                     console.error('Error submitting form', e);
                 }
             };

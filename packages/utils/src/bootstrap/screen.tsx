@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { FC, memo } from 'react';
 import { Button, Navbar, Nav, Stack } from 'react-bootstrap';
 import { useBreakpoint } from './responsiveHelper';
 import { AdaptiveContainer } from './adaptiveContainer';
@@ -25,7 +25,7 @@ export type ScreenProps = {
 };
 
 //TODO Footer -> menu
-export const Screen: React.FC<ScreenProps> = function Screen({
+export const Screen: FC<ScreenProps> = memo(function Screen({
     backBtn,
     backCb,
     backIcon,
@@ -143,4 +143,4 @@ export const Screen: React.FC<ScreenProps> = function Screen({
             )}
         </div>
     );
-};
+});

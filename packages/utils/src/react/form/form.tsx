@@ -1,5 +1,5 @@
 import { typeToFlattenedError, z, SafeParseReturnType, TypeOf } from 'zod';
-import { Context, createContext, useContext, useMemo, JSX } from 'react';
+import { Context, createContext, useContext, useMemo, JSX, FC, memo } from 'react';
 import clsx from 'clsx';
 
 const nonEmpty = 'This field cannot be empty';
@@ -29,10 +29,15 @@ export const FormContext: Context<{
     schema: ZodObject;
 }> = createContext(null as never);
 
-export const Form = <S extends ZodObject>({ schema, children }: { schema: S; children: any }): JSX.Element => {
+export interface FormProps<S extends ZodObject> {
+    schema: S;
+    children: any;
+}
+
+export const Form: FC<FormProps<any>> = memo(function Form({ schema, children }) {
     const value = useMemo(() => ({ schema }), [schema]);
     return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
-};
+});
 
 const getShape = <S extends ZodObject>(schema: S) =>
     (schema as z.ZodObject<any>).shape || (schema as z.ZodEffects<z.ZodObject<any>>).sourceType().shape;
@@ -47,14 +52,14 @@ export function create<S extends ZodObject>(
         mui?: boolean,
     ) => {
         label?: any;
-        helperText?: string | undefined;
-        error?: boolean | undefined;
+        helperText?: string;
+        error?: boolean;
         name: keyof z.TypeOf<S>;
         id: keyof z.TypeOf<S>;
         required: boolean;
         maxLength: number;
         type: string;
-        defaultValue: Partial<z.TypeOf<S>>[keyof z.TypeOf<S>] | undefined;
+        defaultValue?: Partial<z.TypeOf<S>>[keyof z.TypeOf<S>];
     };
     validate: (formData: FormData) => Validation<S>;
     validationError: (data: MaybeTypeOf<S>, errors: Errors<S>) => Validation<S>;
@@ -70,14 +75,14 @@ export function create<S extends ZodObject>(
         mui: boolean = false,
     ): {
         label?: any;
-        helperText?: string | undefined;
-        error?: boolean | undefined;
+        helperText?: string;
+        error?: boolean;
         name: keyof z.TypeOf<S>;
         id: keyof z.TypeOf<S>;
         required: boolean;
         maxLength: number;
         type: string;
-        defaultValue: Partial<z.TypeOf<S>>[keyof z.TypeOf<S>] | undefined;
+        defaultValue?: Partial<z.TypeOf<S>>[keyof z.TypeOf<S>];
     } {
         const field = getShape(schema)[name];
         return {
@@ -123,7 +128,17 @@ export function create<S extends ZodObject>(
     return { register, validate, validationError };
 }
 
-function Field<S extends ZodObject>({
+interface FieldProps<S extends ZodObject> {
+    children?: any;
+    name: keyof TypeOf<S>;
+    errors?: Validation<S>['errors'];
+    hint?: string;
+    className?: string;
+    labelProps?: any;
+    [key: string]: any;
+}
+
+export const Field: FC<FieldProps<any>> = memo(function Field({
     children,
     name,
     errors,
@@ -131,13 +146,6 @@ function Field<S extends ZodObject>({
     className,
     labelProps,
     ...props
-}: {
-    children?: any;
-    name: keyof TypeOf<S>;
-    errors?: Validation<S>['errors'];
-    hint?: string;
-    className?: string;
-    labelProps?: any;
 }) {
     const { schema } = useContext(FormContext);
     const { description } = getShape(schema)[name];
@@ -158,8 +166,13 @@ function Field<S extends ZodObject>({
             ))}
         </div>
     );
+});
+
+export interface HintProps {
+    children: any;
+    error?: boolean;
 }
 
-export function Hint({ children, error }: { children: any; error?: boolean }): JSX.Element {
+export const Hint: FC<HintProps> = memo(function Hint({ children, error }) {
     return <div className={`hint ${error ? 'hint-error' : ''}`}>{children}</div>;
-}
+});

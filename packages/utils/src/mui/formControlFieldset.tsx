@@ -1,10 +1,10 @@
-import * as React from 'react';
+import React, { FC } from 'react';
 import { GenericControl, GenericControlProps } from './genericControl';
 import { inputClasses } from '@mui/material/Input';
 
 export type FormControlFieldsetProps = GenericControlProps;
 
-export const FormControlFieldset: React.FC<FormControlFieldsetProps> = function FormControlFieldset({
+export const FormControlFieldset: FC<FormControlFieldsetProps> = function FormControlFieldset({
     children,
     sx,
     ...props

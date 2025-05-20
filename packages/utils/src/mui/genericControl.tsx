@@ -1,10 +1,10 @@
-import * as React from 'react';
+import React, { FC } from 'react';
 import { FormControlProps, default as FormControl } from '@mui/material/FormControl';
 import { inputClasses } from '@mui/material/Input';
 
 export type GenericControlProps = FormControlProps & { children: any };
 
-export const GenericControl: React.FC<GenericControlProps> = ({ children, sx, ...props }) => (
+export const GenericControl: FC<GenericControlProps> = ({ children, sx, ...props }) => (
     <FormControl
         variant="standard"
         sx={{
