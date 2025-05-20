@@ -1,11 +1,12 @@
-import React, { FC } from 'react';
+import React, { FC, RefObject } from 'react';
 
-export const Fullpage: FC<any> = ({ divRef = null, className = '', children, ...props }) => (
-    <div
-        ref={divRef}
-        {...props}
-        className={`container h-screen flex flex-col justify-center items-center ${className}`}
-    >
+export const Fullpage: FC<{ ref: RefObject<HTMLDivElement>; className: string; children: any }> = ({
+    ref,
+    className = '',
+    children,
+    ...props
+}) => (
+    <div ref={ref} {...props} className={`container h-screen flex flex-col justify-center items-center ${className}`}>
         {children}
     </div>
 );

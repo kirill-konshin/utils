@@ -34,21 +34,25 @@ export const useHotkeys = (hotkeys: Hotkeys): void => {
             return;
         }
 
-        const listeners = (e: KeyboardEvent) => {
-            if (!isCtrlOrMeta(e)) return;
+        const ctrl = new AbortController();
 
-            for (const [code, callback] of Object.entries(hotkeys)) {
-                if (e.code === code) {
-                    callback(e);
-                    return;
+        window.addEventListener(
+            EVENT,
+            (e: KeyboardEvent) => {
+                if (!isCtrlOrMeta(e)) return;
+
+                for (const [code, callback] of Object.entries(hotkeys)) {
+                    if (e.code === code) {
+                        callback(e);
+                        return;
+                    }
                 }
-            }
-        };
-
-        window.addEventListener(EVENT, listeners, true);
+            },
+            { signal: ctrl.signal, capture: true },
+        );
 
         return () => {
-            window.removeEventListener(EVENT, listeners);
+            ctrl.abort();
         };
     }, [hotkeys, enabled]);
 };

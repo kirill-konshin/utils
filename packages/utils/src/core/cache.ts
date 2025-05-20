@@ -154,14 +154,13 @@ export function memo<Key extends any[], Val, SerializedKey extends any[] = Key>(
  * class CanvasCache extends TypedCache<HTMLCanvasElement, OffscreenCanvas> {
  *
  *     protected write(canvas: HTMLCanvasElement): OffscreenCanvas {
- *         let l;
  *         canvas.addEventListener(
  *             'remove',
- *             (l = () => {
+ *             function listener() {
  *                 console.log('Removing canvas from cache', key);
  *                 this.delete(canvas);
- *                 key.removeEventListener('remove', l);
- *             }),
+ *                 key.removeEventListener('remove', listener);
+ *             },
  *         );
  *         return canvas.transferControlToOffscreen();
  *     }
