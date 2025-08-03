@@ -16,7 +16,7 @@
     "build:tsc": "tsc --declaration --emitDeclarationOnly --outDir dist-bare",
     "build:rslib": "rslib build",
     "build:check-types": "attw --pack .",
-    "build:index": "cti create ./src/*",
+    "build:index": "cti create ./src",
     "build:exports": "FIX=true node exports.mjs",
     "----- TURBO -----": "",
     "x-start": "yarn build --watch",
@@ -30,17 +30,7 @@
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "colors": "^1.4.0",
-    "expo-file-system": "^18.0.7",
-    "expo-sharing": "^13.0.1",
-    "expo-updates": "^0.26.13",
-    "many-keys-map": "^2.0.1",
-    "psd": "^3.4.0",
-    "react-hook-form": "^7.54.2",
-    "sharp": "^0.33.5"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.17.3",
     "@chromatic-com/storybook": "^3.2.4",

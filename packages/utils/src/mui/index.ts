@@ -1,4 +1,2 @@
-export * from './formControlFieldset';
-export * from './formLabelLegend';
-export * from './genericControl';
-export * from './readOnly';
+// THIS FILE WAS GENERATED, DO NOT EDIT
+export * from '@kirill.konshin/mui';

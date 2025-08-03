@@ -1,4 +1,4 @@
-import { createMeasurer } from '../core/measure';
+import { createMeasurer } from '@kirill.konshin/core';
 import { PHASE_PRODUCTION_BUILD, PHASE_PRODUCTION_SERVER } from 'next/constants';
 
 export const isProd: boolean =

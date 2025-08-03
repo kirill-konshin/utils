@@ -1,2 +1,2 @@
-export * from './createWindow';
-export * from './updater';
+// THIS FILE WAS GENERATED, DO NOT EDIT
+export * from '@kirill.konshin/electron';

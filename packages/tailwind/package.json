@@ -1,0 +1,54 @@
+{
+  "name": "@kirill.konshin/tailwind",
+  "description": "Utilities",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vite build",
+    "build:index": "cti create ./src",
+    "build:check-types": "attw --pack .",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
+    "----- TEST -----": "",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "devDependencies": {
+    "@kirill.konshin/utils-private": "*",
+    "react": "^19",
+    "tailwindcss": "^4.0.1"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "tailwindcss": "^4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "tailwindcss": {
+      "optional": true
+    }
+  }
+}

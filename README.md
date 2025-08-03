@@ -23,3 +23,8 @@ All packages extend root `tsconfig.json`.
 Normal flow: create branch, create MR, add changesets, merge MR.
 
 Quick flow: locally run `yarn changeset`, then `yarn changeset version` and then CI will publish.
+
+### Megapackage vs individual packages
+
+- **Megapackage**: All packages are bundled into a single package, which is easy to install and use. However, it can lead to larger bundle sizes and slower installs.
+- **Individual packages**: Each package is published separately, which allows for smaller bundle sizes and faster installs. However, it can lead to more complex dependency management and versioning. Easier to adopt.

@@ -1,0 +1,11 @@
+{
+  "addNewline": true,
+  "fileExcludePatterns": [
+    "*.stories.*",
+    "*.test.*",
+    "*.fixture.*"
+  ],
+  "verbose": false,
+  "withoutBackupFile": true,
+  "withoutComment": true
+}

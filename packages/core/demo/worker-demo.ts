@@ -1,4 +1,4 @@
-import { RespondersBase, WorkerDialog } from '../src/core';
+import { RespondersBase, WorkerDialog } from '../src';
 
 class Responders extends RespondersBase<Responders> {
     encode = this.create(

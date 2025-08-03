@@ -16,5 +16,10 @@
     "strictNullChecks": true,
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
-  "include": ["src"]
+  "references-off": [
+    {
+      "path": "packages/*"
+    }
+  ],
+  "include": ["packages/*/src"]
 }

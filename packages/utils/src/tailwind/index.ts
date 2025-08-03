@@ -1,2 +1,2 @@
-export * from './fullpage';
-export * from './responsiveHelper';
+// THIS FILE WAS GENERATED, DO NOT EDIT
+export * from '@kirill.konshin/tailwind';

@@ -1,7 +1,6 @@
 // https://github.com/electron-userland/electron-builder/blob/docs-deprecated/encapsulated%20manual%20update%20via%20menu.js
 import { dialog } from 'electron';
-import updater from 'electron-updater';
-const { autoUpdater } = updater;
+import { autoUpdater } from 'electron-updater';
 
 let updateButton;
 

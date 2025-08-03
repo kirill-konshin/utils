@@ -20,13 +20,13 @@ export const formats = {
     esm: ['import', 'js', 'd.ts'],
 };
 
-export const entryGlob = 'src/*/index.ts';
+export const entryGlob = 'src/index.ts';
 export const excludeGlob = 'src/**/*.{stories,test,fixture}.{ts,tsx}';
 export const includeGlob = 'src/**/!(*.stories|*.test,fixture).{ts,tsx}';
 export const foldersGlob = 'src/*/';
 
 export const external = [
-    ...[...Object.keys(pkg.dependencies), ...Object.keys(pkg.devDependencies)].map(
+    ...[...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {})].map(
         (dep) => new RegExp(`^${dep}(/.*)?`),
     ),
     /node_modules/,
@@ -61,15 +61,21 @@ export async function fixExports() {
         }
     }
 
-    const core = pkg.exports['./core'];
+    //FIXME Entries, formats, etc.
+    const mainExport = (pkg.exports['.'] = {
+        import: {
+            import: './dist/index.js',
+            types: './dist/index.d.ts',
+        },
+    });
 
-    pkg.exports['.'] = core;
+    pkg.exports['.'] = mainExport;
 
     // Main
 
     pkg.type = 'module';
-    pkg.main = pkg.module = core.import.import;
-    pkg.types = core.import.types;
+    pkg.main = pkg.module = mainExport.import.import;
+    pkg.types = mainExport.import.types;
 
     // Author & License
 
@@ -83,17 +89,17 @@ export async function fixExports() {
     // pkg.scripts.clean = 'rm -rf dist .tscache tsconfig.tsbuildinfo';
     // pkg.scripts.build = 'vite build';
     // pkg.scripts.start = 'yarn build --watch';
-    pkg.scripts.wait = `wait-on ${core.import.import}`;
+    pkg.scripts.wait = `wait-on ${mainExport.import.import}`;
 
     // Ensure peer deps are correct & meta is set
 
     pkg.peerDependenciesMeta = {};
 
-    for (const [key, _] of Object.entries(pkg.peerDependencies)) {
+    for (const [key, _] of Object.entries(pkg.peerDependencies || {})) {
         const root = rootPkg.devDependencies[key]; // lifted to root
         const srcPkg = root ? rootPkg : pkg;
 
-        if (!srcPkg.devDependencies[key]) throw new Error(`Key ${key} not found in dependencies`);
+        if (!srcPkg.devDependencies?.[key]) throw new Error(`Key ${key} not found in devDependencies`);
 
         pkg.peerDependenciesMeta[key] = { optional: true };
 

@@ -1,0 +1,46 @@
+{
+  "name": "@kirill.konshin/core",
+  "description": "Utilities",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vite build",
+    "build:index": "cti create ./src",
+    "build:check-types": "attw --pack .",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
+    "----- TEST -----": "",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "dependencies": {
+    "colors": "^1.4.0",
+    "file-saver": "^2.0.5",
+    "many-keys-map": "^2.0.1"
+  },
+  "devDependencies": {
+    "@kirill.konshin/utils-private": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "peerDependenciesMeta": {}
+}

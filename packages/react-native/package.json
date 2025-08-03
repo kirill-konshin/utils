@@ -1,0 +1,59 @@
+{
+  "name": "@kirill.konshin/react-native",
+  "description": "Utilities",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vite build",
+    "build:index": "cti create ./src",
+    "build:check-types": "attw --pack .",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
+    "----- TEST -----": "",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "dependencies": {
+    "expo-file-system": "^18.0.7",
+    "expo-sharing": "^13.0.1",
+    "expo-updates": "^0.26.13"
+  },
+  "devDependencies": {
+    "@kirill.konshin/utils-private": "*",
+    "react": "^19",
+    "react-native": "^0.77"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-native": "^0.77"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

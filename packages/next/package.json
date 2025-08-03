@@ -1,0 +1,63 @@
+{
+  "name": "@kirill.konshin/next",
+  "description": "Utilities",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vite build",
+    "build:index": "cti create ./src",
+    "build:check-types": "attw --pack .",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
+    "----- TEST -----": "",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "dependencies": {
+    "@kirill.konshin/core": "*",
+    "clsx": "^2.1.1",
+    "colors": "^1.4.0",
+    "file-saver": "^2.0.5",
+    "many-keys-map": "^2.0.1",
+    "psd": "^3.4.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@kirill.konshin/utils-private": "*",
+    "next": "^15",
+    "react": "^19"
+  },
+  "peerDependencies": {
+    "next": "^15",
+    "react": "^19"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}
