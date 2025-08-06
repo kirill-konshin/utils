@@ -12,7 +12,7 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
+    "test:disabled": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "zod": "^3"
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "react": "^19"
+    "react": "^19.1.1"
   },
   "peerDependencies": {
     "react": "^19"

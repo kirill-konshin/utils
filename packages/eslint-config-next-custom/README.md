@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-$ yarn add -D eslint @eslint-compat prettier @kirill.konshin/eslint-config-next-custom husky lint-staged
+$ yarn add -D eslint @eslint-compat prettier @eslint/compat @kirill.konshin/eslint-config-next-custom husky lint-staged
 ```
 
 `eslint.config.mjs`:
@@ -15,8 +15,6 @@ import { fileURLToPath } from 'node:url';
 import { includeIgnoreFile } from '@eslint/compat';
 import customConfig from '@kirill.konshin/eslint-config-next-custom';
 
-const gitignorePath = resolve(dirname(fileURLToPath(import.meta.url)), '.prettierignore'); // <----- !!!
-
 const config = [
     ...customConfig,
     {
@@ -25,7 +23,7 @@ const config = [
             // overrides
         },
     },
-    includeIgnoreFile(gitignorePath),
+    includeIgnoreFile(resolve(dirname(fileURLToPath(import.meta.url)), '.prettierignore')), // <----- !!!
 ];
 
 export default config;

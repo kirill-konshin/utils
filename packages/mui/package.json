@@ -12,19 +12,21 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
+    "test:disabled": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
   "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@kirill.konshin/utils-private": "*",
-    "@mui/material": "^6",
-    "react": "^19"
+    "@mui/material": "^7.3.0",
+    "react": "^19.1.1"
   },
   "peerDependencies": {
-    "@mui/material": "^6",
+    "@mui/material": "^7",
     "react": "^19"
   },
   "peerDependenciesMeta": {

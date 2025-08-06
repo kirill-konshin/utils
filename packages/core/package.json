@@ -21,7 +21,7 @@
   "dependencies": {
     "colors": "^1.4.0",
     "file-saver": "^2.0.5",
-    "many-keys-map": "^2.0.1"
+    "many-keys-map": "^3.0.3"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*"
@@ -41,6 +41,5 @@
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "peerDependenciesMeta": {}
+  "types": "./dist/index.d.ts"
 }

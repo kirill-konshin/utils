@@ -21,7 +21,7 @@
     "@kirill.konshin/utils": "*"
   },
   "devDependencies": {
-    "electron": "34.0.1",
-    "electron-builder": "^26.0.0"
+    "electron": "37.2.5",
+    "electron-builder": "26.0.12"
   }
 }

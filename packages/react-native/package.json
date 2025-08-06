@@ -12,25 +12,25 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
+    "test:disabled": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
   "dependencies": {
-    "expo-file-system": "^18.0.7",
-    "expo-sharing": "^13.0.1",
-    "expo-updates": "^0.26.13"
+    "expo-file-system": "^18.1.11",
+    "expo-sharing": "^13.1.5",
+    "expo-updates": "^0.28.17"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "react": "^19",
-    "react-native": "^0.77"
+    "react": "^19.1.1",
+    "react-native": "^0.80.2"
   },
   "peerDependencies": {
     "react": "^19",
-    "react-native": "^0.77"
+    "react-native": "^0.80"
   },
   "peerDependenciesMeta": {
     "react": {

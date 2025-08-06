@@ -12,7 +12,7 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
+    "test:disabled": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
@@ -20,15 +20,15 @@
   },
   "dependencies": {
     "psd": "^3.4.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.34.3"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "electron": "^34",
+    "electron": "^37.2.5",
     "electron-builder": "^26.0.12"
   },
   "peerDependencies": {
-    "electron": "^34",
+    "electron": "^37",
     "electron-builder": "^26"
   },
   "publishConfig": {

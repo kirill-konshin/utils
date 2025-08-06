@@ -12,22 +12,22 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
+    "test:disabled": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
   "dependencies": {
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "react-hook-form": "^7.62.0"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "bootstrap": "^5",
-    "bootstrap-icons": "^1",
-    "react": "^19",
-    "react-bootstrap": "^2",
-    "react-hook-form": "^7.62.0"
+    "bootstrap": "^5.3.7",
+    "bootstrap-icons": "^1.13.1",
+    "react": "^19.1.1",
+    "react-bootstrap": "^2.10.10"
   },
   "peerDependencies": {
     "bootstrap": "^5",

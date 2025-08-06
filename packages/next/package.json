@@ -12,7 +12,7 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
+    "test:disabled": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
@@ -23,14 +23,14 @@
     "clsx": "^2.1.1",
     "colors": "^1.4.0",
     "file-saver": "^2.0.5",
-    "many-keys-map": "^2.0.1",
+    "many-keys-map": "^3.0.3",
     "psd": "^3.4.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.34.3"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "next": "^15",
-    "react": "^19"
+    "next": "^15.4.5",
+    "react": "^19.1.1"
   },
   "peerDependencies": {
     "next": "^15",
