@@ -1,19 +1,19 @@
 'use client';
 
-import React, { ComponentProps, FC } from 'react';
+import React, { ComponentProps, FC, memo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link, { LinkProps } from 'next/link';
 import clsx from 'clsx';
 
+export type AppLinkProps = {
+    children: any;
+    exact?: boolean;
+    activeClassName?: any;
+} & LinkProps &
+    ComponentProps<typeof Link>;
+
 //TODO Test this
-export const AppLink: FC<
-    {
-        children: any;
-        exact?: boolean;
-        activeClassName?: any;
-    } & LinkProps &
-        ComponentProps<typeof Link>
-> = function AppLink({
+export const AppLink: FC<AppLinkProps> = memo(function AppLink({
     href,
     children,
     className = '',
@@ -37,4 +37,4 @@ export const AppLink: FC<
             {children}
         </Link>
     );
-};
+});

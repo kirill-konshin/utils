@@ -1,4 +1,9 @@
-# Code Style
+---
+type: always_apply # or agent_requested
+description: React patterns # Required for agent_requested
+---
+
+_EVERY_ React component must adhere to policy unless explicitly prohibited in comment before the component definition.
 
 ## Extracting props from other library components
 
@@ -19,16 +24,16 @@ export const AppLink: FC<
 
 ## Component Pattern
 
-Prefer using memoized components:
+Prefer using memoized components. Use `FC<Props> = memo(...)` pattern to ensure compatibility with TypeScript's `--isolatedDeclarations` flag:
 
 ```tsx
-import { memo } from 'react';
+import { FC, memo } from 'react';
 
 export type CmpProps = {
     foo: string;
 };
 
-export const Cmp = memo<CmpProps>(function Cmp({ foo, ...props }) {
+export const Cmp: FC<CmpProps> = memo(function Cmp({ foo, ...props }) {
     // code here
 });
 ```
@@ -36,6 +41,8 @@ export const Cmp = memo<CmpProps>(function Cmp({ foo, ...props }) {
 If memo is not applicable:
 
 ```tsx
+import { FC } from 'react';
+
 export type CmpProps = {
     foo: string;
 };
@@ -45,23 +52,4 @@ export const Cmp: FC<CmpProps> = function Cmp({ foo, ...props }) {
 };
 ```
 
-## Material UI Classes In Selectors
-
-Always use following notation:
-
-```tsx
-import Input, { inputClasses } from '@mui/material/Input';
-
-const cmp = <Box
-            sx={{
-                [`& .${inputClasses.root}`]: {
-                    // styles
-                },
-            }}
-        >
-            <Input />
-        </Box>
-    );
-};
-
-```
+If `CmpProps` will be empty use `export type CmpProps = never;`.

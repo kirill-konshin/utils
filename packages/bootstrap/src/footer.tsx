@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { FC, memo } from 'react';
 import { Nav, Navbar } from 'react-bootstrap';
 import { useBreakpoint } from './responsiveHelper';
 import { AdaptiveContainer } from './adaptiveContainer';
@@ -10,7 +10,7 @@ export type FooterNavItemProps = {
     children?: string | undefined;
 };
 
-export const FooterNavItem: FC<FooterNavItemProps> = function FooterNavItem({
+export const FooterNavItem: FC<FooterNavItemProps> = memo(function FooterNavItem({
     href,
     icon,
     active = false,
@@ -42,9 +42,13 @@ export const FooterNavItem: FC<FooterNavItemProps> = function FooterNavItem({
     );
 
     return <Nav.Item style={{ flex: 1 }}>{link}</Nav.Item>;
+});
+
+export type FooterProps = {
+    children: any;
 };
 
-export const Footer: FC<any> = function Footer({ children }) {
+export const Footer: FC<FooterProps> = memo(function Footer({ children }) {
     const { isDesktop } = useBreakpoint();
 
     return (
@@ -58,4 +62,4 @@ export const Footer: FC<any> = function Footer({ children }) {
             </Navbar>
         </div>
     );
-};
+});

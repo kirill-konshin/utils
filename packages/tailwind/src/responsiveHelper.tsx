@@ -1,8 +1,10 @@
 'use client';
 
-import React, { FC } from 'react';
+import React, { FC, memo } from 'react';
 
-export const ResponsiveHelperTW: FC<any> = function ResponsiveHelperTW() {
+export type ResponsiveHelperTWProps = never;
+
+export const ResponsiveHelperTW: FC<ResponsiveHelperTWProps> = memo(function ResponsiveHelperTW() {
     return (
         <span className="fixed bottom-0 right-2 z-30 leading-none text-xs">
             <small className="hidden xs:max-sm:block">XS</small>
@@ -13,4 +15,4 @@ export const ResponsiveHelperTW: FC<any> = function ResponsiveHelperTW() {
             <small className="hidden 2xl:block">XXL</small>
         </span>
     );
-};
+});
