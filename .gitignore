@@ -1,4 +1,5 @@
 .idea
+!.idea/runConfigurations/*.xml
 .DS_Store
 *.tsbuildinfo
 .tscache
