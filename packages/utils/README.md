@@ -1,5 +1,7 @@
 # Installation
 
+This is a re-export of all other utils packages.
+
 ```bash
 $ npm install @kirill.konshin/utils
 ```
