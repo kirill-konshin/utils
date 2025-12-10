@@ -1,0 +1,24 @@
+{
+  "name": "@kirill.konshin/agents",
+  "description": "AI Agent rules and configuration for monorepos",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": "./bin/index.js",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "echo 'No build required'",
+    "start": "echo 'No start required'",
+    "----- TEST -----": "",
+    "test:disabled": "echo 'No tests yet'"
+  },
+  "files": [
+    "bin",
+    "rules"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT"
+}
