@@ -59,3 +59,7 @@ https://jakeginnivan.medium.com/options-for-publishing-typescript-libraries-9c37
 - https://qwik.dev/
 - https://tsdx.io/ Jared Palmer, I know him
     - ❌ Dead project
+
+# TODO
+
+- [ ] https://github.com/imjuni/ctix/blob/master/doc/IN_DEPTH_GEN_STYLE.md Generate with named exports

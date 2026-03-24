@@ -8,6 +8,7 @@ import { fixExports, formats, entry, external, distDir, generateIndex } from './
 // https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
 
 const isWatch = process.argv.includes('--watch'); // https://github.com/vitejs/vite/discussions/7565#discussioncomment-2939256
+const isStorybook = process.argv[1]?.includes('storybook') || process.env.STORYBOOK === 'true';
 
 export default defineConfig({
     build: {
@@ -41,10 +42,10 @@ export default defineConfig({
         {
             name: 'Generate Index & Exports',
             async buildStart() {
-                if (!isWatch) await generateIndex();
+                if (!isWatch && !isStorybook) await generateIndex();
             },
             async closeBundle() {
-                if (!isWatch) await fixExports(); //FIXME + CHECK TYPES
+                if (!isWatch && !isStorybook) await fixExports(); //FIXME + CHECK TYPES
             },
         },
     ],

@@ -16,5 +16,3 @@ export const Redirect: FC<RedirectProps> = memo(function Redirect({ to, replace 
     }, [replace, router, to]);
     return null;
 });
-
-export default Redirect;

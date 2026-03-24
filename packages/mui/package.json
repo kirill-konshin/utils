@@ -7,7 +7,7 @@
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
     "build": "vite build",
-    "build:index": "cti create ./src",
+    "build:index": "ctix build",
     "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",

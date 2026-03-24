@@ -7,7 +7,7 @@
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
     "build": "vite build",
-    "build:index": "cti create ./src",
+    "build:index": "ctix build",
     "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
@@ -20,14 +20,17 @@
   },
   "dependencies": {
     "@kirill.konshin/bootstrap": "*",
+    "@kirill.konshin/browser": "*",
     "@kirill.konshin/core": "*",
     "@kirill.konshin/electron": "*",
     "@kirill.konshin/electron-builder": "*",
     "@kirill.konshin/mui": "*",
     "@kirill.konshin/next": "*",
+    "@kirill.konshin/node": "*",
     "@kirill.konshin/react": "*",
     "@kirill.konshin/react-native": "*",
-    "@kirill.konshin/tailwind": "*"
+    "@kirill.konshin/tailwind": "*",
+    "@kirill.konshin/worker": "*"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*"
@@ -38,6 +41,12 @@
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
   "exports": {
+    "./worker": {
+      "import": {
+        "import": "./dist/worker/index.js",
+        "types": "./dist/worker/index.d.ts"
+      }
+    },
     "./tailwind": {
       "import": {
         "import": "./dist/tailwind/index.js",
@@ -54,6 +63,12 @@
       "import": {
         "import": "./dist/react/index.js",
         "types": "./dist/react/index.d.ts"
+      }
+    },
+    "./node": {
+      "import": {
+        "import": "./dist/node/index.js",
+        "types": "./dist/node/index.d.ts"
       }
     },
     "./next": {
@@ -86,6 +101,12 @@
         "types": "./dist/core/index.d.ts"
       }
     },
+    "./browser": {
+      "import": {
+        "import": "./dist/browser/index.js",
+        "types": "./dist/browser/index.d.ts"
+      }
+    },
     "./bootstrap": {
       "import": {
         "import": "./dist/bootstrap/index.js",
@@ -101,5 +122,6 @@
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "types": "./dist/index.d.ts",
+  "peerDependenciesMeta": {}
 }

@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { InputLabel, Input, TextField, Stack, Box } from '@mui/material';
 
 import { GenericControl } from './genericControl';
+import { ReadOnly } from './readOnly';
 
 const meta: Meta<typeof GenericControl> = {
     title: 'MUI / GenericControl',
@@ -40,7 +41,7 @@ export const WithCustomContent: Story = {
         children: (
             <>
                 <InputLabel shrink>Custom Content</InputLabel>
-                <div style={{ padding: '4px 0' }}>This is custom content inside GenericControl</div>
+                <ReadOnly>This is custom content inside GenericControl</ReadOnly>
             </>
         ),
     },

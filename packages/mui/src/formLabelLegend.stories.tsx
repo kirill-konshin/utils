@@ -43,11 +43,13 @@ export const WithRadioGroup: Story = {
     render: () => (
         <FormControlFieldset>
             <FormLabelLegend>Select Option</FormLabelLegend>
-            <RadioGroup row defaultValue="option1" sx={{ mt: -1 }}>
-                <FormControlLabel value="option1" label="Option 1" control={<Radio size="small" />} />
-                <FormControlLabel value="option2" label="Option 2" control={<Radio size="small" />} />
-                <FormControlLabel value="option3" label="Option 3" control={<Radio size="small" />} />
-            </RadioGroup>
+            <ReadOnly>
+                <RadioGroup row defaultValue="option1">
+                    <FormControlLabel value="option1" label="Option 1" control={<Radio size="small" />} />
+                    <FormControlLabel value="option2" label="Option 2" control={<Radio size="small" />} />
+                    <FormControlLabel value="option3" label="Option 3" control={<Radio size="small" />} />
+                </RadioGroup>
+            </ReadOnly>
         </FormControlFieldset>
     ),
 };
@@ -124,11 +126,13 @@ export const MultipleFieldsets: Story = {
 
             <FormControlFieldset>
                 <FormLabelLegend>Preferences</FormLabelLegend>
-                <RadioGroup row defaultValue="email">
-                    <FormControlLabel value="email" label="Email" control={<Radio size="small" />} />
-                    <FormControlLabel value="sms" label="SMS" control={<Radio size="small" />} />
-                    <FormControlLabel value="none" label="None" control={<Radio size="small" />} />
-                </RadioGroup>
+                <ReadOnly>
+                    <RadioGroup row defaultValue="email">
+                        <FormControlLabel value="email" label="Email" control={<Radio size="small" />} />
+                        <FormControlLabel value="sms" label="SMS" control={<Radio size="small" />} />
+                        <FormControlLabel value="none" label="None" control={<Radio size="small" />} />
+                    </RadioGroup>
+                </ReadOnly>
             </FormControlFieldset>
         </Stack>
     ),

@@ -41,9 +41,7 @@ export function useBreakpoint(): {
     return { breakpoint, isMobile, isDesktop: !isMobile };
 }
 
-export type ResponsiveHelperBSProps = never;
-
-export const ResponsiveHelperBS: FC<ResponsiveHelperBSProps> = memo(function ResponsiveHelperBS() {
+export const ResponsiveHelperBS: FC = memo(function ResponsiveHelperBS() {
     return (
         <span className="small position-fixed bottom-0 z-3" style={{ fontSize: '9px', right: 1, lineHeight: 1 }}>
             <small className="d-block d-sm-none">XS</small>

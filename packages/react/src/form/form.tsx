@@ -1,18 +1,18 @@
-import { typeToFlattenedError, z, SafeParseReturnType, TypeOf } from 'zod';
+import { z } from 'zod';
 import { Context, createContext, useContext, useMemo, JSX, FC, memo } from 'react';
 import clsx from 'clsx';
 
 const nonEmpty = 'This field cannot be empty';
 
-export const stringRequired = (): z.ZodString => z.string({ required_error: nonEmpty }).min(1, nonEmpty);
+export const stringRequired = (): z.ZodString => z.string({ error: nonEmpty }).min(1, { error: nonEmpty });
 export const maxLength = (schema: z.ZodString): number => schema.maxLength || 0;
 export const minLength = (schema: z.ZodString): number => schema.minLength || 0;
 export const isRequired = (schema: z.ZodString): boolean => minLength(schema) > 0;
 
-export type ZodObject = z.ZodObject<any> | z.ZodEffects<z.ZodObject<any>>; // z.ZodType<any, any, any>
-export type MaybeTypeOf<S extends ZodObject> = Partial<TypeOf<S>>;
-export type SafeTypeOf<S extends ZodObject> = SafeParseReturnType<TypeOf<S>, TypeOf<S>>['data'];
-export type Errors<S extends ZodObject> = typeToFlattenedError<TypeOf<S>>['fieldErrors'];
+export type ZodObject = z.ZodObject<any> | z.ZodPipe<any, any>; // z.ZodType<any, any, any>
+export type MaybeTypeOf<S extends ZodObject> = Partial<z.output<S>>;
+export type SafeTypeOf<S extends ZodObject> = z.core.util.SafeParseResult<z.output<S>>['data'];
+export type Errors<S extends ZodObject> = z.core.$ZodFlattenedError<z.output<S>>['fieldErrors'];
 export type Validation<S extends ZodObject> =
     | {
           success: true; // this is true only if form was validated successfully
@@ -40,13 +40,13 @@ export const Form: FC<FormProps<any>> = memo(function Form({ schema, children })
 });
 
 const getShape = <S extends ZodObject>(schema: S) =>
-    (schema as z.ZodObject<any>).shape || (schema as z.ZodEffects<z.ZodObject<any>>).sourceType().shape;
+    (schema as z.ZodObject<any>).shape || (schema as z.ZodPipe<any, any>).in.shape;
 
 export function create<S extends ZodObject>(
     schema: S,
 ): {
     register: (
-        name: keyof TypeOf<S>,
+        name: keyof z.output<S>,
         data?: MaybeTypeOf<S>,
         errors?: Errors<S>,
         mui?: boolean,
@@ -54,12 +54,12 @@ export function create<S extends ZodObject>(
         label?: any;
         helperText?: string;
         error?: boolean;
-        name: keyof z.TypeOf<S>;
-        id: keyof z.TypeOf<S>;
+        name: keyof z.output<S>;
+        id: keyof z.output<S>;
         required: boolean;
         maxLength: number;
         type: string;
-        defaultValue?: Partial<z.TypeOf<S>>[keyof z.TypeOf<S>];
+        defaultValue?: Partial<z.output<S>>[keyof z.output<S>];
     };
     validate: (formData: FormData) => Validation<S>;
     validationError: (data: MaybeTypeOf<S>, errors: Errors<S>) => Validation<S>;
@@ -69,7 +69,7 @@ export function create<S extends ZodObject>(
     }
 
     function register(
-        name: keyof TypeOf<S>,
+        name: keyof z.output<S>,
         data?: MaybeTypeOf<S>,
         errors?: Errors<S>,
         mui: boolean = false,
@@ -77,12 +77,12 @@ export function create<S extends ZodObject>(
         label?: any;
         helperText?: string;
         error?: boolean;
-        name: keyof z.TypeOf<S>;
-        id: keyof z.TypeOf<S>;
+        name: keyof z.output<S>;
+        id: keyof z.output<S>;
         required: boolean;
         maxLength: number;
         type: string;
-        defaultValue?: Partial<z.TypeOf<S>>[keyof z.TypeOf<S>];
+        defaultValue?: Partial<z.output<S>>[keyof z.output<S>];
     } {
         const field = getShape(schema)[name];
         return {
@@ -111,18 +111,18 @@ export function create<S extends ZodObject>(
     }
 
     function validate(formData: FormData): Validation<S> {
-        const rawData = Object.fromEntries(formData) as TypeOf<S>;
-        const { error, data } = schema.safeParse(rawData);
+        const rawData = Object.fromEntries(formData) as z.output<S>;
+        const result = schema.safeParse(rawData);
 
         // console.log('Validate result', { error, data, rawData });
 
-        if (error) {
+        if (!result.success) {
             // data is undefined if there are errors
             // Next.js will butcher error object, so we provide something more primitive
-            return validationError(rawData, error.flatten().fieldErrors as any);
+            return validationError(rawData, z.flattenError(result.error).fieldErrors as any);
         }
 
-        return { success: true, data };
+        return { success: true, data: result.data };
     }
 
     return { register, validate, validationError };
@@ -130,7 +130,7 @@ export function create<S extends ZodObject>(
 
 interface FieldProps<S extends ZodObject> {
     children?: any;
-    name: keyof TypeOf<S>;
+    name: keyof z.output<S>;
     errors?: Validation<S>['errors'];
     hint?: string;
     className?: string;
@@ -159,7 +159,7 @@ export const Field: FC<FieldProps<any>> = memo(function Field({
             )}
             {children}
             {hint && <Hint>{hint}</Hint>}
-            {errors?.[name]?.map((e: string) => (
+            {errors?.[name as any]?.map((e: string) => (
                 <Hint error key={e}>
                     {e}
                 </Hint>

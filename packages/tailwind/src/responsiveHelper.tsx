@@ -2,7 +2,7 @@
 
 import React, { FC, memo } from 'react';
 
-export type ResponsiveHelperTWProps = never;
+export type ResponsiveHelperTWProps = Record<string, never>;
 
 export const ResponsiveHelperTW: FC<ResponsiveHelperTWProps> = memo(function ResponsiveHelperTW() {
     return (
