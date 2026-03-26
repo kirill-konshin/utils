@@ -1,5 +1,4 @@
 ---
-'@kirill.konshin/utils-private': patch
 '@kirill.konshin/react-native': patch
 '@kirill.konshin/bootstrap': patch
 '@kirill.konshin/tailwind': patch

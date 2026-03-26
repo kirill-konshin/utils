@@ -1,4 +1,2 @@
-import type { Preview } from '@storybook/react';
-import '../tailwind.css';
-const preview: Preview = {};
+import preview from '../../utils-private/.storybook/preview';
 export default preview;

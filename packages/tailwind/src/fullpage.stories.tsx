@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useRef } from 'react';
 import { Fullpage } from './fullpage';
+import '../tailwind.css';
 
 const meta: Meta<typeof Fullpage> = {
     title: 'Components/Fullpage',

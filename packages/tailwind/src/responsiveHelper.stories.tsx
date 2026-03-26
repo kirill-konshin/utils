@@ -1,5 +1,6 @@
 import type { Meta, StoryFn } from '@storybook/react';
 import { ResponsiveHelperTW } from './responsiveHelper';
+import '../tailwind.css';
 
 const meta: Meta = {
     title: 'Components/ResponsiveHelperTW',
