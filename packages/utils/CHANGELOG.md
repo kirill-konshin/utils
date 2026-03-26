@@ -1,5 +1,26 @@
 # @kirill.konshin/utils
 
+## 0.0.20
+
+### Patch Changes
+
+- 63fdba8: Agent-assisted refactoring
+- 63fdba8: Divided core to browser/node/worker-specific packages, CTIX upgrade, etc.
+- Updated dependencies [63fdba8]
+- Updated dependencies [63fdba8]
+    - @kirill.konshin/react-native@0.0.2
+    - @kirill.konshin/bootstrap@0.0.2
+    - @kirill.konshin/tailwind@0.0.2
+    - @kirill.konshin/react@0.0.2
+    - @kirill.konshin/core@0.0.2
+    - @kirill.konshin/next@0.0.2
+    - @kirill.konshin/mui@0.0.2
+    - @kirill.konshin/electron-builder@0.0.2
+    - @kirill.konshin/electron@0.0.2
+    - @kirill.konshin/browser@0.0.2
+    - @kirill.konshin/worker@0.0.2
+    - @kirill.konshin/node@0.0.2
+
 ## 0.0.19
 
 ### Patch Changes
