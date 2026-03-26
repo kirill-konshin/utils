@@ -37,7 +37,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
         [close],
     );
 
-    const ModalDialog = useMemo(
+    const ModalDialog: FC<UseModalProps> = useMemo(
         () =>
             memo(function ModalDialog({
                 children,
@@ -48,7 +48,7 @@ export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
                 offcanvas = false,
                 title = null as any,
                 containerProps = {},
-            }: ModalProps) {
+            }) {
                 const Container = offcanvas ? Offcanvas : Modal;
                 const containerDefaultProps = offcanvas ? { style: { maxWidth: '85%' } } : {};
                 const Body = offcanvas ? Offcanvas.Body : Modal.Body;

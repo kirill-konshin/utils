@@ -1,2 +1,2 @@
 // THIS FILE WAS GENERATED, DO NOT EDIT
-export * from '@kirill.konshin/mui';
+export * as mui from '@kirill.konshin/mui';

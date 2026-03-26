@@ -1,10 +1,10 @@
-import React, { FC } from 'react';
+import React, { FC, memo } from 'react';
 // import { useLoading, useLoadingTimeout } from '../redux/loadingSlice';
 import { Loading } from './loading';
 
 export type GlobalLoadingProps = { loading: boolean };
 
-export const GlobalLoading: FC<GlobalLoadingProps> = function GlobalLoading({ loading }) {
+export const GlobalLoading: FC<GlobalLoadingProps> = memo(function GlobalLoading({ loading }) {
     // const { loading } = useLoading();
 
     // useLoadingTimeout(15000); // escape latch if something is stuck
@@ -16,4 +16,4 @@ export const GlobalLoading: FC<GlobalLoadingProps> = function GlobalLoading({ lo
             <Loading />
         </div>
     );
-};
+});

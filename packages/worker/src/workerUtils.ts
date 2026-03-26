@@ -18,7 +18,7 @@ const transferrable = [
     // MIDIAccess, // ReferenceError: MIDIAccess is not defined
 ].filter(Boolean);
 
-export function isTransferable(obj: any): boolean {
+export function isTransferable(obj: any): typeof obj | null {
     return transferrable.some((t) => obj instanceof t) ? obj : null;
 }
 

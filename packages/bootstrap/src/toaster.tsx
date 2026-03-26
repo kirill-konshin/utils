@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, FC } from 'react';
+import React, { useState, FC, memo } from 'react';
 import { Toast, ToastProps } from 'react-bootstrap';
 // import { useToaster } from '../redux/toasterSlice';
 
@@ -8,7 +8,7 @@ export type ToasterProps = {
     toast: string | { message: string; title?: string; variant?: 'dark' | 'success' | 'danger' };
 } & ToastProps;
 
-export const Toaster: FC<ToasterProps> = function Toaster({ toast }) {
+export const Toaster: FC<ToasterProps> = memo(function Toaster({ toast }) {
     //const { toast, setToast } = useToaster();
     const [dismissed, setDismissed] = useState(false);
 
@@ -37,4 +37,4 @@ export const Toaster: FC<ToasterProps> = function Toaster({ toast }) {
             </Toast.Body>
         </Toast>
     );
-};
+});

@@ -1,2 +1,2 @@
 // THIS FILE WAS GENERATED, DO NOT EDIT
-export * from '@kirill.konshin/electron-builder';
+export * as electronBuilder from '@kirill.konshin/electron-builder';

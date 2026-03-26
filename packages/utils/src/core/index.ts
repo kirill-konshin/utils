@@ -1,2 +1,2 @@
 // THIS FILE WAS GENERATED, DO NOT EDIT
-export * from '@kirill.konshin/core';
+export * as core from '@kirill.konshin/core';

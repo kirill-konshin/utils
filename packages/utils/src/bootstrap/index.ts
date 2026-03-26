@@ -1,2 +1,2 @@
 // THIS FILE WAS GENERATED, DO NOT EDIT
-export * from '@kirill.konshin/bootstrap';
+export * as bootstrap from '@kirill.konshin/bootstrap';

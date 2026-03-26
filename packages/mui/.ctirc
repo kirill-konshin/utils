@@ -1,11 +1,20 @@
 {
-  "addNewline": true,
-  "fileExcludePatterns": [
-    "*.stories.*",
-    "*.test.*",
-    "*.fixture.*"
-  ],
-  "verbose": false,
-  "withoutBackupFile": true,
-  "withoutComment": true
+  "options": [
+    {
+      "mode": "create",
+      "project": "tsconfig.json",
+      "include": "src/**/*.{ts,tsx}",
+      "exclude": [
+        "**/*.stories.*",
+        "**/*.test.*",
+        "**/*.fixture.*"
+      ],
+      "startFrom": "src",
+      "backup": false,
+      "overwrite": true,
+      "generationStyle": "default-alias-named-star",
+      "output": "src",
+      "verbose": true
+    }
+  ]
 }
