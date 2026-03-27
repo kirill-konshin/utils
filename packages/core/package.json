@@ -1,7 +1,7 @@
 {
   "name": "@kirill.konshin/core",
   "description": "Utilities",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "scripts": {
     "----- BUILD -----": "",
@@ -39,6 +39,5 @@
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "peerDependenciesMeta": {}
+  "types": "./dist/index.d.ts"
 }

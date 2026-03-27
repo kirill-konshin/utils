@@ -3,7 +3,7 @@
 export class Mutex {
     private promise = Promise.resolve();
 
-    public exec(fn: (...args: any) => any): ReturnType<typeof fn> {
+    public exec<T extends (...args: any) => any>(fn: T): Promise<ReturnType<T>> {
         return new Promise((resolve, reject) => {
             // wrap in always successful function
             this.promise = this.promise.then(async () => {
@@ -16,7 +16,7 @@ export class Mutex {
         });
     }
 
-    public wrap(fn: (...args: any) => any): ReturnType<typeof fn> {
+    public wrap<T extends (...args: any) => any>(fn: T): () => Promise<ReturnType<T>> {
         return (...args: any) => this.exec(() => fn(...args));
     }
 }
