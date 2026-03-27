@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { glob } from 'glob';
 
 const filesToCopy = [
   '.ctirc',
@@ -11,27 +12,43 @@ const filesToCopy = [
   '.storybook/preview.ts',
 ];
 
-// TODO Read package.json
-// TODO Copy scripts and overall structure of package.json
-const projects = {
-  bootstrap: { hasStorybook: true },
-  browser: {},
-  core: {},
-  electron: {},
-  'electron-builder': {},
-  mui: { hasStorybook: true },
-  next: {},
-  node: {},
-  react: {},
-  'react-native': {},
-  tailwind: { hasStorybook: true },
-  worker: {},
-};
-
 const packagesPath = path.resolve(process.cwd(), '..');
 
-for (const [project, { hasStorybook }] of Object.entries(projects)) {
+// Discover all packages in the packages directory
+const packageJsonFiles = await glob('*/package.json', {
+  cwd: packagesPath,
+  absolute: false,
+});
+
+for (const packageJsonPath of packageJsonFiles) {
+  const project = path.dirname(packageJsonPath);
   const packagePath = path.resolve(packagesPath, project);
+  const packageJsonFullPath = path.join(packagePath, 'package.json');
+
+  // Read package.json to check for flags
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonFullPath, 'utf-8'));
+
+  packageJson.repository = {
+    type: 'git',
+    url: 'https://github.com/kirill-konshin/utils.git',
+    directory: `packages/${project}`,
+  };
+
+  fs.writeFileSync(packageJsonFullPath, JSON.stringify(packageJson, null, 2) + '\n');
+
+  // Skip packages with skipGenerate flag
+  if (packageJson.skipGenerate) {
+    console.log(`Skipping ${project} (skipGenerate: true)`);
+    continue;
+  }
+
+  // Skip utils-private (self)
+  if (project === 'utils-private' || project === 'utils') {
+    console.log(`Skipping ${project} (self)`);
+    continue;
+  }
+
+  const hasStorybook = packageJson.hasStorybook || false;
   const exportVar = project.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
 
   console.log('Project', project, packagePath);

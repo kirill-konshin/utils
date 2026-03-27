@@ -3,6 +3,7 @@
   "description": "AI Agent rules and configuration for monorepos",
   "version": "0.0.2",
   "type": "module",
+  "skipGenerate": true,
   "bin": "./bin/index.js",
   "scripts": {
     "----- BUILD -----": "",
@@ -20,5 +21,10 @@
     "access": "public"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-konshin/utils.git",
+    "directory": "packages/agents"
+  }
 }

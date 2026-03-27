@@ -25,10 +25,11 @@ jobs:
         with:
           fetch-depth: 0 # https://github.com/changesets/changesets/issues/517#issuecomment-1239303017
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
           node-version: 22
+          registry-url: 'https://registry.npmjs.org'
 
       - if: ${{ github.event.pull_request.title != 'Version Packages' }}
         run: git pull --force --no-tags origin main:main

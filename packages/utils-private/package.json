@@ -28,5 +28,10 @@
   "license": "MIT",
   "publishConfig": {
     "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-konshin/utils.git",
+    "directory": "packages/utils-private"
   }
 }

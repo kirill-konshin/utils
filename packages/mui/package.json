@@ -3,6 +3,7 @@
   "description": "Utilities",
   "version": "0.0.2",
   "type": "module",
+  "hasStorybook": true,
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
@@ -52,5 +53,10 @@
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-konshin/utils.git",
+    "directory": "packages/mui"
+  }
 }
