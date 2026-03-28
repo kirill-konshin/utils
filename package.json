@@ -7,7 +7,7 @@
     "----- LINT -----": "",
     "prepare": "husky",
     "eslint": "eslint --fix --concurrency=auto --cache --cache-location node_modules/.cache/eslint",
-    "prettier": "prettier --write --log-level=warn",
+    "prettier": "prettier --write --log-level=warn --ignore-path .gitignore --ignore-path .prettierignore",
     "lint:all": "yarn eslint . && yarn prettier .",
     "lint:staged": "lint-staged --debug",
     "----- CHANGESETS -----": "",

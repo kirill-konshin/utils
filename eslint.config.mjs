@@ -7,6 +7,6 @@ export default defineConfig([
         name: 'Custom rules',
         rules: {},
     },
-    // @see https://blog.linotte.dev/eslint-9-next-js-935c2b6d0371
+    includeIgnoreFile(import.meta.url, '.gitignore'),
     includeIgnoreFile(import.meta.url, '.prettierignore'),
 ]);
