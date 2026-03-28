@@ -42,6 +42,7 @@ export default defineConfig([
             // overrides
         },
     },
+    includeIgnoreFile(import.meta.url, '.gitignore'),
     includeIgnoreFile(import.meta.url, '.prettierignore'),
 ]);
 ```
@@ -70,7 +71,7 @@ export default {
 {
     scripts: {
         eslint: 'eslint --fix --concurrency=auto --cache --cache-location node_modules/.cache/eslint', // to see files use --debug
-        prettier: 'prettier --write --log-level=warn', // to see files use --log-level=log
+        prettier: 'prettier --write --log-level=warn --ignore-path .gitignore --ignore-path .prettierignore', // to see files use --log-level=log
         'lint:all': 'yarn eslint . && yarn prettier .',
         'lint:staged': 'lint-staged',
     },
