@@ -1,5 +1,11 @@
 # @kirill.konshin/eslint-config-next-custom
 
+## 0.5.1
+
+### Patch Changes
+
+- Removed XML
+
 ## 0.5.0
 
 ### Minor Changes

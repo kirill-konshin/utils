@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="copy.mjs" type="NodeJSConfigurationType" nameIsGenerated="true" path-to-js-file="copy.mjs" working-dir="$PROJECT_DIR$/packages/utils-private">
+    <method v="2" />
+  </configuration>
+</component>

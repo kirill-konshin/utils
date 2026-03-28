@@ -99,7 +99,7 @@ export default listStagedConfig();
 ```json5
 {
     scripts: {
-        prepare: 'husky install',
+        prepare: 'husky || next types || true',
     },
 }
 ```

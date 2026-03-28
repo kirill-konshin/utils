@@ -79,7 +79,7 @@ export function includeIgnoreFile(importMetaUrl, ignoreFile) {
     return includeIgnoreFileCompat(resolve(dirname(fileURLToPath(importMetaUrl)), ignoreFile));
 }
 
-const eslintExts = '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,xml,xhtml,vue}';
+const eslintExts = '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}';
 const prettierExts = '*.{css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls}';
 
 export const prettier = {
