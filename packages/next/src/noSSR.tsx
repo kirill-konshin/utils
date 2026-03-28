@@ -34,6 +34,7 @@ export const NoSSR: FC<NoSSRProps> = memo(function NoSSR({ children, onSSR = nul
     const [canRender, setCanRender] = useState(false);
 
     useLayoutEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCanRender(true);
     }, []);
 

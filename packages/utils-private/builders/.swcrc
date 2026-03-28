@@ -14,5 +14,5 @@
     "preserveImportMeta": true
   },
   "sourceMaps": true,
-  "exclude": [".*\\.stories\\.ts$",".*\\.stories\\.tsx$",".*\\.test\\.ts$"]
+  "exclude": [".*\\.stories\\.ts$", ".*\\.stories\\.tsx$", ".*\\.test\\.ts$"]
 }

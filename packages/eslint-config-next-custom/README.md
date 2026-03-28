@@ -3,30 +3,47 @@
 ## Installation
 
 ```bash
-$ yarn add -D eslint @eslint-compat prettier @eslint/compat @kirill.konshin/eslint-config-next-custom husky lint-staged
+$ yarn add -D eslint prettier @kirill.konshin/eslint-config-next-custom husky lint-staged
 ```
+
+### PNPM
+
+https://eslint.org/docs/latest/use/getting-started#manual-set-up
+
+```dotenv
+auto-install-peers=true
+node-linker=hoisted
+```
+
+## Settings
 
 `eslint.config.mjs`:
 
 ```js
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'eslint/config';
+import customConfig, { nextPlugin, includeIgnoreFile } from '@kirill.konshin/eslint-config-next-custom';
 
-import { includeIgnoreFile } from '@eslint/compat';
-import customConfig from '@kirill.konshin/eslint-config-next-custom';
-
-const config = [
+export default defineConfig([
     ...customConfig,
+    {
+        files: ['**/*.{js,jsx,ts,tsx}'],
+        plugins: {
+            next: nextPlugin,
+        },
+        settings: {
+            next: {
+                rootDir: process.cwd() + '/path/to/next-app',
+            },
+        },
+    },
     {
         name: 'Custom rules',
         rules: {
             // overrides
         },
     },
-    includeIgnoreFile(resolve(dirname(fileURLToPath(import.meta.url)), '.prettierignore')), // <----- !!!
-];
-
-export default config;
+    includeIgnoreFile(import.meta.url, '.prettierignore'),
+]);
 ```
 
 `.prettierrc.mjs`:
@@ -45,19 +62,22 @@ export default {
 ```json5
 {
     scripts: {
-        eslint: 'DEBUG=eslint:eslint eslint --cache --cache-location node_modules/.cache/eslint --fix',
-        prettier: 'prettier --write',
+        eslint: 'eslint --fix --concurrency=auto --cache --cache-location node_modules/.cache/eslint', // to see files use --debug
+        prettier: 'prettier --write --log-level=warn', // to see files use --log-level=log
         'lint:all': 'yarn eslint . && yarn prettier .',
+        'lint:staged': 'lint-staged',
     },
 }
 ```
 
-IDEA settings:
+## IDEA settings:
 
 - Eslint: `**/*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,vue}`
 - Prettier: `{**/*}.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,css,scss,sass,less,yml,yaml,json}`
 
 ## Lint Staged
+
+`.lintstagedrc`
 
 ```json5
 {
@@ -67,6 +87,8 @@ IDEA settings:
 ```
 
 ## Husky
+
+`package.json`:
 
 ```json5
 {
@@ -86,5 +108,8 @@ yarn lint:staged
 
 ## Issues
 
-- [x] https://github.com/microsoft/rushstack/issues/4635 Failed to patch ESLint because the calling module was not recognized
-- [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized
+- ESLint 9
+    - [x] https://github.com/microsoft/rushstack/issues/4635 Failed to patch ESLint because the calling module was not recognized
+    - [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized
+- ESLint 10
+    - [ ] https://github.com/vercel/next.js/issues/89764 TypeError: Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function

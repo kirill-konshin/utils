@@ -4,7 +4,7 @@ export default {
     singleQuote: true,
     overrides: [
         {
-            files: '*.{js,jsx,ts,tsx,html,md,mdx}',
+            files: '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,html,md,mdx}',
             options: {
                 tabWidth: 4,
             },

@@ -15,36 +15,36 @@ const dir = 'dist-rollpup';
 
 /** @type {import('rollup').RollupOptions} */
 const config = {
-  // input: includeGlob, // multi
-  // input: entryGlob, // multi
-  input: entry, // glob array, seems to be a bit faster
-  // ignore: excludeGlob,
-  output: {
-    dir,
-    preserveModules: true,
-    preserveModulesRoot: 'src',
-    sourcemap: true,
-    format: 'es',
-  },
-  external,
-  onwarn(warning, warn) {
-    if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
-    warn(warning);
-  },
-  plugins: [
-    del({ targets: dir, runOnce: true }),
-    swc(),
-    commonjs(),
-    resolve({ extensions: ['.ts', '.tsx'] }),
-    dts({ outDir: dir }), // exclude: excludeGlob,
-    // multi({ preserveModules: true }),
-    {
-      name: 'Generate Exports',
-      async buildEnd() {
-        // await fixExports();
-      },
+    // input: includeGlob, // multi
+    // input: entryGlob, // multi
+    input: entry, // glob array, seems to be a bit faster
+    // ignore: excludeGlob,
+    output: {
+        dir,
+        preserveModules: true,
+        preserveModulesRoot: 'src',
+        sourcemap: true,
+        format: 'es',
     },
-  ],
+    external,
+    onwarn(warning, warn) {
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+        warn(warning);
+    },
+    plugins: [
+        del({ targets: dir, runOnce: true }),
+        swc(),
+        commonjs(),
+        resolve({ extensions: ['.ts', '.tsx'] }),
+        dts({ outDir: dir }), // exclude: excludeGlob,
+        // multi({ preserveModules: true }),
+        {
+            name: 'Generate Exports',
+            async buildEnd() {
+                // await fixExports();
+            },
+        },
+    ],
 };
 
 export default config;

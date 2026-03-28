@@ -101,6 +101,7 @@ function MainView() {
         if (appState === 'active' && terminated) {
             webViewRef.current.reload();
             webViewRef.current.requestFocus();
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTerminated(false);
         }
     }, [appState, terminated]);

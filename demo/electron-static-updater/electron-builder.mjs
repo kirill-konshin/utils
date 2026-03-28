@@ -8,22 +8,22 @@ const { builerConfig } = require('@kirill.konshin/utils/electron-builder');
 // });
 
 module.exports = builerConfig({
-  config: {
-    productName: 'Electron Static Updater',
-    appId: 'org.konshin.electron-static-updater',
-    files: [
-      {
-        from: 'node_modules/@demo/web-static/out',
-        to: './web',
-        filter: ['**/*'],
-      },
-    ],
-  },
-  githubReleases: {
-    owner: 'kirill.konshin',
-    repo: 'utils',
-  },
-  s3: {
-    bucket: 'electron-static-updater',
-  },
+    config: {
+        productName: 'Electron Static Updater',
+        appId: 'org.konshin.electron-static-updater',
+        files: [
+            {
+                from: 'node_modules/@demo/web-static/out',
+                to: './web',
+                filter: ['**/*'],
+            },
+        ],
+    },
+    githubReleases: {
+        owner: 'kirill.konshin',
+        repo: 'utils',
+    },
+    s3: {
+        bucket: 'electron-static-updater',
+    },
 });

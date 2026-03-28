@@ -20,6 +20,7 @@ export const FieldGroup: FC<FieldGroupProps> = memo(function FieldGroup({
 }) {
     if (horizontal) {
         props.className = 'hstack gap-3 ' + (props.className || '');
+        // eslint-disable-next-line react-hooks/immutability
         labelProps.className = 'm-0 ' + (labelProps.className || '');
     }
 
