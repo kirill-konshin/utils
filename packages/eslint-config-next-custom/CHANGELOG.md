@@ -1,5 +1,11 @@
 # @kirill.konshin/eslint-config-next-custom
 
+## 0.5.0
+
+### Minor Changes
+
+- Prettier and Lint Staged configs as exports
+
 ## 0.4.1
 
 ### Patch Changes

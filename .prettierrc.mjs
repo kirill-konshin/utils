@@ -1,3 +1,2 @@
-import config from '@kirill.konshin/eslint-config-next-custom/prettier';
-
-export default config;
+import { prettier } from '@kirill.konshin/eslint-config-next-custom';
+export default prettier;

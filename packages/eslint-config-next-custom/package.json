@@ -1,15 +1,11 @@
 {
   "name": "@kirill.konshin/eslint-config-next-custom",
   "description": "",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "skipGenerate": true,
   "main": "index.js",
   "module": "index.js",
-  "exports": {
-    ".": "./index.js",
-    "./prettier": "./prettier.js"
-  },
   "dependencies": {
     "@eslint/compat": "^2.0.3",
     "@eslint/js": "^10.0.1",
@@ -23,6 +19,8 @@
   },
   "peerDependencies": {
     "eslint": "^10",
+    "husky": "^9",
+    "lint-staged": "^16",
     "next": "^16"
   },
   "publishConfig": {

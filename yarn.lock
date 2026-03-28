@@ -4788,6 +4788,8 @@ __metadata:
     globals: "npm:^16.4.0"
   peerDependencies:
     eslint: ^10
+    husky: ^9
+    lint-staged: ^16
     next: ^16
   languageName: unknown
   linkType: soft

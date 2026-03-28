@@ -1,9 +1,9 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
 import js from '@eslint/js';
-import prettier from 'eslint-config-prettier/flat';
+import prettierFlat from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import next from 'eslint-config-next';
 import nextTs from 'eslint-config-next/typescript';
@@ -23,7 +23,7 @@ const index = [
     //
     // @see https://nextjs.org/docs/app/api-reference/config/eslint#with-prettier
     //   Note the `/flat` suffix here, the difference from default entry is that `/flat` added `name` property to the exported object to improve https://eslint.org/blog/2024/04/eslint-config-inspector/ experience.
-    prettier,
+    prettierFlat,
 
     {
         name: 'Globals',
@@ -78,3 +78,39 @@ export function includeIgnoreFile(importMetaUrl, ignoreFile) {
     // @see https://blog.linotte.dev/eslint-9-next-js-935c2b6d0371
     return includeIgnoreFileCompat(resolve(dirname(fileURLToPath(importMetaUrl)), ignoreFile));
 }
+
+const eslintExts = '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,xml,xhtml,vue}';
+const prettierExts = '*.{css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls}';
+
+export const prettier = {
+    printWidth: 120,
+    tabWidth: 2,
+    singleQuote: true,
+    overrides: [
+        {
+            files: eslintExts,
+            options: {
+                tabWidth: 4,
+            },
+        },
+    ],
+};
+
+/**
+ * https://nextjs.org/docs/app/api-reference/config/eslint#running-lint-on-staged-files
+ *
+ * Pay extra attention when the configured globs overlap, and tasks make edits to files. Prettier and eslint might try
+ * to make changes to the same *.ts file at the same time, causing a race condition.
+ *
+ * https://github.com/lint-staged/lint-staged?tab=readme-ov-file#reformatting-the-code
+ * https://github.com/lint-staged/lint-staged/issues/775
+ * You don't need git add since lint-staged 10
+ *
+ * TODO Screw yarn, just use eslint directly? Yarn gives greater control over what is in the console...
+ *
+ * @returns {import('lint-staged').Configuration}
+ */
+export const listStaged = {
+    [prettierExts]: ['yarn prettier'],
+    [eslintExts]: ['yarn eslint', 'yarn prettier'],
+};

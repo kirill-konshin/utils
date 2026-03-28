@@ -49,10 +49,17 @@ export default defineConfig([
 `.prettierrc.mjs`:
 
 ```js
-import config from '@kirill.konshin/eslint-config-next-custom/prettier';
+import { prettier } from '@kirill.konshin/eslint-config-next-custom';
+export default prettier;
+```
+
+or
+
+```js
+import { prettier } from '@kirill.konshin/eslint-config-next-custom';
 
 export default {
-    ...config,
+    ...prettier,
     // overrides
 };
 ```
@@ -77,13 +84,11 @@ export default {
 
 ## Lint Staged
 
-`.lintstagedrc`
+`.lintstagedrc.mjs`
 
-```json5
-{
-    '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,vue}': 'yarn eslint',
-    '*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,css,scss,sass,less,yml,yaml,json}': 'yarn prettier',
-}
+```js
+import { listStagedConfig } from '@kirill.konshin/eslint-config-next-custom';
+export default listStagedConfig();
 ```
 
 ## Husky
