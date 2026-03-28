@@ -1,7 +1,7 @@
 {
   "name": "@kirill.konshin/eslint-config-next-custom",
   "description": "",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "skipGenerate": true,
   "main": "index.js",

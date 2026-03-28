@@ -1,8 +1,9 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
 import js from '@eslint/js';
-import prettierConfigRecommended from 'eslint-config-prettier';
+import prettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import next from 'eslint-config-next';
 import nextTs from 'eslint-config-next/typescript';
@@ -10,17 +11,20 @@ import nextPlugin from '@next/eslint-plugin-next';
 
 const index = [
     js.configs.recommended,
+
     ...next,
     ...nextTs,
-    {
-        // Plugin is not recommended by Prettier, they suggest to just use config, and disable all the rules, except for these two in plugin:
-        // 'arrow-body-style': 'off'
-        // 'prefer-arrow-callback': 'off',
-        // import prettierConfigRecommended from 'eslint-plugin-prettier/recommended';
-        // Last since it disables some previously set rules
-        name: 'Prettier',
-        ...prettierConfigRecommended,
-    },
+
+    // @seehttps://github.com/prettier/eslint-plugin-prettier?tab=readme-ov-file#arrow-body-style-and-prefer-arrow-callback-issue
+    //   Plugin is not recommended by Prettier, they suggest to just use config, and disable all the rules, except for these two in plugin last since they disable some previously set rules:
+    //   import prettierConfigRecommended from 'eslint-plugin-prettier/recommended';
+    //   'arrow-body-style': 'off'
+    //   'prefer-arrow-callback': 'off',
+    //
+    // @see https://nextjs.org/docs/app/api-reference/config/eslint#with-prettier
+    //   Note the `/flat` suffix here, the difference from default entry is that `/flat` added `name` property to the exported object to improve https://eslint.org/blog/2024/04/eslint-config-inspector/ experience.
+    prettier,
+
     {
         name: 'Globals',
         languageOptions: {
@@ -30,6 +34,7 @@ const index = [
             },
         },
     },
+
     {
         name: 'Custom rules',
         rules: {
@@ -49,6 +54,7 @@ const index = [
             'jsx-a11y/alt-text': 'off',
         },
     },
+
     //FIXME ESLint 10 + Next fix
     // https://github.com/vercel/next.js/issues/89764
     // https://gist.github.com/OscarGauss/1f305edf5b7c103bb2ee32ba479f4261
