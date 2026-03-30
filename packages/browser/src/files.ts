@@ -10,7 +10,8 @@ export const createFile = async (text: any, filename = 'file.json', type = 'appl
     return new File([new Blob([text], { type })], filename);
 };
 
-export const openFile = (): Promise<string> =>
+// TODO Filter types
+export const openFile = (): Promise<ArrayBuffer | string | null | undefined> =>
     new Promise((res, rej) => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -20,7 +21,7 @@ export const openFile = (): Promise<string> =>
             const [file] = e.target.files;
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = (e) => res(e.target?.result as string);
+            reader.onload = (e) => res(e.target?.result);
             reader.onerror = rej;
             reader.onabort = rej;
             reader.readAsText(file);

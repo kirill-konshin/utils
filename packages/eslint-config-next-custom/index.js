@@ -52,6 +52,17 @@ const index = [
             'import/no-unresolved': 'off',
             'import/no-webpack-loader-syntax': 'off',
             'jsx-a11y/alt-text': 'off',
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: 'next/router',
+                            message: 'Please use next/navigation instead of next/router',
+                        },
+                    ],
+                },
+            ],
         },
     },
 

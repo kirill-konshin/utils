@@ -34,7 +34,10 @@ export default defineConfig({
             reporter: ['text', 'html', 'cobertura'],
         } as any,
     },
-    resolve: { extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'] }, // https://vite.dev/guide/performance#reduce-resolve-operations
+    resolve: {
+        extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'], // https://vite.dev/guide/performance#reduce-resolve-operations
+        preserveSymlinks: true,
+    },
     plugins: [
         react(),
         preserveDirectives() as Plugin, // https://github.com/vitejs/vite/discussions/15721#discussioncomment-10572828

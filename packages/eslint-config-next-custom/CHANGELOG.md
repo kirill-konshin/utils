@@ -1,5 +1,11 @@
 # @kirill.konshin/eslint-config-next-custom
 
+## 0.5.2
+
+### Patch Changes
+
+- Minor fixes
+
 ## 0.5.1
 
 ### Patch Changes
