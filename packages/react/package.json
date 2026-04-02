@@ -1,7 +1,7 @@
 {
   "name": "@kirill.konshin/react",
   "description": "Utilities",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "scripts": {
     "----- BUILD -----": "",
@@ -41,7 +41,8 @@
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
