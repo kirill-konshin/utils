@@ -127,5 +127,6 @@
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git",
     "directory": "packages/utils"
-  }
+  },
+  "peerDependenciesMeta": {}
 }
