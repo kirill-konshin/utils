@@ -80,7 +80,7 @@ export async function fixExports() {
     // Author & License
 
     // TODO Move to root build + set private=true for demos + set react version
-    pkg.publishConfig = { access: 'public', provenance: true };
+    pkg.publishConfig = { access: 'public' };
     pkg.author = 'Kirill Konshin <kirill@konshin.org> (https://konshin.org)';
     pkg.license = 'MIT';
 
