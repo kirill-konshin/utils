@@ -12,6 +12,14 @@ export type AppLinkProps = {
 } & LinkProps &
     ComponentProps<typeof Link>;
 
+export function useIsLinkActive() {
+    const pathname = usePathname();
+    return (href: ComponentProps<typeof Link>['href'], exact: boolean): boolean => {
+        const hrefPath = typeof href === 'string' ? href : href.pathname || '/';
+        return (!exact && pathname.startsWith(hrefPath)) || (exact && pathname === hrefPath);
+    };
+}
+
 //TODO Test this
 export const AppLink: FC<AppLinkProps> = memo(function AppLink({
     href,
@@ -22,15 +30,14 @@ export const AppLink: FC<AppLinkProps> = memo(function AppLink({
     exact = false,
     ...props
 }) {
-    const pathname = usePathname();
-    const hrefPath = typeof href === 'string' ? href : href.pathname || '/';
+    const isActive = useIsLinkActive();
 
     return (
         <Link
             {...props}
             href={href}
             className={clsx(className, {
-                [activeClassName]: (!exact && pathname.startsWith(hrefPath)) || (exact && pathname === hrefPath),
+                [activeClassName]: isActive(href, exact),
             })}
             prefetch={prefetch}
         >

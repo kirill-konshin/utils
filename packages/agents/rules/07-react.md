@@ -71,17 +71,6 @@ import { GenericControl } from './genericControl';
 import { create, Validation } from './form';
 ```
 
-## Client Components
-
-Use `'use client';` directive at the top of files that use client-side features:
-
-```tsx
-'use client';
-
-import { useRouter } from 'next/navigation';
-import { FC, memo, useEffect } from 'react';
-```
-
 ## Props Patterns
 
 ### Children Prop

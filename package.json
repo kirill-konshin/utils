@@ -45,6 +45,11 @@
       "packages/*"
     ]
   },
+  "overrides": {
+    "next": "$next",
+    "eslint": "$eslint",
+    "typescript": "$typescript"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git"

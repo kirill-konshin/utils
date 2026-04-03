@@ -9,6 +9,9 @@ export type RedirectProps = {
     replace?: LinkProps['replace'];
 };
 
+/**
+ * @deprecated
+ */
 export const Redirect: FC<RedirectProps> = memo(function Redirect({ to, replace }) {
     const router = useRouter();
     useEffect(() => {

@@ -1,7 +1,7 @@
 {
   "name": "@kirill.konshin/agents",
   "description": "AI Agent rules and configuration for monorepos",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "skipGenerate": true,
   "bin": "./bin/index.js",
