@@ -26,7 +26,7 @@ jobs:
         name: Release
         runs-on: ubuntu-latest
         env:
-            TURBO_CACHE_DIR: node_modules/.cache/turbo
+            TURBO_CACHE_DIR: .turbo
 
         # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
         if: github.repository == 'kirill-konshin/utils'
@@ -38,26 +38,24 @@ jobs:
 
         steps:
             - name: Checkout Repo
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Setup Node.js
               uses: actions/setup-node@v6
               with:
                   node-version: 24
+                  registry-url: 'https://registry.npmjs.org'
+                  cache: yarn
+                  cache-dependency-path: yarn.lock
 
-            - name: Get yarn cache directory path
-              id: yarn-cache-dir-path
-              run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+            - name: Enable Corepack
+              run: corepack enable
 
-            - uses: actions/cache@v4
-              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-              with:
-                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-                  restore-keys: |
-                      ${{ runner.os }}-yarn-
+            - name: Install dependencies
+              run: yarn install --immutable
 
             #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
+            #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
             - name: Cache turbo build setup
               uses: actions/cache@v4
               with:
@@ -65,45 +63,4 @@ jobs:
                   key: ${{ runner.os }}-turbo-${{ github.sha }}
                   restore-keys: |
                       ${{ runner.os }}-turbo-
-
-            - name: Install Dependencies
-              run: yarn
-
-            - name: Lint
-              run: yarn lint:all
-
-            - name: Test
-              run: yarn test
-
-            # https://josh-ops.com/posts/github-code-coverage/
-            - name: Code Coverage Summary Report
-              uses: irongut/CodeCoverageSummary@v1.3.0
-              with:
-                  filename: 'packages/*/coverage/cobertura-coverage.xml'
-                  badge: true
-                  format: 'markdown'
-                  output: 'both'
-
-            - name: Add Coverage PR Comment
-              uses: marocchino/sticky-pull-request-comment@v2
-              if: github.event_name == 'pull_request'
-              with:
-                  recreate: true
-                  path: code-coverage-results.md
-
-            - name: Write to Job Summary
-              run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
-
-            - name: Build
-              run: yarn build
-
-            # https://github.com/changesets/action?tab=readme-ov-file#with-publishing
-            - name: Create Release Pull Request or Publish to npm
-              id: changesets
-              uses: changesets/action@v1
-              with:
-                  publish: yarn release
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NPM_CONFIG_PROVENANCE: true
 ```

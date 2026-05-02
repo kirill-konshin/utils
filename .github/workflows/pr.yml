@@ -17,39 +17,33 @@ jobs:
     name: PR Check
     runs-on: ubuntu-latest
     env:
-      TURBO_CACHE_DIR: node_modules/.cache/turbo
+      TURBO_CACHE_DIR: .turbo
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # https://github.com/changesets/changesets/issues/517#issuecomment-1239303017
+
+      - if: ${{ github.event.pull_request.title != 'Version Packages' }}
+        run: git pull --force --no-tags origin main:main
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
+          cache: yarn
+          cache-dependency-path: yarn.lock
 
-      - if: ${{ github.event.pull_request.title != 'Version Packages' }}
-        run: git pull --force --no-tags origin main:main
+      - name: Enable Corepack
+        run: corepack enable
 
-      - name: Install Dependencies
-        run: yarn
-
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v4
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+      - name: Install dependencies
+        run: yarn install --immutable
 
       #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
+      #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
       - name: Cache turbo build setup
         uses: actions/cache@v4
         with:
@@ -57,6 +51,17 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-turbo-
+
+      #      - name: Cache Next.js
+      #        uses: actions/cache@v4
+      #        with:
+      #          path: |
+      #            packages/.next/cache
+      #          key: ${{ runner.os }}-next-${{ github.ref_name }}-${{ hashFiles('yarn.lock') }}-${{ hashFiles('packages/**/*.[jt]s', 'apps/web/**/*.[jt]sx', 'apps/web/**/*.json') }}
+      #          restore-keys: |
+      #            ${{ runner.os }}-next-${{ github.ref_name }}-${{ hashFiles('yarn.lock') }}-
+      #            ${{ runner.os }}-next-main-${{ hashFiles('yarn.lock') }}-
+      #            ${{ runner.os }}-next-
 
       - name: Lint
         run: yarn lint:all
