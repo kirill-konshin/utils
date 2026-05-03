@@ -27,12 +27,12 @@ Root `package.json`:
 
 All other `package.json`:
 
-```json
+```json5
 {
-    "devDependencies": {
-        "next": "*",
-        "typescript": "*"
-    }
+    devDependencies: {
+        next: '16.0.0', // this has to be a valid version, otherwise Vercel will fall into legacy mode instead of serverless
+        typescript: '*', // this should be * so that version is consistent and it's dead obvious
+    },
 }
 ```
 
