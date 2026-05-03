@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ComponentProps, FC, memo } from 'react';
+import React, { ComponentProps, FC, memo, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link, { LinkProps } from 'next/link';
 import clsx from 'clsx';
@@ -12,12 +12,16 @@ export type AppLinkProps = {
 } & LinkProps &
     ComponentProps<typeof Link>;
 
-export function useIsLinkActive() {
+export function useIsLinkActive(): (href: ComponentProps<typeof Link>['href'], exact: boolean) => boolean {
     const pathname = usePathname();
-    return (href: ComponentProps<typeof Link>['href'], exact: boolean): boolean => {
-        const hrefPath = typeof href === 'string' ? href : href.pathname || '/';
-        return (!exact && pathname.startsWith(hrefPath)) || (exact && pathname === hrefPath);
-    };
+
+    return useCallback(
+        (href: ComponentProps<typeof Link>['href'], exact: boolean): boolean => {
+            const hrefPath = typeof href === 'string' ? href : href.pathname || '/';
+            return (!exact && pathname.startsWith(hrefPath)) || (exact && pathname === hrefPath);
+        },
+        [pathname],
+    );
 }
 
 //TODO Test this

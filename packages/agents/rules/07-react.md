@@ -160,31 +160,33 @@ export function createClient<S extends z.ZodObject<any>>(
 
 ## Context Patterns
 
-### Context with Explicit Type
-
-Always type Context explicitly:
-
 ```tsx
-export const FormContext: Context<{
-    schema: ZodObject;
-}> = createContext(null as never);
+'use client';
 
-export const HotkeysContext: Context<HotkeyContextType> = createContext<{
-    enabled: boolean;
-    setEnabled: Dispatch<SetStateAction<boolean>>;
-}>(null as never);
-```
+import { createContext, useContext, useMemo, useState, ReactNode } from 'react';
 
-### Provider Components
+// Always type Context explicitly
+// Never export context itself
+const ExampleContext = createContext<{
+    setEnabled: (prev: boolean) => boolean;
+    enabled: false;
+}>(null);
 
-Memoize provider components:
-
-```tsx
-export const HotkeysProvider: FC<HotkeysProviderProps> = memo(function HotkeysProvider({ children }) {
+// Export provider
+export function ExampleContextProvider({ children }: { children: ReactNode }) {
+    // context state & functions
     const [enabled, setEnabled] = useState(true);
-    const control = useMemo(() => ({ enabled, setEnabled }), [enabled, setEnabled]);
-    return <HotkeysContext.Provider value={control}>{children}</HotkeysContext.Provider>;
-});
+
+    // memoize context value
+    const value = useMemo(() => ({ enabled, setEnabled }), [enabled, setEnabled]);
+
+    return <ExampleContext.Provider value={control}>{children}</ExampleContext.Provider>;
+}
+
+// Export hook
+export const useExampleContext = () => {
+    return useContext(ExampleContext);
+};
 ```
 
 ## Storybook Patterns
