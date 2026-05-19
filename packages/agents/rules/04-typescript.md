@@ -11,6 +11,10 @@ Key TypeScript settings for modern projects:
 
 ## Type Annotation Patterns
 
+Prefer to inline types into function signature or variable declarations.
+Introduce types when reused or complex. Avoid creating a type for every single thing.
+Try to reuse types that exist in project (e.g. redux state, zod schema, component props, final function signature can have one shared type + derivatives like `Omit<>`, `Partial<>` etc.).
+
 ### Export Types Explicitly
 
 With `isolatedDeclarations`, all exported functions and variables must have explicit type annotations:
