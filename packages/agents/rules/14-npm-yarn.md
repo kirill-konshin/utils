@@ -1,9 +1,15 @@
 ---
 type: always_apply # or agent_requested
-description: NPM & Yanr patterns # Required for agent_requested
+description: NPM & Yarn patterns # Required for agent_requested
 ---
 
 _EVERY_ repo must adhere to policy unless explicitly prohibited in comment before the action or workflow definition.
+
+# Prefer Libraries with Long History
+
+Prefer libraries that have a long history of updates and are well-maintained, and are not deprecated.
+Always try to use the latest version of a library.
+Always try to find if there is a suitable library for a given task before writing custom code, ask user if library is not very popular.
 
 # Consistent versions
 
