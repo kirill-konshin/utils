@@ -4,7 +4,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "prepare": "husky",
+    "prepare": "husky && nx show projects > /dev/null",
     "----- LINT -----": "",
     "eslint": "eslint --fix --concurrency=auto --cache --cache-location node_modules/.cache/eslint",
     "prettier": "prettier --write --log-level=warn --ignore-path .gitignore --ignore-path .prettierignore",
