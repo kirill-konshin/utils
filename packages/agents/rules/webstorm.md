@@ -1,6 +1,8 @@
 ---
-type: always_apply # or agent_requested
-description: IDEA / WebStorm patterns # Required for agent_requested
+type: always_apply
+description: IDEA / WebStorm patterns
+paths:
+    - '**/.idea/**/*.xml'
 ---
 
 **ALL** IDEA / WebStorm projects must adhere to policy unless explicitly prohibited.

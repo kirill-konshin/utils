@@ -1,188 +1,45 @@
 ---
-type: always_apply # or agent_requested
-description: Set of rules for projects which use React # Required for agent_requested
+type: always_apply
+description: Set of rules for projects which use React
+paths:
+    - '**/*.tsx'
 ---
 
 **ALL** React component must adhere to policy unless explicitly prohibited in comment before the component definition.
 
-## Extracting props from other library components
-
-```tsx
-import React, { ComponentProps, FC } from 'react';
-import Link, { LinkProps } from 'next/link'; // example component
-
-export const AppLink: FC<
-    LinkProps & ComponentProps<typeof Link> // if LinkProps are available prefer it, otherwise extract from Link (Link is used as example)
-> = function AppLink({ href, children, ...props }) {
-    return (
-        <Link href={href} {...props}>
-            {children}
-        </Link>
-    );
-};
-```
-
-## Component Pattern
-
-Prefer using memoized components. Use `FC<Props> = memo(...)` pattern to ensure compatibility with TypeScript's `--isolatedDeclarations` flag:
+- Prefer `PropsWithChildren<{...}>` to declare props of components with optional children
+    - `children: ReactNode` if required
+    - `JSX.Element` if exactly one JSX element like `<div />`
+    - `ReactElement<...>` if object-specific
+- If extending functionality of existing component use it's Props:
+    - `type DerivedProps = CmpProps & {...}` if `Cmp` provides `CmpProps` (preferred)
+    - `type DerivedProps = ComponentProps<typeof Cmp> & {...}` if `Cmp` does provide `CmpProps`
+- ALWAYS prefer using memoized components
+- Memoize everything
+    - Prefer `memo<Props>(...)`
+    - Use `FC<Props> = memo(...)` if `--isolatedDeclarations` flag is on
+    - ALWAYS use `useCallback` if React Compiler is not enabled in project
+- Prefer to set defaults while destructuring props: `function Cmp({ children = 'xxx' })` where applicable
 
 ```tsx
 import { FC, memo } from 'react';
-
 export type CmpProps = {
-    foo: string;
-};
-
-export const Cmp: FC<CmpProps> = memo(function Cmp({ foo, ...props }) {
-    // code here
+    /* types */
+}; // or never if no props needed
+export const Cmp: FC<CmpProps> = memo(function Cmp(props) {
+    /* code */
 });
 ```
 
-If memo is not applicable:
+# Object Merging
 
 ```tsx
-import { FC } from 'react';
+const containerDefaultProps = SOME_GLOBAL_SETTING ? { ... } : {};
 
-export type CmpProps = {
-    foo: string;
-};
-
-export const Cmp: FC<CmpProps> = function Cmp({ foo, ...props }) {
-    // code here
-};
+<Container {...{ ...containerDefaultProps, ...containerProps }} prop={override} />;
 ```
 
-If `CmpProps` will be empty use `export type CmpProps = never;`.
-
-## Import Order
-
-Organize imports in this order:
-
-1. React imports first
-2. Third-party library imports
-3. Local imports (relative paths)
-
-```tsx
-import React, { FC, memo, useState, useCallback } from 'react';
-import { Button, Modal } from 'react-bootstrap';
-import clsx from 'clsx';
-
-import { GenericControl } from './genericControl';
-import { create, Validation } from './form';
-```
-
-## Props Patterns
-
-### Props Spreading
-
-Collect remaining props with `...props` and spread them:
-
-```tsx
-export const Cmp: FC<CmpProps> = memo(function Cmp({ foo, className = '', ...props }) {
-    return (
-        <div {...props} className={`base-class ${className}`}>
-            {foo}
-        </div>
-    );
-});
-```
-
-### Object Merging
-
-Use spread for merging with defaults:
-
-```tsx
-const containerDefaultProps = SOME_GLOBAL_SETTING ? { style: { maxWidth: '85%' } } : {};
-
-<Container {...{ ...containerDefaultProps, ...containerProps }} show={show} />;
-```
-
-### Children Prop
-
-Always type `children` as `any` for flexibility:
-
-```tsx
-export type LoadingProps = {
-    children?: any;
-    show?: boolean;
-};
-```
-
-### Default Props
-
-Use default parameter values in destructuring:
-
-```tsx
-export const Loading: FC<LoadingProps> = memo(function Loading({
-    children = 'Loading...' as any,
-    show = true,
-    className = '',
-    size,
-}) {
-    // ...
-});
-```
-
-### Extending Library Props
-
-Extend library component props with intersection types:
-
-```tsx
-export type GenericControlProps = FormControlProps & { children: any };
-
-export type AppLinkProps = {
-    children: any;
-    exact?: boolean;
-    activeClassName?: any;
-} & LinkProps &
-    ComponentProps<typeof Link>;
-```
-
-## Hook Patterns
-
-### Custom Hooks
-
-Return explicit types for custom hooks:
-
-```tsx
-export function useModal({ onClose, showOnMount }: UseModalArgs = {}): {
-    show: boolean | undefined;
-    close: () => void;
-    open: () => void;
-    ModalDialog: FC<ModalProps>;
-} {
-    // ...
-}
-```
-
-### Hook with Callbacks
-
-Use `useCallback` for functions passed to children or used in dependencies:
-
-```tsx
-const close = useCallback((): void => {
-    setShow(false);
-    onClose?.();
-}, [onClose]);
-```
-
-### Factory Functions for Hooks
-
-Create factory functions that return hooks for schema-bound functionality:
-
-```tsx
-export function createClient<S extends z.ZodObject<any>>(
-    schema: S,
-): {
-    useValidation: (...) => [...];
-    useValidationTransition: (...) => [...];
-} {
-    // ...
-    return { useValidation, useValidationTransition };
-}
-```
-
-## Context Patterns
+# Context
 
 ```tsx
 'use client';
@@ -207,58 +64,24 @@ export function ExampleContextProvider({ children }: { children: ReactNode }) {
     return <ExampleContext.Provider value={control}>{children}</ExampleContext.Provider>;
 }
 
-// Export hook
+// Export hook for consumers
 export const useExampleContext = () => {
     return useContext(ExampleContext);
 };
 ```
 
-## Storybook Patterns
-
-### Story File Structure
-
-```tsx
-import type { Meta, StoryObj } from '@storybook/react';
-import { ComponentName } from './componentName';
-
-const meta: Meta<typeof ComponentName> = {
-    title: 'Category / ComponentName',
-    component: ComponentName,
-    parameters: {
-        layout: 'centered',
-    },
-    tags: ['autodocs'],
-    argTypes: {
-        // control definitions
-    },
-};
-
-export default meta;
-
-type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {};
-
-export const WithArgs: Story = {
-    args: {
-        // props
-    },
-};
-```
-
-## AbortController Pattern
-
-Use AbortController for cleanup of listeners:
+# AbortController Pattern
 
 ```tsx
 useEffect(() => {
     const ctrl = new AbortController();
+    const { signal } = ctrl;
 
-    window.addEventListener('keydown', handler, { signal: ctrl.signal, capture: true }); // capture is for example purpose only here
-    window.addEventListener('keyup', handler, { signal: ctrl.signal });
+    window.addEventListener('keydown', handler, { signal, capture: true }); // capture for illustration purpose
+    window.addEventListener('keyup', handler, { signal });
 
     return () => {
-        ctrl.abort();
+        ctrl.abort(); // instead of manual removeEventListener
     };
 }, [deps]);
 ```

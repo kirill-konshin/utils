@@ -1,11 +1,13 @@
 ---
-type: always_apply # or agent_requested
-description: Set of rules for projects with Vite # Required for agent_requested
+type: always_apply
+description: Set of rules for projects with Vite
+paths:
+    - '**/vite.config.ts'
 ---
 
-# Config
+- Web Worker Polyfill `import '@vitest/web-worker';`
 
-Prefer the shortest possible config definition.
+# Prefer the shortest possible config definition
 
 ```ts
 import tailwindcss from '@tailwindcss/vite';
@@ -15,10 +17,4 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     plugins: [react(), tailwindcss()],
 });
-```
-
-# Web Worker Polyfill
-
-```ts
-import '@vitest/web-worker';
 ```

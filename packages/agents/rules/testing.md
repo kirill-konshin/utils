@@ -1,147 +1,27 @@
 ---
-type: always_apply # or agent_requested
-description: Set of rules for projects with tests # Required for agent_requested
+type: always_apply
+description: Set of rules for projects with tests
+paths:
+    - '**/jest.config.{ts,js,mjs,cjs}'
+    - '**/vite.config.{ts,js,mjs,cjs}'
+    - '**/*.test.ts'
+    - '**/*.spec.ts'
+    - '**/*.fixture.ts'
 ---
 
 - If project use `vite` use `vitest`, otherwise `jest`
 - If project needs browser-based testing use `playwright`
-
-## Test File Structure
-
-### File Naming
-
-- Test files: `*.test|spec.ts|tsx` must be place adjacent to the file they test
-- Test files: `*.test.ts` for unit tests
-- Test files: `*.spec.ts` for e2e or integration tests (require running DEV server)
-- Fixture files: `*.fixture.ts` (for test helpers, mocks, worker fixtures)
-
-### Import Order
-
-```ts
-import '@vitest/web-worker'; // polyfills first if needed
-import { expect, describe, test, vi } from 'vitest';
-import { functionToTest } from './module';
-import type { TypeOnly } from './fixture'; // type-only imports for fixtures
-```
-
-## Test Organization
-
-### describe/test Pattern
-
-Use `describe` for grouping related tests, `test` for individual test cases:
-
-```ts
-describe('memo', async () => {
-    test('simple', async () => {
-        // test implementation
-    });
-
-    test('with key', async () => {
-        // test implementation
-    });
-});
-```
-
-### Test Timeouts
-
-Set timeouts on describe blocks for slow tests:
-
-```ts
-describe(
-    'SlowOperation',
-    async () => {
-        // tests
-    },
-    { timeout: 5000 },
-);
-```
-
-## Mocking
-
-### vi.fn() for Mocks
-
-Use `vi.fn()` or `jest.fn()` for creating mock functions:
-
-```ts
-const random = vi.fn(() => Math.random());
-const dispose = vi.fn();
-```
-
-### Mock Assertions
-
-```ts
-expect(dispose).toBeCalledTimes(1);
-expect(dispose).toBeCalledWith({ key: 1, read: 1 }, 1);
-expect(fn).nthCalledWith(1, { progress: 0 });
-```
-
-## Assertions
-
-### Common Matchers
-
-```ts
-expect(first.hit).toBeFalsy();
-expect(second.hit).toBeTruthy();
-expect(first.value).toBe(second.value);
-expect(first.value).not.toBe(second.value);
-expect(x1).toStrictEqual({ a: 1, cached: true, read: 0 });
-expect(cache.size).toEqual(1);
-```
-
-### Async Assertions
-
-```ts
-await expect(promise).resolves.toEqual({ test: 'test' });
-await expect(caller.promiseError()).rejects.toThrowError('Test');
-```
-
-### Error Assertions
-
-```ts
-await expect(async () => {
-    await someAsyncOperation();
-}).rejects.toThrowError('Expected error message');
-```
-
-## Test Helpers
-
-### Class Testing
-
-Create test-specific class implementations:
-
-```ts
-class StubClass extends TargetClass {
-    counter = 0;
-    // make observable with custom implementation
-    method(val) {
-        this.counter++; // bump counter to make it observable like this
-        return 123; // something predictable
-    }
-    method2 = vi.fn(TargetClass.prototype.method2); // make observable with original implementation
-    method3 = vi.fn(); // make observable with no implementation
-}
-
-const cache = new Cache('test');
-```
-
-### Factory Functions for Test Setup
-
-Create helper functions for common setup:
-
-```ts
-const createTestInstance = () => {
-    const instance = new MyClass();
-    instance.addEventListener('error', (e) => console.error('Error', e));
-    return instance;
-};
-```
-
-## Skipping Tests
-
-Use `test.skip` for temporarily disabled tests:
-
-```ts
-test.skip('feature not yet implemented', async () => {
-    // test implementation
-});
-```
+- Tests must be placed in a file adjacent to the file they test, not separate folder
+- Naming
+    - `*.test.ts` for unit tests
+    - `*.spec.ts` for e2e or integration tests (require running DEV server)
+    - `*.fixture.ts` for test helpers, mocks, worker fixtures
+- Organization
+    - Use `describe(...)` to group related tests, nesting allowed and preferred
+    - Use `test(...)` for individual test cases
+- Set timeouts on describe blocks or individual tests for slow tests to make them visible
+- Prefer to use `vi.fn()` or `jest.fn()` to create mock functions
+- Mock entire test-specific class implementations via `class Testable extend ClassToBeTested {}`
+    - Mock class methods/values or wrap originals in mocks for visibility
+- Create helper/factory functions for repeated setup, keep tests DRY
+- Prefer tests to be logic-free

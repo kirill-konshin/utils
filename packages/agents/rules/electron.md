@@ -1,6 +1,6 @@
 ---
-type: always_apply # or agent_requested
-description: Set of rules for projects which use Expo # Required for agent_requested
+type: always_apply
+description: Set of rules for projects which use Expo
 ---
 
 # CI Builds
@@ -15,7 +15,7 @@ build:
         - shared-macos-amd64
     script:
         - yarn --immutable
-        - yarn build # maybe add lint step so Vercel does not run it
+        - yarn build
         - rm -rf electron/dist/mac # some cleanup to make artifacts leaner
     only:
         - master
