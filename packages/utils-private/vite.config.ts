@@ -2,13 +2,14 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import preserveDirectives from 'rollup-preserve-directives';
-import { fixExports, formats, entry, external, distDir, generateIndex, checkTypes } from './vite.exports';
+import { pkg, fixExports, formats, entry, external, distDir, generateIndex, checkTypes } from './vite.exports';
 
 // https://rbardini.com/how-to-build-ts-library-with-vite/
 // https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
 
 const isWatch = process.argv.includes('--watch'); // https://github.com/vitejs/vite/discussions/7565#discussioncomment-2939256
 const isStorybook = process.argv[1]?.includes('storybook') || process.env.STORYBOOK === 'true';
+const isUmbrella = pkg.nx?.tags?.includes('platform:umbrella');
 
 export default defineConfig({
     build: {
@@ -46,7 +47,7 @@ export default defineConfig({
         {
             name: 'Generate Index & Exports',
             async buildStart() {
-                if (isWatch || isStorybook) return;
+                if (isWatch || isStorybook || isUmbrella) return;
                 await generateIndex();
             },
             async closeBundle() {
