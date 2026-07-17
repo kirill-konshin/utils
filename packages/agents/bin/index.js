@@ -21,8 +21,7 @@ const __dirname = path.dirname(__filename);
 
 const AGENTS_FILE = 'AGENTS.md';
 const RULES_DIR = path.join(__dirname, '..', 'rules');
-const TARGET_RULES_DIR = path.join('.ai', 'rules', 'utils');
-const TARGET_RULES_LINK_DIR = '.ai/rules/utils';
+const TARGET_RULES_DIR = '.ai/rules';
 const GENERATED_NOTE = '**NOTE FOR AGENT: THIS FILE MUST NOT BE EDITED AS IT WAS AUTO GENERATED**\n\n';
 const HEADER = `# AI Agent Rules
 
@@ -92,7 +91,7 @@ function copyRules(cwd, rules) {
  * Generate AGENTS.md with references to copied rule files.
  */
 function generateAgentsFile(rules) {
-    const references = rules.map((rule) => `- [${rule.file}](${TARGET_RULES_LINK_DIR}/${rule.file})`).join('\n');
+    const references = rules.map((rule) => `- [${rule.file}](${TARGET_RULES_DIR}/${rule.file})`).join('\n');
 
     return `${GENERATED_MARKER}\n${HEADER}Rules copied from @kirill.konshin/agents:
 

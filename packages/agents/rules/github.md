@@ -1,11 +1,9 @@
 ---
 type: always_apply # or agent_requested
-description: Github patterns # Required for agent_requested
+description: Set of rules for projects which use Github # Required for agent_requested
 ---
 
-_EVERY_ Github action or workflow must adhere to policy unless explicitly prohibited in comment before the action or workflow definition.
-
-# Release workflow
+# Example Workflow
 
 ```yml
 name: Release
@@ -15,6 +13,7 @@ on:
         branches:
             - main
 
+# If project publishes to NPM
 permissions:
     id-token: write # Required for OIDC
     contents: read
@@ -26,11 +25,11 @@ jobs:
         name: Release
         runs-on: ubuntu-latest
         env:
-            TURBO_CACHE_DIR: .turbo
+            TURBO_CACHE_DIR: .turbo # if project uses Turbo
 
+        # If project publishes to NPM
         # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
         if: github.repository == 'kirill-konshin/utils'
-
         permissions:
             id-token: write # Required for OIDC trusted publishing
             contents: write
@@ -43,7 +42,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v6
               with:
-                  node-version: 24
+                  node-version: 26
                   registry-url: 'https://registry.npmjs.org'
                   cache: yarn
                   cache-dependency-path: yarn.lock

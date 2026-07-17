@@ -1,5 +1,8 @@
 # TypeScript
 
+ALL projects must use TypeScript.
+ALL configs should use TypeScript if possible via `defineConfig` or at least import TS type for configuration.
+
 ## Recommended Compiler Options
 
 Key TypeScript settings for modern projects:

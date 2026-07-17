@@ -1,9 +1,9 @@
 ---
 type: always_apply # or agent_requested
-description: React patterns # Required for agent_requested
+description: Set of rules for projects which use React # Required for agent_requested
 ---
 
-_EVERY_ React component must adhere to policy unless explicitly prohibited in comment before the component definition.
+**ALL** React component must adhere to policy unless explicitly prohibited in comment before the component definition.
 
 ## Extracting props from other library components
 
@@ -72,6 +72,30 @@ import { create, Validation } from './form';
 ```
 
 ## Props Patterns
+
+### Props Spreading
+
+Collect remaining props with `...props` and spread them:
+
+```tsx
+export const Cmp: FC<CmpProps> = memo(function Cmp({ foo, className = '', ...props }) {
+    return (
+        <div {...props} className={`base-class ${className}`}>
+            {foo}
+        </div>
+    );
+});
+```
+
+### Object Merging
+
+Use spread for merging with defaults:
+
+```tsx
+const containerDefaultProps = SOME_GLOBAL_SETTING ? { style: { maxWidth: '85%' } } : {};
+
+<Container {...{ ...containerDefaultProps, ...containerProps }} show={show} />;
+```
 
 ### Children Prop
 
@@ -224,13 +248,14 @@ export const WithArgs: Story = {
 
 ## AbortController Pattern
 
-Use AbortController for cleanup in effects:
+Use AbortController for cleanup of listeners:
 
 ```tsx
 useEffect(() => {
     const ctrl = new AbortController();
 
-    window.addEventListener('keydown', handler, { signal: ctrl.signal, capture: true });
+    window.addEventListener('keydown', handler, { signal: ctrl.signal, capture: true }); // capture is for example purpose only here
+    window.addEventListener('keyup', handler, { signal: ctrl.signal });
 
     return () => {
         ctrl.abort();

@@ -1,9 +1,7 @@
 ---
 type: always_apply # or agent_requested
-description: Electron patterns # Required for agent_requested
+description: Set of rules for projects which use Expo # Required for agent_requested
 ---
-
-_EVERY_ Electron app must adhere to policy unless explicitly prohibited in comment before the action or workflow definition.
 
 # CI Builds
 

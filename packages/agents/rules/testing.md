@@ -1,12 +1,18 @@
-# Testing
+---
+type: always_apply # or agent_requested
+description: Set of rules for projects with tests # Required for agent_requested
+---
 
-Testing patterns and conventions using Vitest.
+- If project use `vite` use `vitest`, otherwise `jest`
+- If project needs browser-based testing use `playwright`
 
 ## Test File Structure
 
 ### File Naming
 
-- Test files: `*.test.ts` or `*.test.tsx`
+- Test files: `*.test|spec.ts|tsx` must be place adjacent to the file they test
+- Test files: `*.test.ts` for unit tests
+- Test files: `*.spec.ts` for e2e or integration tests (require running DEV server)
 - Fixture files: `*.fixture.ts` (for test helpers, mocks, worker fixtures)
 
 ### Import Order
@@ -54,7 +60,7 @@ describe(
 
 ### vi.fn() for Mocks
 
-Use `vi.fn()` for creating mock functions:
+Use `vi.fn()` or `jest.fn()` for creating mock functions:
 
 ```ts
 const random = vi.fn(() => Math.random());
@@ -138,12 +144,4 @@ Use `test.skip` for temporarily disabled tests:
 test.skip('feature not yet implemented', async () => {
     // test implementation
 });
-```
-
-## Worker Testing
-
-### Web Worker Polyfill
-
-```ts
-import '@vitest/web-worker';
 ```

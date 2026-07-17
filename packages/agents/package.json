@@ -1,7 +1,7 @@
 {
   "name": "@kirill.konshin/agents",
   "description": "AI Agent rules and configuration for monorepos",
-  "version": "0.0.4",
+  "version": "0.0.0",
   "type": "module",
   "skipGenerate": true,
   "bin": "./bin/index.js",
@@ -26,5 +26,10 @@
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git",
     "directory": "packages/agents"
+  },
+  "nx": {
+    "tags": [
+      "platform:tooling"
+    ]
   }
 }

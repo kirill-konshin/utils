@@ -4,6 +4,8 @@ General coding style and conventions.
 
 ## File Organization
 
+One-time use functions should stay in the same file they are used. If function is really large, then it can be extracted.
+
 ### File Naming
 
 - Use `camelCase` for file names: `createWindow.ts`, `useFetch.ts`, `genericControl.tsx`
@@ -28,30 +30,7 @@ console.log('[APP] Starting Electron', {
 console.log('[APP] Static Server', fileUrl, '->', filePath);
 ```
 
-## Spread Patterns
-
-### Props Spreading
-
-Collect remaining props with `...props` and spread them:
-
-```tsx
-export const Cmp: FC<CmpProps> = memo(function Cmp({ foo, className = '', ...props }) {
-    return (
-        <div {...props} className={`base-class ${className}`}>
-            {foo}
-        </div>
-    );
-});
-```
-
-### Object Merging
-
-Use spread for merging with defaults:
-
-```ts
-const containerDefaultProps = offcanvas ? { style: { maxWidth: '85%' } } : {};
-<Container {...{ ...containerDefaultProps, ...containerProps }} show={show} />
-```
+If in function consider adding arguments to log.
 
 ### Short-circuit Evaluation
 
@@ -194,7 +173,9 @@ try {
 
 ### Barrel Exports
 
-Use `index.ts` files for re-exporting:
+Never use `index.ts` files for re-exporting unless specifically instructed or working with a published library with entrypoint.
+
+Example:
 
 ```ts
 export * from './cache';

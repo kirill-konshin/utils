@@ -1,6 +1,6 @@
 ---
 type: always_apply # or agent_requested
-description: Next.js patterns # Required for agent_requested
+description: Set of rules for projects which use Next.js # Required for agent_requested
 ---
 
 _EVERY_ Next.js page, layout, route handler or component must adhere to policy unless explicitly prohibited in comment before the component definition.
@@ -33,7 +33,7 @@ export default function Layout({ children }: LayoutProps<'/dashboard'>) {
 }
 ```
 
-## Check auth in layouts
+## Check auth in layouts pattern
 
 Prefer `/app/(auth)/layout.tsx` as root layout for auth protection. This won't create path segment, but will protect all routes under it.
 
@@ -81,3 +81,7 @@ import { FC, memo, useEffect } from 'react';
 ```
 
 https://nextjs.org/docs/app/getting-started/layouts-and-pages#creating-a-dynamic-segment
+
+# Version
+
+`package.json` MUST ALWAYS have exact version of Next.js, NEVER `*`, otherwise Vercel will fall back to legacy edge runtime.

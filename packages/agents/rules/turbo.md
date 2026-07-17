@@ -1,6 +1,8 @@
 # Turbo
 
-Packages are built using [Turbo](https://turbo.build/repo). Turbo is used to manage dependencies and run tasks.
+Existing projects may use what they use.
+
+New projects that are shaped as Monorepo should use Turbo.
 
 ## The `dependsOn: ["^wait"]` Pattern
 
