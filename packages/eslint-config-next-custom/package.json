@@ -6,22 +6,59 @@
   "skipGenerate": true,
   "main": "index.js",
   "module": "index.js",
+  "scripts": {
+    "postinstall": "node install.js"
+  },
   "dependencies": {
     "@eslint/compat": "^2.0.3",
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^16.2.1",
+    "@nx/eslint-plugin": "^23.1.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
+    "@vitest/eslint-plugin": "^1.6.23",
     "eslint-config-next": "^16.2.1",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-jest": "^29.15.4",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "globals": "^16.4.0"
+    "eslint-plugin-storybook": "^10.5.2",
+    "eslint-plugin-turbo": "^2.10.5",
+    "eslint-plugin-unicorn": "^72.0.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^16.4.0",
+    "jsonc-eslint-parser": "^2.4.2"
   },
   "peerDependencies": {
     "eslint": "^10",
     "husky": "^9",
+    "jest": "*",
     "lint-staged": "^16",
-    "next": "^16"
+    "next": "^16",
+    "storybook": "^10.5.2",
+    "vite": "*",
+    "vitest": "*"
+  },
+  "peerDependenciesMeta": {
+    "jest": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "storybook": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "access": "public"

@@ -1,9 +1,11 @@
 .DS_Store
 *.tsbuildinfo
 .tscache
+.turbo
 .nx
 .vscode
 build
+coverage
 code-coverage-results.md
 dist
 dist-*

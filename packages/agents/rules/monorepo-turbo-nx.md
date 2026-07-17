@@ -13,6 +13,7 @@ paths:
     - Tasks to launch inner tasks (main `build` that launches `build` in each sub-package)
 - Inner `package.json` MUST only define atomic orchestrator-agnostic tasks
 - Prefer NX for new projects
+- If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script
 
 # The `dependsOn: ["^wait"]` Pattern
 

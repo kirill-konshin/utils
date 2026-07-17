@@ -3,9 +3,32 @@ type: always_apply
 description: IDEA / WebStorm patterns
 paths:
     - '**/.idea/**/*.xml'
+    - '**/.idea/**/*.iml'
 ---
 
 **ALL** IDEA / WebStorm projects must adhere to policy unless explicitly prohibited.
+
+Preserve already existing settings, add what's safe, ask user how to merge if there are conflicts.
+
+# Configure `.idea/%projectName%.iml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="WEB_MODULE" version="4">
+    <component name="NewModuleRootManager">
+        <content url="file://$MODULE_DIR$">
+            <excludeFolder url="file://$MODULE_DIR$/.yarn" />
+            <excludePattern pattern=".turbo" />
+            <excludePattern pattern=".nx" />
+            <excludePattern pattern="build" />
+            <excludePattern pattern="coverage" />
+            <excludePattern pattern="dist" />
+        </content>
+        <orderEntry type="inheritedJdk" />
+        <orderEntry type="sourceFolder" forTests="false" />
+    </component>
+</module>
+```
 
 # Configure `.idea/jsLibraryMappings.xml`
 

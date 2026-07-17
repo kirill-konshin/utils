@@ -21,12 +21,12 @@ node-linker=hoisted
 
 ```js
 import { defineConfig } from 'eslint/config';
-import customConfig, { nextPlugin, includeIgnoreFile } from '@kirill.konshin/eslint-config-next-custom';
+import customConfig, { nextPlugin, includeIgnoreFile, tsExts } from '@kirill.konshin/eslint-config-next-custom';
 
 export default defineConfig([
     ...customConfig,
     {
-        files: ['**/*.{js,jsx,ts,tsx}'],
+        files: [`**/*.${tsExts}`],
         plugins: {
             next: nextPlugin,
         },
@@ -72,7 +72,7 @@ export default {
     scripts: {
         eslint: 'eslint --fix --concurrency=auto --cache --cache-location node_modules/.cache/eslint', // to see files use --debug
         prettier: 'prettier --write --log-level=warn --ignore-path .gitignore --ignore-path .prettierignore', // to see files use --log-level=log
-        'lint:all': 'yarn eslint . && yarn prettier .',
+        lint: 'yarn eslint . && yarn prettier .',
         'lint:staged': 'lint-staged',
     },
 }
@@ -119,3 +119,9 @@ yarn lint:staged
     - [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized
 - ESLint 10
     - [ ] https://github.com/vercel/next.js/issues/89764 TypeError: Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function
+    - [x] `import/no-default-export` (eslint-plugin-import@2.32.0) crashes every lint run under ESLint 10's
+          flat config - its `sourceType()` helper reads `context.parserOptions`, which is `undefined` (not
+          `{}`) there. Worked around by registering `eslint-plugin-import-x` (a drop-in replacement) under
+          its own `import-x` key - see the "eslint-plugin-import-x" block in `index.js` - since ESLint 10
+          hard-errors ("Cannot redefine plugin") if you try to reuse the `import` key eslint-config-next
+          already registers. The enforced rule is therefore `import-x/no-default-export`, not `import/*`.

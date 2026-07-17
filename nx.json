@@ -2,12 +2,21 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "{workspaceRoot}/tsconfig.json"]
+    "default": ["{projectRoot}/**/*", "{workspaceRoot}/tsconfig.json"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.test.*",
+      "!{projectRoot}/**/*.spec.*",
+      "!{projectRoot}/**/*.stories.*",
+      "!{projectRoot}/**/*.fixture.*",
+      "!{projectRoot}/.storybook/**/*",
+      "!{projectRoot}/demo/**/*"
+    ]
   },
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["default", "^default"],
+      "inputs": ["production", "^production"],
       "outputs": ["{projectRoot}/dist", "{projectRoot}/src/**/*/index.ts", "{projectRoot}/package.json"],
       "cache": true
     },

@@ -41,9 +41,10 @@ npx agents update
 
 ## How It Works
 
-The CLI does two things in your project root:
+The CLI does three things in your project root:
 
 - Symlinks every rule file from the package's `rules` directory into `.claude/rules/`, where Claude Code auto-discovers and loads them without any further configuration.
+- Symlinks every skill file from the package's `skills` directory into `.claude/skills/<name>/SKILL.md` and `.codex/skills/<name>/SKILL.md`, so both Claude Code and Codex CLI can discover and run them (e.g. `verify-agent-rules`, which audits the repo against the rules above).
 - Generates an `AGENTS.md` file referencing the same rules for other AI coding assistants (Codex, Cursor, GitHub Copilot, etc.), and symlinks `CLAUDE.md` to it so both point at the same content.
 
 ### Generated File
@@ -56,7 +57,7 @@ The generated `AGENTS.md` includes:
 
 ### Safety Checks
 
-`init`/`update` refuse to run if `.claude/rules` contains anything that isn't a symlink, or if `CLAUDE.md` exists and isn't a symlink - this avoids silently overwriting files you created by hand.
+`init`/`update` refuse to run if `.claude/rules` contains anything that isn't a symlink, if any of the skill target directories (e.g. `.claude/skills/verify-agent-rules`) contain anything that isn't a symlink, or if `CLAUDE.md` exists and isn't a symlink - this avoids silently overwriting files you created by hand.
 
 ### Skipping Existing Files
 

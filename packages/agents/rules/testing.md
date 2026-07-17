@@ -11,14 +11,12 @@ paths:
 
 - If project use `vite` use `vitest`, otherwise `jest`
 - If project needs browser-based testing use `playwright`
-- Tests must be placed in a file adjacent to the file they test, not separate folder
 - Naming
     - `*.test.ts` for unit tests
     - `*.spec.ts` for e2e or integration tests (require running DEV server)
     - `*.fixture.ts` for test helpers, mocks, worker fixtures
 - Organization
     - Use `describe(...)` to group related tests, nesting allowed and preferred
-    - Use `test(...)` for individual test cases
 - Set timeouts on describe blocks or individual tests for slow tests to make them visible
 - Prefer to use `vi.fn()` or `jest.fn()` to create mock functions
 - Mock entire test-specific class implementations via `class Testable extend ClassToBeTested {}`

@@ -8,7 +8,7 @@ paths:
 - Story files: `*.stories.tsx`
 
 ```tsx
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ComponentName } from './componentName';
 
 const meta: Meta<typeof ComponentName> = {

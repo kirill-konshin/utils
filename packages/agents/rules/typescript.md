@@ -2,18 +2,20 @@
 type: always_apply
 description: Set of rules for projects with tests
 paths:
+    - '**/*.js'
+    - '**/*.mjs'
+    - '**/*.cjs'
     - '**/*.ts'
     - '**/*.tsx'
 ---
 
-- ALL projects must use TypeScript.
+- ALL projects must use TypeScript by default
+    - JavaScript is acceptable for service scripts, but discouraged, use `ts-node`
 - ALL configs should use TypeScript if possible via `defineConfig` or at least import TS type for configuration.
 - Prefer short-circuit evaluation and early exit
 - Use structured logging with context, consider adding function arguments to log:
     - `console.log('[MODULE] FuncionName did something', { isDev, appPath, useStaticInDev });`
     - `console.log('[APP] Static Server', fileUrl, '->', filePath);`
-- Promises & Async
-    - Avoid `.then` prefer `async/await`
 - Prefer Optional Chaining `onClose?.();` or `options?.signal?.addEventListener('abort', ...)` instead `if`s or ternaries
 - Prefer Nullish Coalescing `id ?? 'default'` instead of ternaries like `!!id ? id : 'default`
 
@@ -63,20 +65,23 @@ paths:
 - Never use `index.ts` files for re-exporting unless specifically instructed or working with a published library with entrypoint
 - Always use named exports `export function Foo()`
 - Prefer not to use default exports if not necessary (like Storybook `meta`)
+- Prefer path aliases: `@/src/foo/bar/file`
+- Import siblings directly `./file.ts`
+- Do not import more than one level up: `../file` OK, but not preferred
+    - NOT OK: more than one level `../../file` or stepping aside from parent dir `../dir/file`
 
 # Type Annotation Patterns
 
-- Prefer `type` over `interface` for props and simple types
-- Use `interface` for interface augmentation or `class ... implements ...`
+- Use `interface` only for declaration merging/augmentation (e.g. extending a third-party global
+  interface) - a class can `implements` a `type` alias just as well, so that's not a reason to reach
+  for `interface`
+    - This is enforced by lint (`@typescript-eslint/consistent-type-definitions`), which can't special-case
+      augmentation - when it's genuinely needed, add
+      `// eslint-disable-next-line @typescript-eslint/consistent-type-definitions` above the `interface`
 - Prefer to inline types into function signature or variable declarations
 - Introduce types when reused or complex. Avoid creating a type for every single thing
 - Try to reuse types that exist in project (e.g. redux state, zod schema, component props, final function signature can have one shared type + derivatives like `Omit<>`, `Partial<>` etc.)
-- Use `node:` prefix for Node.js built-in modules `import path from 'node:path';`
-- Use `import type { X } from 'x';` when importing only types
-- Use `import { X, type Y } from 'x';` when importing mixed entities
 - Use the `cause` option for error context `throw new Error('Unknown responder', { cause: ctx });`
 - Use `//TODO` for later items and `//FIXME` for actionable more urgent items, no space after `//`
-- Prefer `/** */` instead of multiple lines with `//`
-- Use `@ts-expect-error` with explanation when suppressing errors `// @ts-expect-error file is always defined`
 - When types are critical add type assertions, if super critical - runtime type assertions
 - Prefer `as const` and `readonly` for immutable constants and objects
