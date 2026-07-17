@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import preserveDirectives from 'rollup-preserve-directives';
@@ -40,7 +40,7 @@ export default defineConfig({
     },
     plugins: [
         react(),
-        preserveDirectives() as Plugin, // https://github.com/vitejs/vite/discussions/15721#discussioncomment-10572828
+        preserveDirectives(), // https://github.com/vitejs/vite/discussions/15721#discussioncomment-10572828
         dts(), //TODO Check https://github.com/alloc/vite-dts
         {
             name: 'Generate Index & Exports',

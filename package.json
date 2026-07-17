@@ -40,8 +40,8 @@
     "prettier": "^3.6.2",
     "react": "^19.1.1",
     "typescript": "^5.9.2",
-    "vite": "^7.0.6",
-    "vitest": "^3.2.4",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10",
     "wait-on": "^9.0.10"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
