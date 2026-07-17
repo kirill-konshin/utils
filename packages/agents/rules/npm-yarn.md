@@ -39,8 +39,8 @@ All other `package.json`:
 ```json5
 {
     devDependencies: {
-        next: '16.0.0', // exact version, otherwise Vercel will fall into legacy mode instead of serverless
-        typescript: '*', // this should be * so that version is consistent and it's dead obvious
+        next: '16.0.0', // except next, see nextjs.md
+        typescript: '*', // vividly express version does not matter
     },
 }
 ```

@@ -12,7 +12,7 @@ _EVERY_ Next.js page, layout, route handler or component must adhere to policy u
 - Always use App Router
 - Always use `next/navigation` instead of `next/router`
 - Use `iron-session` for authentication
-- `package.json` MUST ALWAYS have exact version of Next.js, NEVER `*`, otherwise Vercel will fall into legacy mode instead of serverless
+- `package.json` MUST ALWAYS have version of Next.js, NEVER `*`, otherwise Vercel will fall into legacy mode instead of serverless
 
 # Layouts
 
