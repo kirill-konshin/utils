@@ -1,0 +1,67 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "{workspaceRoot}/tsconfig.json"]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/src/**/*/index.ts", "{projectRoot}/package.json"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"],
+      "outputs": ["{projectRoot}/coverage"],
+      "cache": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "wait": {
+      "cache": false
+    },
+    "wait-localhost": {
+      "cache": false
+    },
+    "start": {
+      "continuous": true,
+      "dependsOn": ["^start", "^wait"],
+      "cache": false
+    },
+    "serve": {
+      "continuous": true,
+      "cache": false
+    }
+  },
+  "release": {
+    "projects": ["packages/*", "!packages/utils-private"],
+    "projectsRelationship": "independent",
+    "releaseTag": {
+      "pattern": "{projectName}@{version}"
+    },
+    "version": {
+      "conventionalCommits": true,
+      "fallbackCurrentVersionResolver": "disk",
+      "preVersionCommand": "yarn build:packages",
+      "versionActionsOptions": {
+        "skipLockFileUpdate": true
+      }
+    },
+    "changelog": {
+      "workspaceChangelog": false,
+      "projectChangelogs": {
+        "createRelease": "github",
+        "file": false
+      }
+    },
+    "git": {
+      "commit": false,
+      "tag": true,
+      "push": true
+    }
+  },
+  "analytics": false
+}

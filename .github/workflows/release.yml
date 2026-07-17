@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  # Coordinated / forced release: bumps ALL packages with the given specifier
+  workflow_dispatch:
+    inputs:
+      specifier:
+        description: 'Version specifier for all packages: patch | minor | major | premajor | exact version (e.g. 1.0.0)'
+        required: true
+        type: string
 
 permissions:
   id-token: write # Required for OIDC
@@ -15,20 +22,19 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    env:
-      TURBO_CACHE_DIR: node_modules/.cache/turbo
 
-    # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
     if: github.repository == 'kirill-konshin/utils'
 
     permissions:
       id-token: write # Required for OIDC trusted publishing
-      contents: write
-      pull-requests: write
+      contents: write # Required to push tags and create GitHub Releases
 
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Nx Release needs full history + tags to resolve current versions and conventional commits
+          fetch-tags: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -44,18 +50,20 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
-      #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
-      - name: Cache turbo build setup
+      - name: Validate commit messages
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: yarn commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
+
+      - name: Cache Nx
         uses: actions/cache@v4
         with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          path: .nx/cache
+          key: ${{ runner.os }}-nx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-turbo-
+            ${{ runner.os }}-nx-
 
       - name: Lint
-        run: yarn lint:all
+        run: yarn lint
 
       - name: Test
         run: yarn test
@@ -69,25 +77,23 @@ jobs:
           format: 'markdown'
           output: 'both'
 
-      - name: Add Coverage PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
-        with:
-          recreate: true
-          path: code-coverage-results.md
-
       - name: Write to Job Summary
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
 
       - name: Build
-        run: yarn build
+        run: yarn build:packages
 
-      # https://github.com/changesets/action?tab=readme-ov-file#with-publishing
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: yarn release
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # Push event: version determined per package from conventional commits since its last tag.
+      # Manual dispatch: the provided specifier is applied to all packages (coordinated release).
+      # Versions are written to package.json only in the CI working tree (never committed) —
+      # source of truth for current versions is git tags.
+      - name: Release
+        run: yarn release ${{ inputs.specifier }} --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

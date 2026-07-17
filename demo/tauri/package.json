@@ -12,8 +12,8 @@
   "description": "Tauri",
   "scripts": {
     "clean": "rm -rf ./src-tauri/target/debug/bundle",
-    "start:demo": "tauri dev",
-    "build:demo": "tauri build --debug",
+    "start": "tauri dev",
+    "build": "tauri build --debug",
     "update": "cd src-tauri && cargo update"
   },
   "devDependencies": {
@@ -21,5 +21,17 @@
     "@kirill.konshin/utils": "*",
     "@tauri-apps/cli": "^2.7.1",
     "dotenv-cli": "^10.0.0"
+  },
+  "nx": {
+    "tags": [
+      "type:demo"
+    ],
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/src-tauri/target/debug/bundle"
+        ]
+      }
+    }
   }
 }

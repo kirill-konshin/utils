@@ -1,14 +1,12 @@
 {
   "name": "@kirill.konshin/react-native",
   "description": "Utilities",
-  "version": "0.0.2",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
     "build": "vite build",
-    "build:index": "ctix build",
-    "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
@@ -60,5 +58,10 @@
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git",
     "directory": "packages/react-native"
+  },
+  "nx": {
+    "tags": [
+      "platform:react-native"
+    ]
   }
 }

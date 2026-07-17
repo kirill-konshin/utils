@@ -1,7 +1,7 @@
 {
   "name": "@kirill.konshin/eslint-config-next-custom",
   "description": "",
-  "version": "0.5.2",
+  "version": "0.0.0",
   "type": "module",
   "skipGenerate": true,
   "main": "index.js",
@@ -32,5 +32,10 @@
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git",
     "directory": "packages/eslint-config-next-custom"
+  },
+  "nx": {
+    "tags": [
+      "platform:tooling"
+    ]
   }
 }

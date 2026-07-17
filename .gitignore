@@ -1,7 +1,7 @@
 .DS_Store
 *.tsbuildinfo
 .tscache
-.turbo
+.nx
 .vscode
 build
 code-coverage-results.md

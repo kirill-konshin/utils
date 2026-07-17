@@ -10,13 +10,13 @@
     "url": "https://konshin.org"
   },
   "scripts": {
-    "start:demo": "dotenv expo start",
+    "start": "dotenv expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "ios:prebuild": "expo prebuild -p ios",
     "ios:build": "expo run:ios --configuration Release",
     "ios:xcode": "xed ios",
-    "build:demo": "eas build --platform all",
+    "build": "eas build --platform all",
     "eas:list": "eas build:list",
     "eas:submit": "eas submit --platform all",
     "eas:dev": "eas submit --platform all --profile development",
@@ -51,5 +51,17 @@
   },
   "installConfig": {
     "hoistingLimits": "workspaces"
+  },
+  "nx": {
+    "tags": [
+      "type:demo"
+    ],
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/dist"
+        ]
+      }
+    }
   }
 }

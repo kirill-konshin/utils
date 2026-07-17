@@ -11,8 +11,8 @@
   },
   "scripts": {
     "clean": "rm -rf ./dist",
-    "start:demo": "NODE_ENV=development electron .",
-    "build:demo": "CSC_LINK=cert/cert.p12 electron-builder",
+    "start": "NODE_ENV=development electron .",
+    "build": "CSC_LINK=cert/cert.p12 electron-builder",
     "images": "node images.mjs",
     "deploy": "open ./dist/Electron Online-0.0.0-arm64.dmg",
     "open": "./dist/mac-arm64/Electron Online.app/Contents/MacOS/Electron Online"
@@ -23,5 +23,40 @@
   "devDependencies": {
     "electron": "37.2.5",
     "electron-builder": "26.0.12"
+  },
+  "nx": {
+    "tags": [
+      "type:demo"
+    ],
+    "targets": {
+      "build": {
+        "inputs": [
+          "default",
+          "^default",
+          {
+            "env": "CSC_KEY_PASSWORD"
+          },
+          {
+            "env": "CSC_IDENTITY_AUTO_DISCOVERY"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/dist"
+        ]
+      },
+      "start": {
+        "dependsOn": [
+          "^start",
+          "^wait",
+          "^wait-localhost"
+        ]
+      },
+      "deploy": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false
+      }
+    }
   }
 }

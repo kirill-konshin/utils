@@ -2,15 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { glob } from 'glob';
 
-const filesToCopy = [
-    '.ctirc',
-    '.gitignore',
-    'tsconfig.json',
-    'turbo.json',
-    'vite.config.ts',
-    '.storybook/main.ts',
-    '.storybook/preview.ts',
-];
+const filesToCopy = ['.gitignore', 'tsconfig.json', 'vite.config.ts', '.storybook/main.ts', '.storybook/preview.ts'];
 
 const packagesPath = path.resolve(process.cwd(), '..');
 

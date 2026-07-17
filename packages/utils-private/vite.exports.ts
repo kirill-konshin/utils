@@ -1,8 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as process from 'node:process';
-import { globSync } from 'glob';
 import { execSync } from 'node:child_process';
+import { globSync } from 'glob';
+import { createRequire } from 'node:module';
+import { checkPackage, createPackageFromTarballData } from '@arethetypeswrong/core';
+import { groupProblemsByKind } from '@arethetypeswrong/core/utils';
 
 export const pkgPath = path.join(process.cwd(), 'package.json');
 
@@ -89,23 +92,31 @@ export async function fixExports() {
     // pkg.scripts.clean = 'rm -rf dist .tscache tsconfig.tsbuildinfo';
     // pkg.scripts.build = 'vite build';
     // pkg.scripts.start = 'yarn build --watch';
-    pkg.scripts.wait = `wait-on ${mainExport.import.import}`;
+    pkg.scripts.wait = `wait-on ${mainExport.import.import}`; // artifact presence detector, see "wait" target in nx.json
 
     // Ensure peer deps are correct & meta is set
+    // Empty peerDependenciesMeta is inert and yarn strips it on manifest rewrites,
+    // so it must only be present when there are peer dependencies
 
-    pkg.peerDependenciesMeta = {};
+    const peerDependencies = Object.entries(pkg.peerDependencies || {});
 
-    for (const [key, _] of Object.entries(pkg.peerDependencies || {})) {
-        const root = rootPkg.devDependencies[key]; // lifted to root
-        const srcPkg = root ? rootPkg : pkg;
+    if (peerDependencies.length === 0) {
+        delete pkg.peerDependenciesMeta;
+    } else {
+        pkg.peerDependenciesMeta = {};
 
-        if (!srcPkg.devDependencies?.[key]) throw new Error(`Key ${key} not found in devDependencies`);
+        for (const [key, _] of peerDependencies) {
+            const root = rootPkg.devDependencies[key]; // lifted to root
+            const srcPkg = root ? rootPkg : pkg;
 
-        pkg.peerDependenciesMeta[key] = { optional: true };
+            if (!srcPkg.devDependencies?.[key]) throw new Error(`Key ${key} not found in devDependencies`);
 
-        const version = srcPkg.devDependencies[key].split('.');
+            pkg.peerDependenciesMeta[key] = { optional: true };
 
-        pkg.peerDependencies[key] = version[0] === '^0' ? `${version[0]}.${version[1]}` : version[0];
+            const version = srcPkg.devDependencies[key].split('.');
+
+            pkg.peerDependencies[key] = version[0] === '^0' ? `${version[0]}.${version[1]}` : version[0];
+        }
     }
 
     // Write
@@ -117,11 +128,76 @@ export async function fixExports() {
     // console.log(pkg.exports);
 }
 
+/**
+ * ┌───────────────┬─────────────────────────────────────────────┐
+ * │    version    │                   result                    │
+ * ├───────────────┼─────────────────────────────────────────────┤
+ * │ 2.6.4 – 2.7.0 │ correct (one line per file)                 │
+ * ├───────────────┼─────────────────────────────────────────────┤
+ * │ 2.7.1 – 2.7.3 │ duplicated cache line 3x, but no data loss  │
+ * ├───────────────┼─────────────────────────────────────────────┤
+ * │ 2.7.4         │ crashes (ENOENT)                            │
+ * ├───────────────┼─────────────────────────────────────────────┤
+ * │ 2.7.5 – 2.8.1 │ silently drops sibling files (what you hit) │
+ * └───────────────┴─────────────────────────────────────────────┘
+ *
+ * Console output in later versions: ctix.Debugger.it.enable = true
+ */
 export async function generateIndex() {
-    execSync(`yarn build:index`, { stdio: 'inherit' }); // programmatic call
-    //FIXME https://github.com/imjuni/create-ts-index/issues/70
-    // import { TypeScritIndexWriter } from 'create-ts-index';
-    // const tsiw = new TypeScritIndexWriter();
-    // const options = TypeScritIndexWriter.getDefaultOption('./src');
-    // await tsiw.createEntrypoint(option);
+    const ctix = createRequire(import.meta.url)('ctix');
+
+    // ctix's `creating(buildOptions, createOption)` ignores its first argument entirely (it's
+    // unused dead code in ctix's implementation), so only a single, fully-formed `createOption`
+    // matters here - there's nothing to parse/cast via parseConfig().
+    const options = {
+        mode: 'create' as never,
+        project: 'tsconfig.json',
+        include: 'src/**/*.{ts,tsx}',
+        exclude: ['**/*.stories.*', '**/*.test.*', '**/*.fixture.*'],
+        startFrom: 'src',
+        exportFilename: 'index.ts', // required: without it ctix joins dirPath + undefined => EISDIR on the bare dir
+        quote: "'", // rendered verbatim into generated files, must not be left undefined
+        useSemicolon: true,
+        backup: false,
+        overwrite: true,
+        generationStyle: 'default-alias-named-star',
+        skipEmptyDir: false,
+        verbose: true, // unused by ctix.creating() itself, kept for documentation of intent
+    };
+
+    // 2.6.4 has no verbose flag - Spinner/ProgressBar/Reasoner default to disabled and are only
+    // enabled by ctix's own CLI wrapper (buildCommand), which we bypass by calling creating() directly.
+    ctix.ProgressBar.it.enable = true;
+    ctix.Spinner.it.enable = true;
+    ctix.Reasoner.it.enable = true;
+
+    try {
+        await ctix.creating(undefined, options as any);
+    } finally {
+        ctix.ProgressBar.it.stop();
+        ctix.Spinner.it.stop();
+    }
+}
+
+export async function checkTypes() {
+    // https://www.npmjs.com/package/@arethetypeswrong/core
+    const { filename } = JSON.parse(execSync('npm pack --json', { encoding: 'utf-8' }))[0];
+
+    try {
+        const data = new Uint8Array(fs.readFileSync(filename));
+        const analysis = await checkPackage(createPackageFromTarballData(data));
+
+        if (analysis.types && analysis.problems.length > 0) {
+            // TODO Throw instead of warn once existing packages' dts extension issues are fixed
+            for (const [kind, problems] of Object.entries(groupProblemsByKind(analysis.problems))) {
+                console.warn(`${kind} (${problems.length}):`, problems);
+            }
+
+            console.warn(`@arethetypeswrong found ${analysis.problems.length} problem(s) in ${pkg.name}`);
+        } else {
+            console.log('Types check passed');
+        }
+    } finally {
+        fs.rmSync(filename);
+    }
 }

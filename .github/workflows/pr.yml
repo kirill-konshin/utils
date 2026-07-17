@@ -17,16 +17,23 @@ jobs:
     name: PR Check
     runs-on: ubuntu-latest
     env:
-      TURBO_CACHE_DIR: .turbo
+      # Base for `nx affected` — full history is fetched below, so origin/main is always present
+      NX_BASE: origin/main
+      NX_HEAD: HEAD
 
     steps:
+      # PRs are squash-merged with the PR title as the commit message, which Nx Release
+      # then parses as a conventional commit on main — so the title must be valid.
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # https://github.com/changesets/changesets/issues/517#issuecomment-1239303017
-
-      - if: ${{ github.event.pull_request.title != 'Version Packages' }}
-        run: git pull --force --no-tags origin main:main
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -42,15 +49,13 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
-      #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
-      - name: Cache turbo build setup
+      - name: Cache Nx
         uses: actions/cache@v4
         with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          path: .nx/cache
+          key: ${{ runner.os }}-nx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-turbo-
+            ${{ runner.os }}-nx-
 
       #      - name: Cache Next.js
       #        uses: actions/cache@v4
@@ -64,13 +69,15 @@ jobs:
       #            ${{ runner.os }}-next-
 
       - name: Lint
-        run: yarn lint:all
+        run: yarn lint
 
       - name: Test
-        run: yarn test
+        run: yarn test:affected
 
       # https://josh-ops.com/posts/github-code-coverage/
+      # Guarded: with `nx affected` there may be no coverage output at all
       - name: Code Coverage Summary Report
+        if: ${{ hashFiles('packages/*/coverage/cobertura-coverage.xml') != '' }}
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: 'packages/*/coverage/cobertura-coverage.xml'
@@ -80,23 +87,14 @@ jobs:
 
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
+        if: ${{ github.event_name == 'pull_request' && hashFiles('code-coverage-results.md') != '' }}
         with:
           recreate: true
           path: code-coverage-results.md
 
       - name: Write to Job Summary
+        if: ${{ hashFiles('code-coverage-results.md') != '' }}
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
 
       - name: Build
-        run: yarn build
-
-      # https://github.com/changesets/action?tab=readme-ov-file#without-publishing
-      #- name: Create Release Pull Request
-      #  uses: changesets/action@v1
-      #  env:
-      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      #- name: Check Changesets
-      #  if: ${{ github.event.pull_request.title != 'Version Packages' }}
-      #  run: yarn changeset status --since=main
+        run: yarn build:affected

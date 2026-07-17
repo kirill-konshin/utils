@@ -2,7 +2,7 @@ import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import preserveDirectives from 'rollup-preserve-directives';
-import { fixExports, formats, entry, external, distDir, generateIndex } from './vite.exports';
+import { fixExports, formats, entry, external, distDir, generateIndex, checkTypes } from './vite.exports';
 
 // https://rbardini.com/how-to-build-ts-library-with-vite/
 // https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
@@ -45,10 +45,13 @@ export default defineConfig({
         {
             name: 'Generate Index & Exports',
             async buildStart() {
-                if (!isWatch && !isStorybook) await generateIndex();
+                if (isWatch || isStorybook) return;
+                await generateIndex();
             },
             async closeBundle() {
-                if (!isWatch && !isStorybook) await fixExports(); //FIXME + CHECK TYPES
+                if (isWatch || isStorybook) return;
+                await fixExports();
+                await checkTypes();
             },
         },
     ],
