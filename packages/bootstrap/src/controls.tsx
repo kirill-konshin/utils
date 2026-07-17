@@ -1,10 +1,10 @@
-import React, { HTMLInputTypeAttribute, memo, FC } from 'react';
+import React, { type HTMLInputTypeAttribute, memo, type FC } from 'react';
 
 const lcFirst = (str: string) => str[0].toLowerCase() + str.substring(1, str.length);
 
 const toProperty = (str: string) => lcFirst(str).split(' ').join('');
 
-export interface ControlProps {
+export type ControlProps = {
     value?: any;
     setValue?: (v: any) => void;
     defaultValue?: any;
@@ -20,7 +20,7 @@ export interface ControlProps {
         className?: string;
     } & any;
     hideValue?: boolean;
-}
+};
 
 export type LabelProps = Pick<ControlProps, 'name' | 'value' | 'defaultValue'> & { reset: () => void };
 
@@ -79,11 +79,11 @@ export const Control: FC<ControlProps> = memo(function Control({
     );
 });
 
-export interface RangeProps extends ControlProps {
+export type RangeProps = {
     min: number;
     max: number;
     step?: number;
-}
+} & ControlProps;
 
 export const Range: FC<RangeProps> = memo(function Range({ min, max, step = 0.1, ...props }) {
     return (

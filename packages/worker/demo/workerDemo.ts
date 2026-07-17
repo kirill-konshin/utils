@@ -9,6 +9,7 @@ class Responders extends RespondersBase<Responders> {
         ) => {
             // send within same message
             encodeContext.send({ progress: 0 }); // ✅ Valid
+            // @ts-expect-error junk
             encodeContext.send({ junk: 'xxx' }); // ❌ Bad & should be red
 
             // listen same message
@@ -17,13 +18,18 @@ class Responders extends RespondersBase<Responders> {
             });
 
             // send same message as received
+
+            // @ts-expect-error junk
             encodeContext.send({ junk: 'xxx' }); // ❌ Bad & should be red
             encodeContext.send({ progress: 0.5 }); //  ✅ Valid
 
             // send or listen different message
             encodeContext.withMessage('decode').listen(() => {}); // ✅ Valid
+            // @ts-expect-error junk
             encodeContext.withMessage('decode').send({ file: null }); // ✅ Valid
+            // @ts-expect-error junk
             encodeContext.withMessage('decode').send({ junk: 'xxx' }); // ❌ Bad & should be red
+            // @ts-expect-error junk
             encodeContext.withMessage('junk'); // ❌ Bad & should be red
 
             return { bitmap: await createImageBitmap(file), progress: 1.0 }; // should have all possible combinations for strong typing
@@ -49,12 +55,14 @@ mainDialog
     .fetch(
         {
             file: new File([], 'test'), // ✅ Valid
+            // @ts-expect-error junk
             junk: 'xxx', // ❌ Bad & should be red
         },
         (encodeContext) => {
             // Listen same message, partial data update
             encodeContext.listen((data) => {
                 console.log(data.progress); // ✅ Valid
+                // @ts-expect-error junk
                 console.log(data.junk); // ❌ Bad & should be red
             });
 
@@ -69,5 +77,6 @@ mainDialog
     )
     .then((result) => {
         console.log(result.bitmap); // ✅ Valid
+        // @ts-expect-error junk
         console.log(result.junk); // ❌ Bad & should be red
     });

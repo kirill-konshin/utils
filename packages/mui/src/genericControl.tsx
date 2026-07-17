@@ -1,5 +1,5 @@
-import React, { FC, memo } from 'react';
-import { FormControlProps, default as FormControl } from '@mui/material/FormControl';
+import React, { type FC, memo } from 'react';
+import { type FormControlProps, default as FormControl } from '@mui/material/FormControl';
 import { inputClasses } from '@mui/material/Input';
 
 export type GenericControlProps = FormControlProps & { children: any };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FC, memo } from 'react';
+import React, { type FC, memo } from 'react';
 
 export type ResponsiveHelperTWProps = Record<string, never>;
 

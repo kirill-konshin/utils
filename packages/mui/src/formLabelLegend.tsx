@@ -1,5 +1,5 @@
-import React, { FC, memo } from 'react';
-import { default as InputLabel, InputLabelProps } from '@mui/material/InputLabel';
+import React, { type FC, memo } from 'react';
+import { default as InputLabel, type InputLabelProps } from '@mui/material/InputLabel';
 
 export type FormLabelLegendProps = InputLabelProps;
 

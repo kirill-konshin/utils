@@ -1,4 +1,4 @@
-import React, { FC, memo, RefObject } from 'react';
+import React, { type FC, memo, type RefObject } from 'react';
 
 export type FullpageProps = {
     ref: RefObject<HTMLDivElement>;

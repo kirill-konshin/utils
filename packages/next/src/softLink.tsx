@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import React, { memo, ReactNode, useCallback } from 'react';
-import { LinkProps } from 'next/link';
+import React, { memo, type ReactNode, useCallback } from 'react';
+import { type LinkProps } from 'next/link';
 
 export type SoftLinkProps = LinkProps & {
     children?: ReactNode;

@@ -27,7 +27,8 @@
   },
   "peerDependencies": {
     "electron": "^37",
-    "electron-builder": "^26"
+    "electron-builder": "^26",
+    "builder-util-runtime": "^9"
   },
   "publishConfig": {
     "access": "public"
@@ -50,6 +51,9 @@
       "optional": true
     },
     "electron-builder": {
+      "optional": true
+    },
+    "builder-util-runtime": {
       "optional": true
     }
   },

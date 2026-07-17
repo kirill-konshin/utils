@@ -1,5 +1,5 @@
-import React, { FC, memo } from 'react';
-import { Form, FormGroupProps, FormLabelProps, FormTextProps } from 'react-bootstrap';
+import React, { type FC, memo } from 'react';
+import { Form, type FormGroupProps, type FormLabelProps, type FormTextProps } from 'react-bootstrap';
 
 export type FieldGroupProps = FormGroupProps & {
     label?: any;

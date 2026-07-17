@@ -1,4 +1,4 @@
-import React, { FC, memo } from 'react';
+import React, { type FC, memo } from 'react';
 // import { useLoading, useLoadingTimeout } from '../redux/loadingSlice';
 import { Loading } from './loading';
 

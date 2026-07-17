@@ -5,12 +5,12 @@ import {
     createContext,
     useMemo,
     useState,
-    Dispatch,
-    SetStateAction,
+    type Dispatch,
+    type SetStateAction,
     useContext,
-    FC,
+    type FC,
     memo,
-    Context,
+    type Context,
 } from 'react';
 
 const isCtrlOrMeta = (e: KeyboardEvent) => e.metaKey || e.ctrlKey;

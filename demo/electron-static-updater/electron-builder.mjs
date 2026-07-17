@@ -1,4 +1,4 @@
-const { builerConfig } = require('@kirill.konshin/utils/electron-builder');
+import { electronBuilder } from '@kirill.konshin/utils';
 
 // await generateImages({
 //     iconPsdPath: 'icon.psd',
@@ -7,7 +7,7 @@ const { builerConfig } = require('@kirill.konshin/utils/electron-builder');
 //     webPublicPath: 'web',
 // });
 
-module.exports = builerConfig({
+export default electronBuilder.builerConfig({
     config: {
         productName: 'Electron Static Updater',
         appId: 'org.konshin.electron-static-updater',

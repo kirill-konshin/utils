@@ -1,10 +1,10 @@
 import React from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from '@storybook/test';
 
 import { Screen } from './screen';
 import { Loading } from './loading';
-import { Dropdown, DropdownButton, Form, Nav, Navbar } from 'react-bootstrap';
+import { Dropdown, DropdownButton, Form, Navbar } from 'react-bootstrap';
 import { Footer, FooterNavItem } from './footer';
 import { AdaptiveContainer } from './adaptiveContainer';
 

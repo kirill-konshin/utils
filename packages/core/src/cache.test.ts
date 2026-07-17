@@ -1,5 +1,5 @@
 import { expect, describe, test, vi } from 'vitest';
-import { ANY, MaybePromise, memo, TransformerMap } from './cache';
+import { ANY, memo, TransformerMap } from './cache';
 
 describe('memo', async () => {
     test('simple', async () => {

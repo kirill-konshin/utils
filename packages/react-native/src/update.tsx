@@ -1,5 +1,5 @@
 import * as Updates from 'expo-updates';
-import { FC, memo, useEffect, useState } from 'react';
+import { type FC, memo, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 export type UpdateProps = {

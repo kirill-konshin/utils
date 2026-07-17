@@ -1,8 +1,8 @@
 'use client';
 
-import React, { ComponentProps, FC, memo, useCallback, useMemo } from 'react';
+import React, { type ComponentProps, type FC, memo, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import Link, { LinkProps } from 'next/link';
+import Link, { type LinkProps } from 'next/link';
 import clsx from 'clsx';
 
 export type AppLinkProps = {

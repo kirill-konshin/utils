@@ -74,8 +74,8 @@ export function wrpc({
     function logger(type: string) {
         return (level: number, ctx: Context | null, ...args: any[]) => {
             if (!debug || debug < level) return;
-            const { id, message, ...restCtx } = ctx || {};
-            console[type](name, message || '*', id || '*', ...args, restCtx);
+            const { id, message, ...restCtx } = ctx ?? {};
+            console[type](name, message ?? '*', id ?? '*', ...args, restCtx);
         };
     }
 
@@ -125,14 +125,14 @@ export function wrpc({
     ) {
         const [waitController, waitSignal] = deriveController(signal);
 
-        return new Promise<Event['data']>((res) =>
+        return new Promise<Event['data']>((resolve) =>
             listen(
                 worker,
                 ctx,
                 (data) => {
                     if (!condition(data)) return;
                     waitController.abort('WaitFinished');
-                    res(data);
+                    resolve(data);
                 },
                 waitSignal,
             ),
@@ -159,7 +159,7 @@ export function wrpc({
             worker,
             null,
             async ({ ctx, payload = {} }) => {
-                if (!ctx || !ctx.message || !ctx.id || ctx.abort || ctx.ack) return; // ignore invalid and service messages
+                if (!ctx?.message || !ctx.id || ctx.abort || ctx.ack) return; // ignore invalid and service messages
                 try {
                     const responder = responders[ctx.message];
 
@@ -187,8 +187,10 @@ export function wrpc({
                     // GENERATOR
 
                     try {
-                        // Listen outside the loop to react immediately
-                        // Could be a wait for since abort is a one-off, but listeners are disposed by signal anyway, and we don't need to block the async thread
+                        /*
+                         * Listen outside the loop to react immediately
+                         * Could be a wait for since abort is a one-off, but listeners are disposed by signal anyway, and we don't need to block the async thread
+                         */
                         listen(
                             worker,
                             ctx,
@@ -322,9 +324,11 @@ export function wrpc({
                                 log(LogLevel.lifecycle, ctx, 'EVENT', mainSignal.aborted, ctxIn, value);
 
                                 if (ctxIn.promise) {
-                                    //  && !ctxIn.error
-                                    // cancel(false, 'Resolved');
-                                    // return payloadIn;
+                                    /*
+                                     *  && !ctxIn.error
+                                     * cancel(false, 'Resolved');
+                                     * return payloadIn;
+                                     */
                                     logError(LogLevel.error, ctx, 'ERROR', 'Unexpected promise in generator', data);
                                     throw new Error('Unexpected promise in generator', { cause: data });
                                 }
@@ -354,9 +358,11 @@ export function wrpc({
 
                     send(worker, ctx, payload);
 
-                    // FIXME Nasty hack, return both iterator and promise
-                    // Consuming code will get both, but IDE should show only proper type
-                    // Consuming code will likely use only one except someone calls `for await ... of await` which is not useful in any case
+                    /*
+                     * FIXME Nasty hack, return both iterator and promise
+                     * Consuming code will get both, but IDE should show only proper type
+                     * Consuming code will likely use only one except someone calls `for await ... of await` which is not useful in any case
+                     */
                     iterator['then'] = promise.then.bind(promise);
                     iterator['catch'] = promise.catch.bind(promise);
                     iterator['finally'] = promise.finally.bind(promise);

@@ -1,5 +1,5 @@
-import React, { FC, memo } from 'react';
-import { default as Box, BoxProps } from '@mui/material/Box';
+import React, { type FC, memo } from 'react';
+import { default as Box, type BoxProps } from '@mui/material/Box';
 
 export type AppBarOffsetProps = BoxProps;
 

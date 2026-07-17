@@ -164,7 +164,7 @@ describe('WRPC', async () => {
     test('promise as generator', async () => {
         const { caller } = createWorker();
         await expect(async () => {
-            // @ts-ignore
+            // @ts-expect-error deliberate issue
             for await (const data of caller.promise()) {
                 console.log('DATA', data);
             }
@@ -196,20 +196,22 @@ describe('WRPC', async () => {
 
         const it = caller.bidirectional(1);
 
-        //TODO Readme
-        //  > No log at this step: the first value sent through `next` is lost
-        //  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next#sending_values_to_the_generator
+        /*
+         * TODO Readme
+         *   > No log at this step: the first value sent through `next` is lost
+         *   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next#sending_values_to_the_generator
+         */
         await expect(it.next(9)).resolves.toEqual({ value: '1.0', done: false }); // 9 is ignored as yield is not yet reached
         await expect(it.next(2)).resolves.toEqual({ value: '2.1', done: false });
         await expect(it.next(3)).resolves.toEqual({ value: '3.2', done: false });
         await expect(it.next(9)).resolves.toEqual({ value: 'done', done: true }); // 9 is ignored as generator has returned and is done
     });
 
-    test.skip('setTimeout & setInterval', async () => {
+    test.todo('setTimeout & setInterval', async () => {
         const { caller } = createWorker();
 
         await caller.setTimeout({ timeout: 10 });
-        caller.setTimeout({ timeout: 10 }).then(() => {});
+        void caller.setTimeout({ timeout: 10 }); // no await!
 
         let i = 0;
         for await (const data of caller.setInterval({ timeout: 10 })) {

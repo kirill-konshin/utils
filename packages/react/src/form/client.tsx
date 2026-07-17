@@ -1,8 +1,8 @@
 'use client';
 
 import { useActionState, useCallback, useState, useTransition } from 'react';
-import { create, MaybeTypeOf, Validation } from './form';
-import { z } from 'zod';
+import { create, type MaybeTypeOf, type Validation } from './form';
+import { type z } from 'zod';
 
 const FORM_DEBUG = process.env.NEXT_PUBLIC_FORM_DEBUG === 'true';
 

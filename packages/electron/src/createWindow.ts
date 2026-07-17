@@ -4,7 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import url from 'node:url';
-import { Menu, app, BrowserWindow, shell, protocol, Rectangle } from 'electron';
+import { Menu, app, BrowserWindow, shell, protocol, type Rectangle } from 'electron';
 import defaultMenu from 'electron-default-menu';
 import Store from 'electron-store';
 import { checkForUpdates } from './updater.js';

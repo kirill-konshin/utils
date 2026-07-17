@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, FC, memo } from 'react';
-import { Toast, ToastProps } from 'react-bootstrap';
+import React, { useState, type FC, memo } from 'react';
+import { Toast, type ToastProps } from 'react-bootstrap';
 // import { useToaster } from '../redux/toasterSlice';
 
 export type ToasterProps = {

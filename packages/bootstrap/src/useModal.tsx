@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState, JSX, FC, memo } from 'react';
-import { Button, Modal, ModalProps, Offcanvas, OffcanvasProps, Stack } from 'react-bootstrap';
+import React, { useCallback, useMemo, useState, type FC, memo } from 'react';
+import { Button, Modal, type ModalProps, Offcanvas, type OffcanvasProps, Stack } from 'react-bootstrap';
 
 export type UseModalArgs = { onClose?: any; showOnMount?: boolean };
 

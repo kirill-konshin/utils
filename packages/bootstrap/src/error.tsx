@@ -1,7 +1,7 @@
 'use client';
 
-import React, { FC, memo } from 'react';
-import { Alert, AlertProps, Button, ButtonProps } from 'react-bootstrap';
+import React, { type FC, memo } from 'react';
+import { Alert, Button, type ButtonProps } from 'react-bootstrap';
 
 export type ErrorAlertProps = {
     children?: Error | string | any;

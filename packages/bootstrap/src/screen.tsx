@@ -1,4 +1,4 @@
-import React, { FC, memo } from 'react';
+import React, { type FC, memo } from 'react';
 import { Button, Navbar, Nav, Stack } from 'react-bootstrap';
 import { useBreakpoint } from './responsiveHelper';
 import { AdaptiveContainer } from './adaptiveContainer';

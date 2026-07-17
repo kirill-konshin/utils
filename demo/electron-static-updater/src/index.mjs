@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { createWindow, appPath, isDev } from '@kirill.konshin/utils/electron';
 import { fileURLToPath } from 'node:url';
 

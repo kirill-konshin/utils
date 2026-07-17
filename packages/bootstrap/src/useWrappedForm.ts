@@ -1,4 +1,4 @@
-import { useForm, FormState } from 'react-hook-form';
+import { useForm, type FormState } from 'react-hook-form';
 import { useCallback } from 'react';
 
 export const isFormLoading = (formState: FormState<any>): boolean => formState.isLoading || formState.isSubmitting;

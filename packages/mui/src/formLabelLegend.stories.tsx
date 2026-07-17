@@ -1,7 +1,7 @@
 import React from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { InputLabel, RadioGroup, Radio, FormControlLabel, Stack, Box } from '@mui/material';
+import { InputLabel, RadioGroup, Radio, FormControlLabel, Stack } from '@mui/material';
 
 import { FormLabelLegend } from './formLabelLegend';
 import { FormControlFieldset } from './formControlFieldset';

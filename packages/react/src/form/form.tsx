@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Context, createContext, useContext, useMemo, JSX, FC, memo } from 'react';
+import { type Context, createContext, useContext, useMemo, type FC, memo } from 'react';
 import clsx from 'clsx';
 
 const nonEmpty = 'This field cannot be empty';
@@ -29,10 +29,10 @@ export const FormContext: Context<{
     schema: ZodObject;
 }> = createContext(null as never);
 
-export interface FormProps<S extends ZodObject> {
+export type FormProps<S extends ZodObject> = {
     schema: S;
     children: any;
-}
+};
 
 export const Form: FC<FormProps<any>> = memo(function Form({ schema, children }) {
     const value = useMemo(() => ({ schema }), [schema]);
@@ -117,8 +117,10 @@ export function create<S extends ZodObject>(
         // console.log('Validate result', { error, data, rawData });
 
         if (!result.success) {
-            // data is undefined if there are errors
-            // Next.js will butcher error object, so we provide something more primitive
+            /*
+             * data is undefined if there are errors
+             * Next.js will butcher error object, so we provide something more primitive
+             */
             return validationError(rawData, z.flattenError(result.error).fieldErrors as any);
         }
 
@@ -128,7 +130,7 @@ export function create<S extends ZodObject>(
     return { register, validate, validationError };
 }
 
-interface FieldProps<S extends ZodObject> {
+type FieldProps<S extends ZodObject> = {
     children?: any;
     name: keyof z.output<S>;
     errors?: Validation<S>['errors'];
@@ -136,7 +138,7 @@ interface FieldProps<S extends ZodObject> {
     className?: string;
     labelProps?: any;
     [key: string]: any;
-}
+};
 
 export const Field: FC<FieldProps<any>> = memo(function Field({
     children,
@@ -168,10 +170,10 @@ export const Field: FC<FieldProps<any>> = memo(function Field({
     );
 });
 
-export interface HintProps {
+export type HintProps = {
     children: any;
     error?: boolean;
-}
+};
 
 export const Hint: FC<HintProps> = memo(function Hint({ children, error }) {
     return <div className={`hint ${error ? 'hint-error' : ''}`}>{children}</div>;

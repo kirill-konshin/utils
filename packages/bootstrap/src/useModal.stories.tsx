@@ -1,6 +1,6 @@
-import React, { FC } from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
-import { useModal, UseModalProps } from './useModal';
+import React, { type FC } from 'react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useModal, type UseModalProps } from './useModal';
 import { Button } from 'react-bootstrap';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export

@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/filename-case */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Button, Text } from 'react-native';
 import { WebView } from 'react-native-webview';

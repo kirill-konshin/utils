@@ -6,6 +6,7 @@ export class Mutex {
     public exec<T extends (...args: any) => any>(fn: T): Promise<ReturnType<T>> {
         return new Promise((resolve, reject) => {
             // wrap in always successful function
+            // eslint-disable-next-line promise/prefer-await-to-then
             this.promise = this.promise.then(async () => {
                 try {
                     resolve(await fn());

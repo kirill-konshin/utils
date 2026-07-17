@@ -18,7 +18,6 @@
     "storybook:build": "storybook build"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
     "react-hook-form": "^7.62.0"
   },
   "devDependencies": {

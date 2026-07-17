@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FC, memo, useEffect, useState } from 'react';
+import React, { type FC, memo, useEffect, useState } from 'react';
 
 export function useBreakpoint(): {
     breakpoint: string;
