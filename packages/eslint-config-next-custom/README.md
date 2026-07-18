@@ -80,8 +80,8 @@ export default {
 
 ## IDEA settings:
 
-- Eslint: `**/*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,vue}`
-- Prettier: `{**/*}.{js,jsx,ts,tsx,cjs,cts,mjs,mts,htm,html,md,mdx,css,scss,sass,less,yml,yaml,json}`
+- Eslint: `**/*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}`
+- Prettier: `{**/*,*}.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue,css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml}`
 
 ## Lint Staged
 
@@ -94,6 +94,8 @@ export default listStagedConfig();
 
 ## Husky
 
+Always use the `prepare` script, as [Husky recommends](https://typicode.github.io/husky/get-started.html) — it never runs on consumers' installs of a published package, so it needs no guards. The bare `husky` command (v9+; `husky install` is the deprecated v8 form) installs the git hooks:
+
 `package.json`:
 
 ```json5
@@ -103,6 +105,8 @@ export default listStagedConfig();
     },
 }
 ```
+
+> ⚠️ Note for Yarn 2+ (Berry): it never runs a top-level `prepare` script on install (see [Yarn lifecycle scripts](https://yarnpkg.com/advanced/lifecycle-scripts)) — run `yarn prepare` manually after cloning or when rules change. If it must run automatically, use `postinstall` instead, guarded with [pinst](https://github.com/typicode/pinst) when the package is published (npm runs a published package's `postinstall` on consumers' installs).
 
 `.husky/pre-commit`:
 

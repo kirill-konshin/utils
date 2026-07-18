@@ -15,7 +15,7 @@ Follow the README section by section:
 1. **Installation** — add the dependencies listed there (`eslint`, `prettier`, `@kirill.konshin/eslint-config-next-custom`, `husky`, `lint-staged`), plus the PNPM `.npmrc` block if the repo uses pnpm.
 2. **Settings** — create `eslint.config.mjs` and `.prettierrc.mjs` exactly as shown, adjusting the `next.rootDir` path and adding any project-specific rule overrides.
 3. **Lint Staged** — create `.lintstagedrc.mjs`.
-4. **Husky** — add the `prepare` script and `.husky/pre-commit` hook, plus the `eslint` / `prettier` / `lint` / `lint:staged` scripts to `package.json`.
+4. **Husky** — add the `prepare` script and `.husky/pre-commit` hook, plus the `eslint` / `prettier` / `lint` / `lint:staged` scripts to `package.json`. If the repo uses Yarn 2+, run `yarn prepare` once to install the hooks and tell the user that fresh clones need the same — see the README's Husky section.
 5. **IDEA settings** — if the repo has a JetBrains `.idea` project, apply the file-scope patterns from the README's "IDEA settings" section.
 
 ## Updating an existing installation

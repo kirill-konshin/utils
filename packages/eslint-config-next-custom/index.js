@@ -251,6 +251,7 @@ const index = [
             '@next/next/no-img-element': 'off',
             'import/no-anonymous-default-export': 'off', // overrides eslint-config-next's own default
             'jsx-a11y/alt-text': 'off',
+            'react/prop-types': 'off', // ts does it statically
         },
     },
 
