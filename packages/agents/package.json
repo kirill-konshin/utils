@@ -11,7 +11,7 @@
     "build": "echo 'No build required'",
     "start": "echo 'No start required'",
     "----- TEST -----": "",
-    "test:disabled": "echo 'No tests yet'"
+    "test": "echo 'No tests yet'"
   },
   "files": [
     "bin",

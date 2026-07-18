@@ -1,13 +1,18 @@
 ---
 name: verify-agent-rules
-description: Audit this repo's code against the coding rules shipped by @kirill.konshin/agents (packages/agents/rules/*.md, auto-loaded from .claude/rules/ and referenced via @include in AGENTS.md). Reports violations with file/line, a summary, and a criticality verdict, then interactively lets the user decide how to resolve each one. Use when asked to check, audit, verify, or lint the codebase against agent rules/conventions, or to find rule violations.
+description: Audit this repo's code against the coding rules shipped by @kirill.konshin/agents. Rules are discovered from .claude/rules/*.md (created by `agents init`), falling back to node_modules/@kirill.konshin/agents/rules/*.md where init hasn't run. Reports violations with file/line, a summary, and a criticality verdict, then interactively lets the user decide how to resolve each one. Use when asked to check, audit, verify, or lint the codebase against agent rules/conventions, or to find rule violations.
 ---
 
 # Verify Agent Rules
 
 ## Rules to check against
 
-Every rule lives in `.claude/rules/*.md` (symlinked into this repo by `@kirill.konshin/agents` and auto-loaded by Claude Code) and is also referenced via `@include` lines in this repo's `AGENTS.md` (loaded by Codex and other tools). Treat every one of those rule files as normative — read them directly rather than relying on this skill to restate them.
+Locate the rule files by checking these locations in order and using the first that exists:
+
+1. `.claude/rules/*.md` — present after `agents init`: consumers run it via `npx`, and the utils monorepo itself runs it from the root `prepare` script (symlinked there and auto-loaded by Claude Code; the generated `AGENTS.md` also references them via `@include` lines for Codex and other tools).
+2. `node_modules/@kirill.konshin/agents/rules/*.md` — a consumer project where `agents init` hasn't been run yet.
+
+Treat every rule file found as normative — read them directly rather than relying on this skill to restate them.
 
 ## Step 1: Audit
 
