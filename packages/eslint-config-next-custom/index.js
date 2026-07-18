@@ -139,6 +139,7 @@ const index = [
         ignores: [
             //TODO coverage, dist, out, build?
             '**/next-env.d.ts',
+            '**/viteEnv.d.ts',
             '**/node_modules',
             '**/.cache',
             '**/.nx',
