@@ -1,26 +1,36 @@
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
-import js from '@eslint/js';
-import prettierFlat from 'eslint-config-prettier/flat';
-import globals from 'globals';
-import nextTs from 'eslint-config-next/typescript';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
-import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
-import importXPlugin, { createNodeResolver } from 'eslint-plugin-import-x';
-import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
-import unicornPlugin from 'eslint-plugin-unicorn';
-import unusedImportsPlugin from 'eslint-plugin-unused-imports';
-import promisePlugin from 'eslint-plugin-promise';
 /*
  * jest/vitest plugins stay statically imported even though their recommended sets are gated below:
  * the runner-agnostic 'Test rules' block registers both plugins unconditionally (its rules are pure
  * AST checks that work without the runner installed).
+ *
+ * Plugins used only behind capability gates (and for the re-exports at the bottom) are imported
+ * lazily so consumers without the tool don't pay their load cost — @nx/eslint-plugin in particular
+ * drags in a large part of nx itself. Like storybookConfig below, the re-exported bindings are null
+ * when the underlying tool isn't installed.
+ *
+ * Gate each test-runner's recommended rule set on the runner actually being installed - per
+ * packages/agents/rules/testing.md ("if project use vite use vitest, otherwise jest"), a project
+ * normally has exactly one of these, and applying the other runner's correctness rules to it would
+ * be conceptually wrong (even if mechanically harmless, since the rule namespaces don't collide).
  */
-import jestPlugin from 'eslint-plugin-jest';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
+import js from '@eslint/js';
 import vitestPlugin from '@vitest/eslint-plugin';
+import nextTs from 'eslint-config-next/typescript';
+import prettierFlat from 'eslint-config-prettier/flat';
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
+import importXPlugin, { createNodeResolver } from 'eslint-plugin-import-x';
+import jestPlugin from 'eslint-plugin-jest';
+import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
+import promisePlugin from 'eslint-plugin-promise';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
+import unicornPlugin from 'eslint-plugin-unicorn';
+import unusedImportsPlugin from 'eslint-plugin-unused-imports';
+import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 
 import { testColocation } from './rules/testColocation.js';
@@ -43,25 +53,9 @@ function isPackageResolvable(specifier) {
 }
 
 const hasNext = isPackageResolvable('next/package.json');
-
-/*
- * Plugins used only behind capability gates (and for the re-exports at the bottom) are imported
- * lazily so consumers without the tool don't pay their load cost — @nx/eslint-plugin in particular
- * drags in a large part of nx itself. Like storybookConfig below, the re-exported bindings are null
- * when the underlying tool isn't installed.
- */
 const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
-
 const hasStorybook = isPackageResolvable('storybook/package.json');
-
 const hasVite = isPackageResolvable('vite/package.json');
-
-/*
- * Gate each test-runner's recommended rule set on the runner actually being installed - per
- * packages/agents/rules/testing.md ("if project use vite use vitest, otherwise jest"), a project
- * normally has exactly one of these, and applying the other runner's correctness rules to it would
- * be conceptually wrong (even if mechanically harmless, since the rule namespaces don't collide).
- */
 const hasJest = isPackageResolvable('jest/package.json');
 const hasVitest = isPackageResolvable('vitest/package.json');
 
@@ -212,6 +206,40 @@ const index = [
             'import-x/no-named-as-default-member': 'off',
             // packages/agents/rules/typescript.md
             'import-x/no-default-export': 'warn', // see 'Storybook overrides' below
+        },
+    },
+
+    {
+        name: 'eslint-plugin-simple-import-sort',
+        files: [`**/*.${tsExts}`],
+        plugins: { 'simple-import-sort': simpleImportSortPlugin },
+        rules: {
+            /*
+             * packages/agents/rules/typescript.md - Import/export order.
+             * Side-effect imports (polyfills, CSS) ARE sorted into their group; the sorter only
+             * preserves the relative order of multiple side-effect imports that land in the SAME
+             * group (so order-dependent side effects stay put). Non-import code between imports
+             * splits them into independently-sorted chunks (standard simple-import-sort behavior).
+             */
+            'simple-import-sort/imports': [
+                'error',
+                {
+                    groups: [
+                        // 1. Polyfills - side-effect imports that must run first
+                        ['^\\u0000.*(polyfill|core-js|regenerator-runtime|whatwg-fetch|@vitest/web-worker)'],
+                        // 2. React
+                        ['^react(-dom)?(/|$)'],
+                        // 3. Third-party packages (node: builtins + npm packages)
+                        ['^node:', '^@?\\w'],
+                        // 4. Local imports - path aliases then relative
+                        ['^@/', '^\\.'],
+                        // 5. CSS/styles from libraries (side-effect, package path)
+                        ['^\\u0000@?\\w'],
+                        // 6. Local CSS/styles (side-effect, relative path)
+                        ['^\\u0000'],
+                    ],
+                },
+            ],
         },
     },
 

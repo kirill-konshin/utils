@@ -69,6 +69,14 @@ paths:
 - Import siblings directly `./file.ts`
 - Do not import more than one level up: `../file` OK, but not preferred
     - NOT OK: more than one level `../../file` or stepping aside from parent dir `../dir/file`
+- Order imports in this sequence, one blank line between groups (enforced and autofixed by `simple-import-sort`):
+    1. Polyfills — side-effect imports that must run first (`core-js`, `regenerator-runtime`, `whatwg-fetch`, `@vitest/web-worker`)
+    2. React (`react`, `react-dom`)
+    3. Third-party library imports (other packages, incl. `node:` builtins)
+    4. Local imports (path aliases `@/...`, then relative `./`, `../`)
+    5. CSS from libraries (e.g. `@heroui/react/styles`)
+    6. Local CSS (e.g. `./styles.css`)
+    - Side-effect imports (polyfills, CSS) are sorted into their group too; the linter only keeps the written order of multiple side-effect imports landing in the _same_ group, so sequence order-dependent ones yourself
 
 # Type Annotation Patterns
 

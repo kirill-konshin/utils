@@ -88,8 +88,8 @@ export default {
 `.lintstagedrc.mjs`
 
 ```js
-import { listStagedConfig } from '@kirill.konshin/eslint-config-next-custom';
-export default listStagedConfig();
+import { listStaged } from '@kirill.konshin/eslint-config-next-custom';
+export default listStaged;
 ```
 
 ## Husky
@@ -115,6 +115,13 @@ Always use the `prepare` script, as [Husky recommends](https://typicode.github.i
 source ~/.zshrc # for VSCode terminal
 yarn lint:staged
 ```
+
+## TODO
+
+- [ ] Evaluate [`eslint-plugin-perfectionist`](https://perfectionist.dev): beyond imports (currently done via
+      `simple-import-sort`), it can also sort enums, classes, objects, interfaces/types, JSX props, etc. — which
+      could machine-enforce more of the ordering conventions in `packages/agents/rules/typescript.md` (File
+      Structure, Type Annotation Patterns) that today rely on the agent rules alone.
 
 ## Issues
 
