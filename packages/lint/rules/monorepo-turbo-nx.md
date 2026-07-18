@@ -5,6 +5,7 @@ paths:
     - '**/turbo.json'
     - '**/nx.json'
     - '**/package.json'
+    - '**/project.json'
 ---
 
 - Existing projects may use what they use
@@ -23,19 +24,6 @@ ALWAYS verify `turbo.json` or `nx.json` task definitions when modifying scripts 
 3. **Check `dependsOn`**: Ensure build dependencies match actual package dependencies (e.g., `"dependsOn": ["^build"]` for packages that depend on other workspace packages)
 4. **Check `outputs`**: Must include all build artifacts (`dist/**/*`, `package.json`: all modified & generated files)
 5. **Cache settings**: `clean`, `wait`, `start` should have `"cache": false`
-
-# NX
-
-- If NX is used root `package.json` must have `nx show projects > /dev/null` in the `prepare`/`postinstall` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. With `prepare`, Yarn 2+ skips it on install — run `yarn prepare` explicitly (after cloning + as a CI step); with `postinstall` (private root) Yarn runs it on install, so no extra step
-- Nx Release (v23+) with conventional commits silently demotes bumps for `0.x` packages (breaking → minor, `feat` → patch) while the log still claims `Applied semver relative bump "minor"`;
-    - set `release.version.adjustSemverBumpsForZeroMajorVersion: false` in `nx.json` if `feat:` must bump minor before `1.0.0`
-- Root NX task-script convention: bare name = `nx run-many -t <target>` over all projects (`build`/`test`/`start`/`serve`), with concurrency flags set once here;
-- Add a NX scripts to root `package.json`:
-    - `<target>:packages` scopes to publishable libs (`yarn <target> --projects '@scope/*'`);
-    - `<target>:affected` = `nx affected -t <target>` for CI (exclude demos, diff vs `origin/main`)
-    - `release:preview` script (`nx release --dry-run --verbose`) to preview, per package, the resolved-from tag, the bump reason (or `🚫 No changes`), and covered commits before releasing;
-        - the `changelog`/`version` subcommands can't substitute (changelog needs an explicit version, version rejects a top-level `release.git`).
-        - Build-free check of one package's range: `git log <pkg-tag>..HEAD -- <pkg-dir>`
 
 # The `dependsOn: ["^wait"]` Pattern
 

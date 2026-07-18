@@ -2,9 +2,7 @@
  * Raw ESM JS on purpose (no TS build): loaded by `eslint.config.mjs` and pre-commit `lint:staged`
  * before anything is built, so a `dist/` main would need building before it could lint. See
  * README ("Why raw JS").
- */
-
-/*
+ *
  * jest/vitest plugins stay statically imported even though their recommended sets are gated below:
  * the runner-agnostic 'Test rules' block registers both plugins unconditionally (its rules are pure
  * AST checks that work without the runner installed).
@@ -44,7 +42,7 @@ import { testColocation } from './ruleTestColocation.js';
 
 export const tsExtsRaw = 'js,jsx,ts,tsx,cjs,cts,mjs,mts'; // TODO mdx, needs loader
 export const eslintExtsRaw = `${tsExtsRaw},md,mdx,htm,html,vue`;
-export const prettierExtsRaw = 'css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml';
+export const prettierExtsRaw = 'css,scss,sass,less,yml,yaml,json,json5,jsonc,graphql,graphqls,xml';
 
 export const tsExts = `{${tsExtsRaw}}`;
 export const eslintExts = `*.{${eslintExtsRaw}}`;

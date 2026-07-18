@@ -41,11 +41,11 @@ Root `package.json`:
 
 All other `package.json`:
 
-```json5
+```jsonc
 {
-    devDependencies: {
-        next: '16.0.0', // except next, see nextjs.md
-        typescript: '*', // vividly express version does not matter
+    "devDependencies": {
+        "next": "16.0.0", // except next, see nextjs.md
+        "typescript": "*", // vividly express version does not matter
     },
 }
 ```
