@@ -1,10 +1,12 @@
 /**
  * @vitest-environment jsdom
  */
-import { expect, describe, test, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import { useFetch } from './useFetch';
 import { act } from 'react';
+
+import { renderHook, waitFor } from '@testing-library/react';
+import { describe, expect, test, vi } from 'vitest';
+
+import { useFetch } from './useFetch';
 
 describe('useFetch', () => {
     test('initializes with default value', () => {

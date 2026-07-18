@@ -1,10 +1,10 @@
 import React from 'react';
+
+import { Box, InputLabel, Stack, TextField } from '@mui/material';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { InputLabel, Stack, TextField, Box } from '@mui/material';
-
-import { ReadOnly } from './readOnly';
 import { GenericControl } from './genericControl';
+import { ReadOnly } from './readOnly';
 
 const meta: Meta<typeof ReadOnly> = {
     title: 'MUI / ReadOnly',

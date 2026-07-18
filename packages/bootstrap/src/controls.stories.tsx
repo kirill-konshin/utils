@@ -1,8 +1,9 @@
 import React, { cloneElement, useCallback, useState } from 'react';
+
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from '@storybook/test';
 
-import { Select, type Control, Range, Checkbox } from './controls';
+import { Checkbox, type Control, Range, Select } from './controls';
 
 const defaultOptions = { num: 1, bool: false, select: 'bar' };
 

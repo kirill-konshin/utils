@@ -1,4 +1,4 @@
-import { bold, magenta, cyan, yellow, red, green } from 'colors/safe';
+import { bold, cyan, green, magenta, red, yellow } from 'colors/safe';
 
 export const colored: {
     important: typeof bold;

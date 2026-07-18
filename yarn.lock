@@ -6210,6 +6210,7 @@ __metadata:
     eslint-plugin-promise: "npm:^7.3.0"
     eslint-plugin-react: "npm:^7.37.5"
     eslint-plugin-react-hooks: "npm:^7.0.1"
+    eslint-plugin-simple-import-sort: "npm:^14.0.0"
     eslint-plugin-storybook: "npm:^10.5.2"
     eslint-plugin-turbo: "npm:^2.10.5"
     eslint-plugin-unicorn: "npm:^72.0.0"
@@ -14335,6 +14336,15 @@ __metadata:
   peerDependencies:
     eslint: ^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7
   checksum: 10c0/c850bfd556291d4d9234f5ca38db1436924a1013627c8ab1853f77cac73ec19b020e861e6c7b783436a48b6ffcdfba4547598235a37ad4611b6739f65fd8ad57
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-simple-import-sort@npm:^14.0.0":
+  version: 14.0.0
+  resolution: "eslint-plugin-simple-import-sort@npm:14.0.0"
+  peerDependencies:
+    eslint: ">=5.0.0"
+  checksum: 10c0/eee9d53a071ff59f3b3612b189af906859e841cab64296241999042d2a28d1b133cd21cbd9ffd79fe73e4cbe3b8eed3910f7fe484e1c4619bd9836f4edb77ca4
   languageName: node
   linkType: hard
 

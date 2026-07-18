@@ -1,7 +1,9 @@
 import React, { type FC, memo } from 'react';
-import { Button, Navbar, Nav, Stack } from 'react-bootstrap';
-import { useBreakpoint } from './responsiveHelper';
+
+import { Button, Nav, Navbar, Stack } from 'react-bootstrap';
+
 import { AdaptiveContainer } from './adaptiveContainer';
+import { useBreakpoint } from './responsiveHelper';
 
 export type ScreenProps = {
     backBtn?: any;

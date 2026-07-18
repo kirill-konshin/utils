@@ -1,7 +1,9 @@
 import React, { type FC, memo } from 'react';
+
 import { Nav, Navbar } from 'react-bootstrap';
-import { useBreakpoint } from './responsiveHelper';
+
 import { AdaptiveContainer } from './adaptiveContainer';
+import { useBreakpoint } from './responsiveHelper';
 
 export type FooterNavItemProps = {
     href: any;

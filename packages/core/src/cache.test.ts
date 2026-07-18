@@ -1,4 +1,5 @@
-import { expect, describe, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+
 import { ANY, memo, TransformerMap } from './cache';
 
 describe('memo', async () => {

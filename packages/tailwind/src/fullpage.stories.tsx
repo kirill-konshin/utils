@@ -1,6 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
 import { Fullpage } from './fullpage';
+
 import '../tailwind.css';
 
 const meta: Meta<typeof Fullpage> = {

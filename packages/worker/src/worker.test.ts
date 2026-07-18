@@ -1,6 +1,7 @@
-import { expect, describe, test, vi } from 'vitest';
-import { RespondersBase, WorkerDialog } from './worker';
 import EventEmitter from 'node:events';
+import { describe, expect, test, vi } from 'vitest';
+
+import { RespondersBase, WorkerDialog } from './worker';
 
 // Prepare
 

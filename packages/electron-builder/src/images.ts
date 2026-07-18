@@ -1,6 +1,6 @@
+import path from 'node:path';
 import psd from 'psd';
 import sharp from 'sharp';
-import path from 'node:path';
 
 export async function generateImages({
     iconPsdPath,

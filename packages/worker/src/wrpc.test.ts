@@ -1,5 +1,7 @@
 import '@vitest/web-worker';
-import { expect, describe, test, vi } from 'vitest';
+
+import { describe, expect, test, vi } from 'vitest';
+
 import { wrpc } from './wrpc';
 import type { responder } from './wrpc.fixture'; // DO NOT IMPORT ANYTHING OTHER THAN TYPES!!!
 

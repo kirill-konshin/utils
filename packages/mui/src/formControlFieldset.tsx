@@ -1,6 +1,8 @@
 import React, { type FC, memo } from 'react';
-import { GenericControl, type GenericControlProps } from './genericControl';
+
 import { inputClasses } from '@mui/material/Input';
+
+import { GenericControl, type GenericControlProps } from './genericControl';
 
 export type FormControlFieldsetProps = GenericControlProps;
 

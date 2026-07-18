@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/filename-case */
 'use client';
 
-import { type FC, memo, type JSX, useLayoutEffect, useState } from 'react';
+import { type FC, type JSX, memo, useLayoutEffect, useState } from 'react';
 
 export type NoSSRProps = {
     children: any;

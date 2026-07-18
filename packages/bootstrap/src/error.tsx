@@ -1,6 +1,7 @@
 'use client';
 
 import React, { type FC, memo } from 'react';
+
 import { Alert, Button, type ButtonProps } from 'react-bootstrap';
 
 export type ErrorAlertProps = {

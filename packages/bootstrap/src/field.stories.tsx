@@ -1,9 +1,10 @@
 import React from 'react';
+
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from '@storybook/test';
+import { FormControl } from 'react-bootstrap';
 
 import { FieldGroup } from './field';
-import { FormControl } from 'react-bootstrap';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
 const meta: Meta<typeof FieldGroup> = {

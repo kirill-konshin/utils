@@ -1,11 +1,11 @@
+import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import * as process from 'node:process';
-import { execSync } from 'node:child_process';
-import { globSync } from 'glob';
-import { createRequire } from 'node:module';
 import { checkPackage, createPackageFromTarballData, type Problem } from '@arethetypeswrong/core';
 import { problemKindInfo } from '@arethetypeswrong/core/problems';
+import { globSync } from 'glob';
 
 export const pkgPath = path.join(process.cwd(), 'package.json');
 

@@ -1,7 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import React, { memo, type MouseEvent, type MouseEventHandler, type ReactNode, useCallback } from 'react';
+
+import Link from 'next/link';
 import { type LinkProps } from 'next/link';
 
 export type SoftLinkProps = LinkProps & {

@@ -1,5 +1,7 @@
 import React, { type FC, memo } from 'react';
+
 import { Container, type ContainerProps } from 'react-bootstrap';
+
 import { useBreakpoint } from './responsiveHelper';
 
 export type AdaptiveContainerProps = ContainerProps;

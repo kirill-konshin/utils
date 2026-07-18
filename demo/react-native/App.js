@@ -1,11 +1,12 @@
 /* eslint-disable unicorn/filename-case */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Button, Text } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuth0, Auth0Provider } from 'react-native-auth0';
-import Constants from 'expo-constants';
+
 import { shareDialog, Update, useAppState } from '@kirill.konshin/utils/react-native';
+import Constants from 'expo-constants';
+import { Button, StyleSheet, Text, View } from 'react-native';
+import { Auth0Provider, useAuth0 } from 'react-native-auth0';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 const styles = StyleSheet.create({
     webview: {

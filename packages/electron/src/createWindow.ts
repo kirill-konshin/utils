@@ -1,12 +1,13 @@
-import path from 'node:path';
-import https from 'node:https';
-import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import http from 'node:http';
+import https from 'node:https';
+import path from 'node:path';
 import url from 'node:url';
-import { Menu, app, BrowserWindow, shell, protocol, type Rectangle } from 'electron';
+import { app, BrowserWindow, Menu, protocol, type Rectangle, shell } from 'electron';
 import defaultMenu from 'electron-default-menu';
 import Store from 'electron-store';
+
 import { checkForUpdates } from './updater.js';
 
 export const isDev: boolean = process.env['NODE_ENV'] === 'development';

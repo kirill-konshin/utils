@@ -1,5 +1,5 @@
-import type { Configuration, MacConfiguration } from 'electron-builder';
 import type { GithubOptions, S3Options } from 'builder-util-runtime';
+import type { Configuration, MacConfiguration } from 'electron-builder';
 
 const {
     GITHUB_REF_TYPE,

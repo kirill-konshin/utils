@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { type FC, memo, useEffect } from 'react';
+
 import type { LinkProps } from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export type RedirectProps = {
     to: LinkProps['href'];

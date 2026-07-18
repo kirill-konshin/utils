@@ -1,5 +1,5 @@
-import { defineConfig } from 'eslint/config';
 import customConfig, { includeIgnoreFile, nxPlugin, tsExts } from '@kirill.konshin/eslint-config-next-custom';
+import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
     ...customConfig,

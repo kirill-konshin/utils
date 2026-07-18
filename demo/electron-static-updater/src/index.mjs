@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { createWindow, appPath, isDev } from '@kirill.konshin/utils/electron';
 import { fileURLToPath } from 'node:url';
+import { appPath, createWindow, isDev } from '@kirill.konshin/utils/electron';
 
 if (process.env['SKIP_ELECTRON']) {
     console.log('Skipping Electron');

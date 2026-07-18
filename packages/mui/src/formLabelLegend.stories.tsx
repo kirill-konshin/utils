@@ -1,10 +1,10 @@
 import React from 'react';
+
+import { FormControlLabel, InputLabel, Radio, RadioGroup, Stack } from '@mui/material';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { InputLabel, RadioGroup, Radio, FormControlLabel, Stack } from '@mui/material';
-
-import { FormLabelLegend } from './formLabelLegend';
 import { FormControlFieldset } from './formControlFieldset';
+import { FormLabelLegend } from './formLabelLegend';
 import { GenericControl } from './genericControl';
 import { ReadOnly } from './readOnly';
 

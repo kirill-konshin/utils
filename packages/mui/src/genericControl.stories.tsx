@@ -1,7 +1,7 @@
 import React from 'react';
-import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { InputLabel, Input, TextField, Stack, Box } from '@mui/material';
+import { Box, Input, InputLabel, Stack, TextField } from '@mui/material';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { GenericControl } from './genericControl';
 import { ReadOnly } from './readOnly';

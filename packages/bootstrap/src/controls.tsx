@@ -1,4 +1,5 @@
-import React, { type HTMLInputTypeAttribute, memo, type FC } from 'react';
+import React, { type FC, type HTMLInputTypeAttribute, memo } from 'react';
+
 import clsx from 'clsx';
 
 const lcFirst = (str: string) => str[0].toLowerCase() + str.substring(1, str.length);

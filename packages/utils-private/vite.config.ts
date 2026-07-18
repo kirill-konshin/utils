@@ -1,17 +1,18 @@
-import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import dts from 'vite-plugin-dts';
 import preserveDirectives from 'rollup-preserve-directives';
+import dts from 'vite-plugin-dts';
+import { defineConfig } from 'vitest/config';
+
 import {
-    pkg,
-    fixExports,
-    fixDtsExtensions,
-    formats,
+    checkTypes,
+    distDir,
     entry,
     external,
-    distDir,
+    fixDtsExtensions,
+    fixExports,
+    formats,
     generateIndex,
-    checkTypes,
+    pkg,
 } from './vite.exports';
 
 // https://rbardini.com/how-to-build-ts-library-with-vite/

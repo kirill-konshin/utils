@@ -1,5 +1,6 @@
-import { Spinner, type SpinnerProps, Stack } from 'react-bootstrap';
 import React, { type FC, memo } from 'react';
+
+import { Spinner, type SpinnerProps, Stack } from 'react-bootstrap';
 
 export type LoadingProps = {
     children?: any;

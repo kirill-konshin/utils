@@ -1,12 +1,12 @@
 import React from 'react';
+
+import { Box, FormControlLabel, InputLabel, Radio, RadioGroup, Stack, TextField } from '@mui/material';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { TextField, Stack, InputLabel, RadioGroup, Radio, FormControlLabel, Box } from '@mui/material';
-
-import { GenericControl } from './genericControl';
-import { ReadOnly } from './readOnly';
 import { FormControlFieldset } from './formControlFieldset';
 import { FormLabelLegend } from './formLabelLegend';
+import { GenericControl } from './genericControl';
+import { ReadOnly } from './readOnly';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
 const meta: Meta<typeof GenericControl> = {
