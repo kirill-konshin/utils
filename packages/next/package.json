@@ -10,7 +10,7 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test:disabled": "vitest run --coverage",
+    "test": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
@@ -62,5 +62,8 @@
     "tags": [
       "platform:next"
     ]
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
