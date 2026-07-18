@@ -213,3 +213,4 @@ Library packages run `start` (`vite build --watch`) which produces `dist/index.j
 
 - When working with `*.md` files in this repo be super concise and to the point
 - `packages/lint/rules/*.md` should mostly have one-liner statements
+- **ALWAYS double check how changes will affect releases and versioning**, run `yarn release:preview` to see exactly what will be published, if uncommitted files are present, ask user to commit (W/O PUSH), then check

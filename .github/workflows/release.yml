@@ -82,8 +82,9 @@ jobs:
       - name: Write to Job Summary
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
 
-      - name: Build
-        run: yarn build:packages
+      # preVersionCommand is build, physically not possible to release unbuilt
+      # - name: Build
+      #  run: yarn build:packages
 
       - name: Configure git user
         run: |
