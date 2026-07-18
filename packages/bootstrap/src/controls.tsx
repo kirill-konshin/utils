@@ -1,4 +1,5 @@
 import React, { type HTMLInputTypeAttribute, memo, type FC } from 'react';
+import clsx from 'clsx';
 
 const lcFirst = (str: string) => str[0].toLowerCase() + str.substring(1, str.length);
 
@@ -65,7 +66,7 @@ export const Control: FC<ControlProps> = memo(function Control({
             <Tag
                 {...inputProps}
                 {...{ [property]: value || '' }} // null is needed to make it always controlled
-                className={`${value === defaultValue ? 'opacity-75' : ''} ${inputProps.className}`}
+                className={clsx(value === defaultValue && 'opacity-75', inputProps.className) || undefined}
                 onChange={(e: Event) => setValue(valueExtractor(e))}
             >
                 {children}
