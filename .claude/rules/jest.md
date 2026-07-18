@@ -1,1 +1,1 @@
-../../packages/agents/rules/jest.md
+../../packages/lint/rules/jest.md

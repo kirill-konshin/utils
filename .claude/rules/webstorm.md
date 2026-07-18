@@ -1,1 +1,1 @@
-../../packages/agents/rules/webstorm.md
+../../packages/lint/rules/webstorm.md

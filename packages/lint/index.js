@@ -1,4 +1,12 @@
 /*
+ * Kept as raw ESM JavaScript on purpose (no TypeScript build). This config is loaded by the
+ * consumer's `eslint.config.mjs` and by pre-commit `lint:staged`, both of which run before any
+ * build step (in this monorepo's CI: `yarn prepare` -> `yarn lint` -> ... -> `yarn build`). A TS
+ * build would point `main` at `dist/`, forcing the package to be built before it can lint anything
+ * - a bootstrap-ordering quirk not worth it for a config package. See README ("Why raw JS").
+ */
+
+/*
  * jest/vitest plugins stay statically imported even though their recommended sets are gated below:
  * the runner-agnostic 'Test rules' block registers both plugins unconditionally (its rules are pure
  * AST checks that work without the runner installed).
@@ -9,7 +17,7 @@
  * when the underlying tool isn't installed.
  *
  * Gate each test-runner's recommended rule set on the runner actually being installed - per
- * packages/agents/rules/testing.md ("if project use vite use vitest, otherwise jest"), a project
+ * packages/lint/rules/testing.md ("if project use vite use vitest, otherwise jest"), a project
  * normally has exactly one of these, and applying the other runner's correctness rules to it would
  * be conceptually wrong (even if mechanically harmless, since the rule namespaces don't collide).
  */
@@ -34,7 +42,7 @@ import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 
-import { testColocation } from './rules/testColocation.js';
+import { testColocation } from './ruleTestColocation.js';
 
 export const tsExtsRaw = 'js,jsx,ts,tsx,cjs,cts,mjs,mts'; // TODO mdx, needs loader
 export const eslintExtsRaw = `${tsExtsRaw},md,mdx,htm,html,vue`;
@@ -225,7 +233,6 @@ const index = [
              */
             'import-x/no-named-as-default': 'off',
             'import-x/no-named-as-default-member': 'off',
-            // packages/agents/rules/typescript.md
             'import-x/no-default-export': 'warn', // see 'Storybook overrides' below
         },
     },
@@ -236,7 +243,6 @@ const index = [
         plugins: { 'simple-import-sort': simpleImportSortPlugin },
         rules: {
             /*
-             * packages/agents/rules/typescript.md - Import/export order.
              * Side-effect imports (polyfills, CSS) ARE sorted into their group; the sorter only
              * preserves the relative order of multiple side-effect imports that land in the SAME
              * group (so order-dependent side effects stay put). Non-import code between imports
@@ -313,7 +319,7 @@ const index = [
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-require-imports': 'off',
             '@typescript-eslint/no-unused-vars': 'off', // superseded by 'unused-imports/no-unused-imports' below, which is actually autofixable
-            '@typescript-eslint/consistent-type-definitions': ['error', 'type'], // packages/agents/rules/typescript.md - Type Annotation Patterns
+            '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
             '@typescript-eslint/consistent-type-imports': [
                 'error',
                 { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
@@ -360,14 +366,13 @@ const index = [
         files: [`**/*.${tsExts}`],
         plugins: { unicorn: unicornPlugin },
         rules: {
-            // packages/agents/rules/code-style.md
             'unicorn/filename-case': [
                 'error',
                 {
                     case: 'camelCase',
                     /*
                      * code-style.md only mandates FILE names; this repo's own kebab-case package
-                     * directories (e.g. eslint-config-next-custom) are an established convention.
+                     * directories (e.g. electron-builder, react-native) are an established convention.
                      */
                     checkDirectories: false,
                     // Next.js App Router mandates these exact hyphenated filenames - not a naming choice.
@@ -382,7 +387,6 @@ const index = [
                     ],
                 },
             ],
-            // packages/agents/rules/typescript.md
             'unicorn/prefer-node-protocol': 'error',
         },
     },
@@ -390,7 +394,6 @@ const index = [
     {
         name: 'eslint-plugin-promise overrides',
         rules: {
-            // packages/agents/rules/typescript.md - not part of promise's own recommended set
             'promise/prefer-await-to-then': 'warn',
             'promise/param-names': 'off',
             'promise/always-return': 'off',
@@ -433,14 +436,13 @@ const index = [
                   },
               },
               rules: {
-                  // packages/agents/rules/typescript.md - require type info, hence the separate block
                   '@typescript-eslint/prefer-optional-chain': 'warn',
                   '@typescript-eslint/prefer-nullish-coalescing': 'warn',
 
                   /**
                    * https://typescript-eslint.io/rules/naming-convention/
                    *
-                   * packages/agents/rules/typescript.md - Naming Conventions. Lives here (not 'Custom
+                   * Naming Conventions. Lives here (not 'Custom
                    * rules') because the `types: ['boolean']` filter below needs type info too, even
                    * though naming-convention as a whole isn't in the typed-linting rule set.
                    */
@@ -448,7 +450,7 @@ const index = [
                       'warn',
                       { selector: 'default', format: null },
                       /*
-                       * PascalCase allowed too: per packages/agents/rules/react.md, this codebase's actual
+                       * PascalCase allowed too: this codebase's actual
                        * convention is `const Cmp: FC<Props> = memo(...)` - components are PascalCase
                        * variables, not just PascalCase function declarations.
                        */
@@ -504,9 +506,8 @@ const index = [
         ],
         rules: {
             /*
-             * packages/agents/rules/storybook.md - stories always default-export `meta`, and story
-             * exports (`Default`, `WithArgs`, ...) are PascalCase by Storybook's own convention, which
-             * the general rules above disallow.
+             * Stories always default-export `meta`, and story exports (`Default`, `WithArgs`, ...) are PascalCase by
+             * Storybook's own convention, which the general rules above disallow.
              */
             'import-x/no-default-export': 'off',
             '@typescript-eslint/naming-convention': 'off',
@@ -520,8 +521,7 @@ const index = [
                   name: 'eslint-plugin-turbo overrides',
                   rules: {
                       /*
-                       * Only covers undeclared env vars, not the full dependsOn/outputs consistency
-                       * described in packages/agents/rules/monorepo-turbo-nx.md - that part has no
+                       * Only covers undeclared env vars, not the full dependsOn/outputs consistency - that part has no
                        * ESLint-shaped check. Downgraded from their default 'error' to 'warn'.
                        */
                       'turbo/no-undeclared-env-vars': 'warn',
@@ -593,7 +593,6 @@ const index = [
             local: { rules: { 'test-colocation': testColocation } },
         },
         rules: {
-            // packages/agents/rules/testing.md - "Use test(...) for individual test cases"
             'jest/consistent-test-it': ['error', { fn: 'test' }],
             'vitest/consistent-test-it': ['error', { fn: 'test' }],
             'local/test-colocation': 'error',

@@ -1,1 +1,1 @@
-../../packages/agents/rules/testing.md
+../../packages/lint/rules/testing.md

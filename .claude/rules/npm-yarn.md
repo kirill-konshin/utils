@@ -1,1 +1,1 @@
-../../packages/agents/rules/npm-yarn.md
+../../packages/lint/rules/npm-yarn.md

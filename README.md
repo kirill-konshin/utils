@@ -25,5 +25,4 @@ Commit messages are validated locally by a `commit-msg` hook (commitlint) and on
 ## AI Commands
 
 `/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency
-`/verify-agent-rules` — runs all rules from `agents` package
-`/eslint-config-next-custom` — runs checks agains `eslint-config-next-custom` package `README`
+`/lint-repo` — sets up/updates the ESLint·Prettier·Husky tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`)

@@ -1,1 +1,1 @@
-../../packages/agents/rules/typescript.md
+../../packages/lint/rules/typescript.md

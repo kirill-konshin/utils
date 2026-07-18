@@ -1,1 +1,1 @@
-../../packages/agents/rules/gitlab.md
+../../packages/lint/rules/gitlab.md

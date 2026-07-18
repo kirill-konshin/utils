@@ -1,2 +1,2 @@
-import { listStaged } from '@kirill.konshin/eslint-config-next-custom';
+import { listStaged } from '@kirill.konshin/lint';
 export default listStaged;

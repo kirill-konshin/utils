@@ -1,1 +1,1 @@
-../../packages/agents/rules/github.md
+../../packages/lint/rules/github.md

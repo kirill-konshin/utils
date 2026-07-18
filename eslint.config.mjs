@@ -1,4 +1,4 @@
-import customConfig, { includeIgnoreFile, nxPlugin, tsExts } from '@kirill.konshin/eslint-config-next-custom';
+import customConfig, { includeIgnoreFile, nxPlugin, tsExts } from '@kirill.konshin/lint';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
@@ -94,9 +94,12 @@ export default defineConfig([
     {
         // Demos depend on packages through CLIs and config plugins (expo, eas, serve), not only
         // imports — invisible to the project graph, so the rule mis-reports and mis-fixes there.
-        // Private utils use lifting
+        // Private utils use lifting. @kirill.konshin/lint is an ESLint-config + CLI package whose
+        // deps are used indirectly — as rule strings, capability probes (import.meta.resolve),
+        // transitive parsers (eslint-config-next), and tools (husky/lint-staged) — none of which the
+        // project graph can see, so the rule would strip every legitimate dep and peer dep.
         name: '@nx/dependency-checks demo overrides',
-        files: ['demo/*/package.json', 'packages/utils-private/package.json'],
+        files: ['demo/*/package.json', 'packages/utils-private/package.json', 'packages/lint/package.json'],
         rules: {
             '@nx/dependency-checks': 'off',
         },

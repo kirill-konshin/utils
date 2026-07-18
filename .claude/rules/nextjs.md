@@ -1,1 +1,1 @@
-../../packages/agents/rules/nextjs.md
+../../packages/lint/rules/nextjs.md

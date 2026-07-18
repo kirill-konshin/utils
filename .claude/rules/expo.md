@@ -1,1 +1,1 @@
-../../packages/agents/rules/expo.md
+../../packages/lint/rules/expo.md

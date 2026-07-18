@@ -1,1 +1,0 @@
-../../../packages/eslint-config-next-custom/SKILL.md

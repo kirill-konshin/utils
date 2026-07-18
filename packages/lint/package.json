@@ -1,14 +1,29 @@
 {
-  "name": "@kirill.konshin/eslint-config-next-custom",
-  "description": "",
+  "name": "@kirill.konshin/lint",
+  "description": "ESLint + Prettier + lint-staged config and AI agent rules/skills for monorepos",
   "version": "0.0.0",
   "type": "module",
   "skipGenerate": true,
+  "bin": {
+    "lint-prepare": "./lintPrepare.js"
+  },
   "main": "index.js",
   "module": "index.js",
   "scripts": {
-    "postinstall": "node install.js"
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "echo 'No build required'",
+    "start": "echo 'No start required'",
+    "----- TEST -----": "",
+    "test": "echo 'No tests yet'"
   },
+  "files": [
+    "index.js",
+    "lintPrepare.js",
+    "ruleTestColocation.js",
+    "rules",
+    "skills"
+  ],
   "dependencies": {
     "@eslint/compat": "^2.0.3",
     "@eslint/js": "^10.0.1",
@@ -69,7 +84,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git",
-    "directory": "packages/eslint-config-next-custom"
+    "directory": "packages/lint"
   },
   "nx": {
     "tags": [

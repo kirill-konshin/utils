@@ -49,11 +49,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      # Yarn Berry never runs the top-level `prepare` script on install — run it explicitly.
-      # Without it the Nx project graph cache is missing and @nx/eslint-plugin rules silently skip.
-      - name: Prepare
-        run: yarn prepare
-
       - name: Cache Nx
         uses: actions/cache@v4
         with:

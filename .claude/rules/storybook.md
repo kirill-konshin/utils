@@ -1,1 +1,1 @@
-../../packages/agents/rules/storybook.md
+../../packages/lint/rules/storybook.md

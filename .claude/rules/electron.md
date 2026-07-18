@@ -1,1 +1,1 @@
-../../packages/agents/rules/electron.md
+../../packages/lint/rules/electron.md

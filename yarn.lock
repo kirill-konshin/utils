@@ -6095,14 +6095,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kirill.konshin/agents@workspace:packages/agents":
-  version: 0.0.0-use.local
-  resolution: "@kirill.konshin/agents@workspace:packages/agents"
-  bin:
-    agents: ./bin/index.js
-  languageName: unknown
-  linkType: soft
-
 "@kirill.konshin/bootstrap@npm:*, @kirill.konshin/bootstrap@workspace:packages/bootstrap":
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/bootstrap@workspace:packages/bootstrap"
@@ -6190,9 +6182,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@kirill.konshin/eslint-config-next-custom@workspace:packages/eslint-config-next-custom":
+"@kirill.konshin/lint@workspace:packages/lint":
   version: 0.0.0-use.local
-  resolution: "@kirill.konshin/eslint-config-next-custom@workspace:packages/eslint-config-next-custom"
+  resolution: "@kirill.konshin/lint@workspace:packages/lint"
   dependencies:
     "@eslint/compat": "npm:^2.0.3"
     "@eslint/js": "npm:^10.0.1"
@@ -6237,6 +6229,8 @@ __metadata:
       optional: true
     vitest:
       optional: true
+  bin:
+    lint-prepare: ./bin/lint-prepare.js
   languageName: unknown
   linkType: soft
 

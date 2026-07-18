@@ -1,1 +1,1 @@
-../../packages/agents/rules/vite.md
+../../packages/lint/rules/vite.md

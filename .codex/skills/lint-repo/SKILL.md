@@ -1,0 +1,1 @@
+../../../packages/lint/skills/lint-repo.md

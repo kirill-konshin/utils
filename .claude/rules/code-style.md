@@ -1,1 +1,1 @@
-../../packages/agents/rules/code-style.md
+../../packages/lint/rules/code-style.md

@@ -1,2 +1,2 @@
-import { prettier } from '@kirill.konshin/eslint-config-next-custom';
+import { prettier } from '@kirill.konshin/lint';
 export default prettier;

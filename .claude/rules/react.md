@@ -1,1 +1,1 @@
-../../packages/agents/rules/react.md
+../../packages/lint/rules/react.md

@@ -1,3 +1,3 @@
-Use rules supplied by `@kirill.konshin/agents` package.
+Use rules supplied by `@kirill.konshin/lint` package.
 
-See: `packages/agents/rules/*.md`
+See: `packages/lint/rules/*.md`

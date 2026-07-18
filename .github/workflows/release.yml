@@ -50,11 +50,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      # Yarn Berry never runs the top-level `prepare` script on install — run it explicitly.
-      # Without it the Nx project graph cache is missing and @nx/eslint-plugin rules silently skip.
-      - name: Prepare
-        run: yarn prepare
-
       # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
       # `sha`, making the range invalid.
       - name: Validate commit messages
@@ -100,7 +95,20 @@ jobs:
       # Versions are written to package.json only in the CI working tree (never committed) —
       # source of truth for current versions is git tags.
       - name: Release
-        run: yarn release ${{ inputs.specifier }} --yes
+        run: yarn release ${{ inputs.specifier }} --yes 2>&1 | tee /tmp/release.log
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+      - name: Release Summary Report
+        if: always()
+        run: |
+          {
+            echo "### 📦 Release"
+            echo ""
+            if [ -f /tmp/release.log ]; then
+              printf '```\n%s\n```\n' "$(cat /tmp/release.log)"
+            else
+              echo "Nothing was released."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

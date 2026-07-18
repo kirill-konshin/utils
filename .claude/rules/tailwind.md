@@ -1,1 +1,1 @@
-../../packages/agents/rules/tailwind.md
+../../packages/lint/rules/tailwind.md

@@ -1,1 +1,1 @@
-../../packages/agents/rules/redux.md
+../../packages/lint/rules/redux.md
