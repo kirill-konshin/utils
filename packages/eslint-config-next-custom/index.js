@@ -13,6 +13,7 @@
  * normally has exactly one of these, and applying the other runner's correctness rules to it would
  * be conceptually wrong (even if mechanically harmless, since the rule namespaces don't collide).
  */
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
@@ -110,15 +111,34 @@ const reactFallbackConfig = hasNext
       ];
 
 /*
- * Gate the Turbo/NX rule sets on the tool actually being installed, same as jest/vitest above.
- * Config-file detection via cwd would make lint results depend on the invocation directory (IDE
- * integrations and per-package runs launch eslint from subdirectories). Without the turbo gate,
- * `turbo/no-undeclared-env-vars` treats "no turbo.json" as "nothing declared" and flags every
- * single env var access - useless noise for consumers that use NX (or nothing) instead.
+ * Gate the Turbo rule set on the tool actually being installed, same as jest/vitest above. A bare cwd
+ * config-file check would make lint results depend on the invocation directory (IDE integrations and
+ * per-package runs launch eslint from subdirectories). Without the turbo gate,
+ * `turbo/no-undeclared-env-vars` treats "no turbo.json" as "nothing declared" and flags every single
+ * env var access - useless noise for consumers that use NX (or nothing) instead. `eslint-plugin-turbo`
+ * is bundled but does not drag in `turbo` itself, so this resolvability check stays honest.
  */
 const hasTurbo = isPackageResolvable('turbo/package.json');
 
-const hasNx = isPackageResolvable('nx/package.json');
+/*
+ * NX cannot use the same resolvability gate: `nx` core is always resolvable here as a transitive dep of
+ * the bundled @nx/eslint-plugin (-> @nx/devkit -> nx), so `isPackageResolvable('nx')` reports true in
+ * every consumer - including plain non-Nx projects, where it wrongly switches on @nx/dependency-checks,
+ * which then fails with no project graph. Detect an actual Nx workspace by walking up from cwd to an
+ * `nx.json` instead: unlike a bare cwd check this is stable across subdirectory / per-package / IDE runs
+ * (they resolve to the same workspace root) and correctly stays off outside an Nx workspace.
+ */
+function hasWorkspaceFile(fileName) {
+    let dir = process.cwd();
+    for (;;) {
+        if (existsSync(resolve(dir, fileName))) return true;
+        const parent = dirname(dir);
+        if (parent === dir) return false;
+        dir = parent;
+    }
+}
+
+const hasNx = hasWorkspaceFile('nx.json');
 
 // lazy for the same reason as nextPlugin above
 const turboPlugin = hasTurbo ? (await import('eslint-plugin-turbo')).default : null;
@@ -478,6 +498,7 @@ const index = [
             `**/App.${tsExts}`,
             `**/index.${tsExts}`,
             `**/layout.${tsExts}`,
+            `**/loading.${tsExts}`,
             `**/main.${tsExts}`,
             `**/page.${tsExts}`,
         ],

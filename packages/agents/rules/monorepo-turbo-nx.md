@@ -13,8 +13,29 @@ paths:
     - Tasks to launch inner tasks (main `build` that launches `build` in each sub-package)
 - Inner `package.json` MUST only define atomic orchestrator-agnostic tasks
 - Prefer NX for new projects
-- If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. Yarn 2+ never runs `prepare` on install (see [lifecycle scripts](npm-yarn.md)), so run `yarn prepare` explicitly: once after cloning, and as a CI step after `yarn install`
-- Nx Release (v23+) with conventional commits silently demotes bumps for `0.x` packages (breaking → minor, `feat` → patch) while the log still claims `Applied semver relative bump "minor"`; set `release.version.adjustSemverBumpsForZeroMajorVersion: false` in `nx.json` if `feat:` must bump minor before `1.0.0`
+
+# Task Consistency
+
+ALWAYS verify `turbo.json` or `nx.json` task definitions when modifying scripts or package structure:
+
+1. **Task inheritance**: Common tasks like `build`, `clean`, `test`, `start`, `wait` should be defined in root `turbo.json` or `nx.json` and inherited by all packages
+2. **Package `turbo.json` or `nx.json` or `nx` section of `package.json`**: Only override when needed (e.g., adding `dependsOn` or custom `outputs`)
+3. **Check `dependsOn`**: Ensure build dependencies match actual package dependencies (e.g., `"dependsOn": ["^build"]` for packages that depend on other workspace packages)
+4. **Check `outputs`**: Must include all build artifacts (`dist/**/*`, `package.json`: all modified & generated files)
+5. **Cache settings**: `clean`, `wait`, `start` should have `"cache": false`
+
+# NX
+
+- If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. Yarn 2+ never runs `prepare` on install so run `yarn prepare` explicitly: once after cloning, and as a CI step after `yarn install`
+- Nx Release (v23+) with conventional commits silently demotes bumps for `0.x` packages (breaking → minor, `feat` → patch) while the log still claims `Applied semver relative bump "minor"`;
+    - set `release.version.adjustSemverBumpsForZeroMajorVersion: false` in `nx.json` if `feat:` must bump minor before `1.0.0`
+- Root NX task-script convention: bare name = `nx run-many -t <target>` over all projects (`build`/`test`/`start`/`serve`), with concurrency flags set once here;
+- Add a NX scripts to root `package.json`:
+    - `<target>:packages` scopes to publishable libs (`yarn <target> --projects '@scope/*'`);
+    - `<target>:affected` = `nx affected -t <target>` for CI (exclude demos, diff vs `origin/main`)
+    - `release:preview` script (`nx release --dry-run --verbose`) to preview, per package, the resolved-from tag, the bump reason (or `🚫 No changes`), and covered commits before releasing;
+        - the `changelog`/`version` subcommands can't substitute (changelog needs an explicit version, version rejects a top-level `release.git`).
+        - Build-free check of one package's range: `git log <pkg-tag>..HEAD -- <pkg-dir>`
 
 # The `dependsOn: ["^wait"]` Pattern
 
@@ -45,13 +66,3 @@ The `start` task uses `"dependsOn": ["^wait"]` (upstream):
 3. `B` also runs `"start": "build --watch"` task (for example) which produces `dist/index.js`
 4. Once the file exists, `B`'s `wait-on` unblocks and exits, and `A`'s `start` can proceed
 5. If file existed before, `A` starts immediately, the only issue could be `A`'s double-build if `B`'s `start` will eventually modify the file, causing `A`'s watcher to rebuild
-
-# Task Consistency
-
-ALWAYS verify `turbo.json` or `nx.json` task definitions when modifying scripts or package structure:
-
-1. **Task inheritance**: Common tasks like `build`, `clean`, `test`, `start`, `wait` should be defined in root `turbo.json` and inherited by all packages
-2. **Package `turbo.json` or `nx.json` or `nx` section of `package.json`**: Only override when needed (e.g., adding `dependsOn` or custom `outputs`)
-3. **Check `dependsOn`**: Ensure build dependencies match actual package dependencies (e.g., `"dependsOn": ["^build"]` for packages that depend on other workspace packages)
-4. **Check `outputs`**: Must include all build artifacts (`dist/**/*`, `package.json`: all modified & generated files)
-5. **Cache settings**: `clean`, `wait`, `start` should have `"cache": false`

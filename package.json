@@ -16,6 +16,7 @@
     "lint:staged": "lint-staged --debug",
     "----- RELEASE -----": "",
     "release": "nx release",
+    "release:preview": "nx release --dry-run --verbose",
     "commitlint": "commitlint",
     "----- TASKS -----": "",
     "start": "nx run-many -t start --parallel=100",

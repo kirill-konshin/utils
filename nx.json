@@ -70,7 +70,8 @@
     "git": {
       "commit": false,
       "tag": true,
-      "push": true
+      "push": true,
+      "pushArgs": ["origin", "refs/tags/*:refs/tags/*"]
     }
   },
   "analytics": false
