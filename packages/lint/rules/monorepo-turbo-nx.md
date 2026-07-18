@@ -26,7 +26,7 @@ ALWAYS verify `turbo.json` or `nx.json` task definitions when modifying scripts 
 
 # NX
 
-- If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. Yarn 2+ never runs `prepare` on install so run `yarn prepare` explicitly: once after cloning, and as a CI step after `yarn install`
+- If NX is used root `package.json` must have `nx show projects > /dev/null` in the `prepare`/`postinstall` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. With `prepare`, Yarn 2+ skips it on install — run `yarn prepare` explicitly (after cloning + as a CI step); with `postinstall` (private root) Yarn runs it on install, so no extra step
 - Nx Release (v23+) with conventional commits silently demotes bumps for `0.x` packages (breaking → minor, `feat` → patch) while the log still claims `Applied semver relative bump "minor"`;
     - set `release.version.adjustSemverBumpsForZeroMajorVersion: false` in `nx.json` if `feat:` must bump minor before `1.0.0`
 - Root NX task-script convention: bare name = `nx run-many -t <target>` over all projects (`build`/`test`/`start`/`serve`), with concurrency flags set once here;

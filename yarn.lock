@@ -6230,7 +6230,7 @@ __metadata:
     vitest:
       optional: true
   bin:
-    lint-prepare: ./bin/lint-prepare.js
+    lint-prepare: ./lintPrepare.js
   languageName: unknown
   linkType: soft
 

@@ -27,7 +27,7 @@ build:
             - web/.next/cache
     script:
         - yarn --immutable
-        - yarn prepare # Yarn 2+ does not run it and Nx needs it for graph, ONLY ADD IF NX IS PRESENT OR OTHER NEED EXISTS, LIKE AGENTS PKG VERIFICATIONS ON CI
+        - yarn prepare # Add this if Yarn 2+ is used and package is NOT private
         - yarn build
     only:
         - master

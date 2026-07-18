@@ -1,9 +1,7 @@
 /*
- * Kept as raw ESM JavaScript on purpose (no TypeScript build). This config is loaded by the
- * consumer's `eslint.config.mjs` and by pre-commit `lint:staged`, both of which run before any
- * build step (in this monorepo's CI: `yarn prepare` -> `yarn lint` -> ... -> `yarn build`). A TS
- * build would point `main` at `dist/`, forcing the package to be built before it can lint anything
- * - a bootstrap-ordering quirk not worth it for a config package. See README ("Why raw JS").
+ * Raw ESM JS on purpose (no TS build): loaded by `eslint.config.mjs` and pre-commit `lint:staged`
+ * before anything is built, so a `dist/` main would need building before it could lint. See
+ * README ("Why raw JS").
  */
 
 /*

@@ -55,9 +55,7 @@ jobs:
             - name: Install dependencies
               run: yarn install --immutable
 
-            # Yarn Berry never runs the top-level `prepare` script on install — run it explicitly.
-            # Without it the Nx project graph cache is missing and @nx/eslint-plugin rules silently skip.
-            # ONLY ADD IF NX IS PRESENT OR OTHER NEED EXISTS, LIKE AGENTS PKG VERIFICATIONS ON CI
+            # Add this if Yarn 2+ is used and package is NOT private
             - name: Prepare
               run: yarn prepare
 
