@@ -13,7 +13,7 @@ paths:
     - Tasks to launch inner tasks (main `build` that launches `build` in each sub-package)
 - Inner `package.json` MUST only define atomic orchestrator-agnostic tasks
 - Prefer NX for new projects
-- If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script
+- If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. Yarn 2+ never runs `prepare` on install (see [lifecycle scripts](npm-yarn.md)), so run `yarn prepare` explicitly: once after cloning, and as a CI step after `yarn install`
 
 # The `dependsOn: ["^wait"]` Pattern
 

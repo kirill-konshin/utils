@@ -1,6 +1,6 @@
 ---
 name: verify-agent-rules
-description: Audit this repo's code against the coding rules shipped by @kirill.konshin/agents. Rules are discovered from .claude/rules/*.md (created by `agents init`), falling back to node_modules/@kirill.konshin/agents/rules/*.md where init hasn't run. Reports violations with file/line, a summary, and a criticality verdict, then interactively lets the user decide how to resolve each one. Use when asked to check, audit, verify, or lint the codebase against agent rules/conventions, or to find rule violations.
+description: Audit this repo's code against the coding rules shipped by @kirill.konshin/agents. Rules are discovered from .claude/rules/*.md (created by `agents init`), falling back to node_modules/@kirill.konshin/agents/rules/*.md where init hasn't run; project agent-instruction files (AGENTS.md Custom Rules, CLAUDE.md, etc.) are read on top and override the packaged rules on conflict. Reports violations with file/line, a summary, and a criticality verdict, then interactively lets the user decide how to resolve each one. Use when asked to check, audit, verify, or lint the codebase against agent rules/conventions, or to find rule violations.
 ---
 
 # Verify Agent Rules
@@ -13,6 +13,16 @@ Locate the rule files by checking these locations in order and using the first t
 2. `node_modules/@kirill.konshin/agents/rules/*.md` — a consumer project where `agents init` hasn't been run yet.
 
 Treat every rule file found as normative — read them directly rather than relying on this skill to restate them.
+
+## Project overrides
+
+The packaged rules are defaults, not absolutes. Before auditing, also scan every default agent-instruction location that exists in the repo and treat its content as rules ON TOP of the packaged ones:
+
+- `AGENTS.md` — everything below the `# Custom Rules` heading (the generated section above it just `@include`s the packaged rules already discovered); nested `AGENTS.md` files in subdirectories apply to their subtree
+- `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, nested `CLAUDE.md` files — skip any that are symlinks to `AGENTS.md` (that's how `agents init` wires them up)
+- Other agent memory files if present: `.cursor/rules/*` / `.cursorrules`, `.github/copilot-instructions.md`, `GEMINI.md`
+
+On conflict, the project file wins over the packaged rule. E.g. the packaged `tailwind.md` names Hero UI as the default UI library — but if the project's Custom Rules say Bootstrap, then Bootstrap usage is compliant and must not be reported; flag Hero UI usage instead if the override forbids it. Fold all overrides into the rule set before Step 1, and when an override changed a verdict, attribute the finding to the overriding file, not the packaged rule.
 
 ## Step 1: Audit
 
@@ -41,6 +51,7 @@ Follow exactly what the user picks. Don't fix anything before this choice is mad
 Only when the user chose "go one by one": go through each violation in the listed order and, for each, ask the user to pick exactly one:
 
 - **Skip** — leave this one alone, move to the next.
+- **Skip & add override** — leave the code alone AND append a project override to the `# Custom Rules` section of `AGENTS.md` (create the file via `agents init` if missing) so future audits treat this as compliant. Draft the override as a general rule stating the project's choice (e.g. "Use Bootstrap instead of Hero UI"), not a per-file exception — unless the violation is genuinely a one-off, then scope it narrowly (e.g. "`legacy/` is exempt from the TypeScript rule"). Show the drafted line before writing it.
 - **Fix** — apply the fix directly.
 - **Type instructions** — the user provides specific instructions for this issue; apply them.
 

@@ -55,7 +55,13 @@ jobs:
             - name: Install dependencies
               run: yarn install --immutable
 
-            #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
+            # Yarn Berry never runs the top-level `prepare` script on install — run it explicitly.
+            # Without it the Nx project graph cache is missing and @nx/eslint-plugin rules silently skip.
+            # ONLY ADD IF NX IS PRESENT OR OTHER NEED EXISTS, LIKE AGENTS PKG VERIFICATIONS ON CI
+            - name: Prepare
+              run: yarn prepare
+
+              #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
             #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
             - name: Cache turbo build setup
               uses: actions/cache@v4

@@ -50,7 +50,7 @@ Preserve already existing settings, add what's safe, ask user how to merge if th
     <option name="myConfigurationMode" value="AUTOMATIC" />
     <option name="myRunOnSave" value="true" />
     <option name="myRunOnReformat" value="true" />
-    <option name="myFilesPattern" value="{**/*,*}.{js,ts,jsx,tsx,cjs,cts,mjs,mts,htm,html,vue,css,scss,sass,less,md,yml,json}" />
+    <option name="myFilesPattern" value="{**/*,*}.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue,css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml}" />
   </component>
 </project>
 ```
@@ -61,7 +61,7 @@ Preserve already existing settings, add what's safe, ask user how to merge if th
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="EslintConfiguration">
-    <files-pattern value="**/*.{js,ts,jsx,tsx,cjs,cts,mjs,mts,htm,html,vue}" />
+    <files-pattern value="**/*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}" />
     <option name="fix-on-save" value="true" />
   </component>
 </project>

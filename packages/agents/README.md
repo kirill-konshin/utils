@@ -29,6 +29,8 @@ This will automatically generate/update `AGENTS.md` when:
 - Running `npm install` / `yarn install`
 - After cloning the repository
 
+> ⚠️ Note for Yarn 2+ (Berry): it never runs a top-level `prepare` script on install (see [Yarn lifecycle scripts](https://yarnpkg.com/advanced/lifecycle-scripts)) — run `yarn prepare` manually after cloning or when rules change. If it must run automatically, use `postinstall` instead, guarded with [pinst](https://github.com/typicode/pinst) when the package is published (npm runs a published package's `postinstall` on consumers' installs).
+
 ### Option 2: Manual Generation
 
 ```bash
