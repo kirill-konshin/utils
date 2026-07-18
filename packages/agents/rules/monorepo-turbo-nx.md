@@ -14,6 +14,7 @@ paths:
 - Inner `package.json` MUST only define atomic orchestrator-agnostic tasks
 - Prefer NX for new projects
 - If NX is used root `package.json` must have `nx show projects > /dev/null` in `prepare` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. Yarn 2+ never runs `prepare` on install (see [lifecycle scripts](npm-yarn.md)), so run `yarn prepare` explicitly: once after cloning, and as a CI step after `yarn install`
+- Nx Release (v23+) with conventional commits silently demotes bumps for `0.x` packages (breaking → minor, `feat` → patch) while the log still claims `Applied semver relative bump "minor"`; set `release.version.adjustSemverBumpsForZeroMajorVersion: false` in `nx.json` if `feat:` must bump minor before `1.0.0`
 
 # The `dependsOn: ["^wait"]` Pattern
 

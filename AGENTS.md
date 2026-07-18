@@ -206,3 +206,8 @@ Root script convention: the bare name runs everything (`yarn build` / `test` / `
 Every package is tagged in its `package.json` `nx` key with a `platform:*` tag (`universal`, `node`, `browser`, `worker`, `react`, `next`, `react-native`, `electron`, `tooling`, `umbrella`); demos are `type:demo`. The `@nx/enforce-module-boundaries` ESLint rule (configured in root `eslint.config.mjs`) restricts which platforms may import which — e.g. `platform:react` code cannot import `platform:worker` or `platform:node` packages. When creating a package, assign the appropriate tag; when a legitimate new dependency direction appears, extend `depConstraints` in `eslint.config.mjs` rather than removing tags.
 
 Library packages run `start` (`vite build --watch`) which produces `dist/index.js`.
+
+# Agent
+
+- When working with `*.md` files in this repo be super concise and to the point
+- `packages/agents/rules/*.md` should mostly have one-liner statements

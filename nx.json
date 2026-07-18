@@ -53,6 +53,7 @@
     },
     "version": {
       "conventionalCommits": true,
+      "adjustSemverBumpsForZeroMajorVersion": false,
       "fallbackCurrentVersionResolver": "disk",
       "preVersionCommand": "yarn build:packages",
       "versionActionsOptions": {
