@@ -22,8 +22,7 @@ jobs:
       NX_HEAD: HEAD
 
     steps:
-      # PRs are squash-merged with the PR title as the commit message, which Nx Release
-      # then parses as a conventional commit on main — so the title must be valid.
+      # PRs are squash-merged with the PR title as the commit message, which Nx Release then parses as a conventional commit on main — so the title must be valid.
       - name: Validate PR title
         if: github.event_name == 'pull_request'
         uses: amannn/action-semantic-pull-request@v6
@@ -31,42 +30,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-          cache: yarn
-          cache-dependency-path: yarn.lock
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Cache Nx
-        uses: actions/cache@v4
-        with:
-          path: .nx/cache
-          key: ${{ runner.os }}-nx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nx-
-
-      #      - name: Cache Next.js
-      #        uses: actions/cache@v4
-      #        with:
-      #          path: |
-      #            packages/.next/cache
-      #          key: ${{ runner.os }}-next-${{ github.ref_name }}-${{ hashFiles('yarn.lock') }}-${{ hashFiles('packages/**/*.[jt]s', 'apps/web/**/*.[jt]sx', 'apps/web/**/*.json') }}
-      #          restore-keys: |
-      #            ${{ runner.os }}-next-${{ github.ref_name }}-${{ hashFiles('yarn.lock') }}-
-      #            ${{ runner.os }}-next-main-${{ hashFiles('yarn.lock') }}-
-      #            ${{ runner.os }}-next-
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Lint
         run: yarn lint
@@ -74,16 +43,8 @@ jobs:
       - name: Test
         run: yarn test:affected
 
-      # https://josh-ops.com/posts/github-code-coverage/
-      # Guarded: with `nx affected` there may be no coverage output at all
-      - name: Code Coverage Summary Report
-        if: ${{ hashFiles('packages/*/coverage/cobertura-coverage.xml') != '' }}
-        uses: irongut/CodeCoverageSummary@v1.3.0
-        with:
-          filename: 'packages/*/coverage/cobertura-coverage.xml'
-          badge: true
-          format: 'markdown'
-          output: 'both'
+      - name: Coverage Summary
+        uses: ./.github/actions/coverage-summary
 
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -91,10 +52,6 @@ jobs:
         with:
           recreate: true
           path: code-coverage-results.md
-
-      - name: Write to Job Summary
-        if: ${{ hashFiles('code-coverage-results.md') != '' }}
-        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
 
       - name: Build
         run: yarn build:affected

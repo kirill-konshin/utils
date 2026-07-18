@@ -1,0 +1,9 @@
+{
+  "name": "@kirill.konshin/agents",
+  "description": "TOMBSTONE",
+  "version": "0.0.0",
+  "private": true,
+  "skipGenerate": true,
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT"
+}

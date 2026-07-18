@@ -46,7 +46,7 @@
     }
   },
   "release": {
-    "projects": ["packages/*", "!packages/utils-private"],
+    "projects": ["packages/*", "!packages/utils-private", "!packages/agents", "!packages/eslint-config-next-custom"],
     "projectsRelationship": "independent",
     "releaseTag": {
       "pattern": "{projectName}@{version}"

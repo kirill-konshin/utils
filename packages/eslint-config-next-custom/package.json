@@ -1,0 +1,19 @@
+{
+  "name": "@kirill.konshin/eslint-config-next-custom",
+  "description": "TOMBSTONE of a retired package (merged into @kirill.konshin/lint). Must exist on disk: Nx Release attributes commits touching a DELETED project's package.json to ALL projects (project-glob-changes.js: 'If any project has been deleted, we must assume all projects were affected'), which mass-bumps the whole workspace. Keep until every package has a release tag newer than the last feat/fix that touched this package.",
+  "version": "0.0.0",
+  "private": true,
+  "skipGenerate": true,
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-konshin/utils.git",
+    "directory": "packages/eslint-config-next-custom"
+  },
+  "nx": {
+    "tags": [
+      "platform:tooling"
+    ]
+  }
+}

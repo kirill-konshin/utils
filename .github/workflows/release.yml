@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   # Coordinated / forced release: bumps ALL packages with the given specifier
   workflow_dispatch:
     inputs:
@@ -12,43 +13,30 @@ on:
         required: true
         type: string
 
-permissions:
-  id-token: write # Required for OIDC
-  contents: read
-
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  release:
-    name: Release
+  verify:
+    name: Verify & Preview
     runs-on: ubuntu-latest
 
     if: github.repository == 'kirill-konshin/utils'
 
     permissions:
-      id-token: write # Required for OIDC trusted publishing
-      contents: write # Required to push tags and create GitHub Releases
+      contents: read
+
+    outputs:
+      has_releases: ${{ steps.preview.outputs.has_releases }}
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Nx Release needs full history + tags to resolve current versions and conventional commits
           fetch-tags: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-          cache: yarn
-          cache-dependency-path: yarn.lock
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install dependencies
-        run: yarn install --immutable
+      - name: Setup
+        uses: ./.github/actions/setup
 
       # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
       # `sha`, making the range invalid.
@@ -56,47 +44,73 @@ jobs:
         if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && !github.event.forced
         run: yarn commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
 
-      - name: Cache Nx
-        uses: actions/cache@v4
-        with:
-          path: .nx/cache
-          key: ${{ runner.os }}-nx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nx-
-
       - name: Lint
         run: yarn lint
 
       - name: Test
         run: yarn test
 
-      # https://josh-ops.com/posts/github-code-coverage/
-      - name: Code Coverage Summary Report
-        uses: irongut/CodeCoverageSummary@v1.3.0
+      - name: Coverage Summary
+        uses: ./.github/actions/coverage-summary
+
+      - name: Release preview
+        id: preview
+        run: |
+          set -o pipefail
+          yarn release:preview ${{ inputs.specifier }} 2>&1 | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g' | tee /tmp/preview.log
+          echo "has_releases=$(grep -aq "releases/tag/" /tmp/preview.log && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Preview Summary
+        run: |
+          {
+            echo "### 📦 Release preview"
+            echo ""
+            if [ "${{ steps.preview.outputs.has_releases }}" = "true" ]; then
+              echo "Approve to publish the following:"
+              echo ""
+              echo '```'
+              grep -aE "Resolved the specifier|New version .* written|releases/tag/|No changes were detected" /tmp/preview.log
+              echo '```'
+            else
+              echo "Nothing to release — publish job skipped."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    needs: verify
+    if: needs.verify.outputs.has_releases == 'true'
+
+    environment: npm-publish
+
+    permissions:
+      id-token: write # Required for OIDC trusted publishing
+      contents: write # Required to push tags and create GitHub Releases
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
         with:
-          filename: 'packages/*/coverage/cobertura-coverage.xml'
-          badge: true
-          format: 'markdown'
-          output: 'both'
+          fetch-depth: 0 # Nx Release needs full history + tags to resolve current versions and conventional commits
+          fetch-tags: true
 
-      - name: Write to Job Summary
-        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
-
-      # preVersionCommand is build, physically not possible to release unbuilt
-      # - name: Build
-      #  run: yarn build:packages
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          registry-url: 'https://registry.npmjs.org' # publish job needs .npmrc auth config
 
       - name: Configure git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Push event: version determined per package from conventional commits since its last tag.
-      # Manual dispatch: the provided specifier is applied to all packages (coordinated release).
-      # Versions are written to package.json only in the CI working tree (never committed) —
-      # source of truth for current versions is git tags.
+      # preVersionCommand is build, physically not possible to release unbuilt.
       - name: Release
-        run: yarn release ${{ inputs.specifier }} --yes 2>&1 | tee /tmp/release.log
+        run: |
+          set -o pipefail
+          yarn release ${{ inputs.specifier }} --yes 2>&1 | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g' | tee /tmp/release.log
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
