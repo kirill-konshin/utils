@@ -4,8 +4,8 @@ import * as process from 'node:process';
 import { execSync } from 'node:child_process';
 import { globSync } from 'glob';
 import { createRequire } from 'node:module';
-import { checkPackage, createPackageFromTarballData } from '@arethetypeswrong/core';
-import { groupProblemsByKind } from '@arethetypeswrong/core/utils';
+import { checkPackage, createPackageFromTarballData, type Problem } from '@arethetypeswrong/core';
+import { problemKindInfo } from '@arethetypeswrong/core/problems';
 
 export const pkgPath = path.join(process.cwd(), 'package.json');
 
@@ -79,6 +79,13 @@ export async function fixExports() {
     pkg.type = 'module';
     pkg.main = pkg.module = mainExport.import.import;
     pkg.types = mainExport.import.types;
+
+    /*
+     * Without `files`, npm pack falls back to .npmignore/.gitignore — and dist/ is gitignored, so
+     * published tarballs would contain only the auto-included entrypoint, none of the preserved
+     * per-module files the exports map points at (checkTypes catches this as resolution errors).
+     */
+    pkg.files = ['dist'];
 
     // Author & License
 
@@ -179,6 +186,51 @@ export async function generateIndex() {
     }
 }
 
+/*
+ * TS emits relative import specifiers into .d.ts verbatim — extensionless, as written in source —
+ * but node16/nodenext ESM resolution requires explicit paths ('./worker.js', './form/index.js').
+ * Runtime output is already correct (rollup appends '.js'), so only declarations need the rewrite.
+ * The src tree (mirrored 1:1 into dist via preserveModules) decides file vs directory — dist itself
+ * may be only partially emitted when this hook runs.
+ */
+export function fixDtsExtensions(filePath: string, content: string): string {
+    if (!/\.d\.[cm]?ts$/.test(filePath)) return content;
+
+    const fileSrcDir = path.dirname(path.join(path.resolve('./src'), path.relative(path.resolve(distDir), filePath)));
+
+    return content.replace(/(\bfrom\s+|\bimport\s*\()(['"])(\.\.?\/[^'"]+)\2/g, (match, prefix, quote, spec) => {
+        const target = path.resolve(fileSrcDir, spec);
+
+        if (fs.existsSync(`${target}.ts`) || fs.existsSync(`${target}.tsx`))
+            return `${prefix}${quote}${spec}.js${quote}`;
+        if (fs.existsSync(path.join(target, 'index.ts'))) return `${prefix}${quote}${spec}/index.js${quote}`;
+
+        return match; // already extensioned, non-source asset, or outside src — leave untouched
+    });
+}
+
+/*
+ * Mirrors `attw --profile esm-only`: these packages deliberately ship ESM only (exports maps carry
+ * just an `import` condition), so failures of the require-based resolutions are expected, not defects.
+ */
+const ignoredResolutionKinds = ['node10', 'node16-cjs'];
+
+function formatProblem(problem: Problem): string {
+    const { kind, entrypoint, resolutionKind, resolutionOption, fileName, moduleSpecifier } = problem as any;
+    const info = problemKindInfo[kind];
+
+    const where = [
+        entrypoint !== undefined && `entrypoint "${entrypoint}"`,
+        (resolutionKind ?? resolutionOption) && `resolution ${resolutionKind ?? resolutionOption}`,
+        fileName && `file ${fileName}`,
+        moduleSpecifier && `import "${moduleSpecifier}"`,
+    ]
+        .filter(Boolean)
+        .join(', ');
+
+    return `${info.emoji} ${info.title} (${where || JSON.stringify(problem)}): ${info.shortDescription}. ${info.docsUrl}`;
+}
+
 export async function checkTypes() {
     // https://www.npmjs.com/package/@arethetypeswrong/core
     const { filename } = JSON.parse(execSync('npm pack --json', { encoding: 'utf-8' }))[0];
@@ -187,13 +239,15 @@ export async function checkTypes() {
         const data = new Uint8Array(fs.readFileSync(filename));
         const analysis = await checkPackage(createPackageFromTarballData(data));
 
-        if (analysis.types && analysis.problems.length > 0) {
-            // TODO Throw instead of warn once existing packages' dts extension issues are fixed
-            for (const [kind, problems] of Object.entries(groupProblemsByKind(analysis.problems))) {
-                console.warn(`${kind} (${problems.length}):`, problems);
-            }
+        const problems = analysis.types
+            ? analysis.problems.filter((p: any) => !ignoredResolutionKinds.includes(p.resolutionKind))
+            : [];
 
-            console.warn(`@arethetypeswrong found ${analysis.problems.length} problem(s) in ${pkg.name}`);
+        if (problems.length > 0) {
+            // TODO Throw instead of warn once existing packages' dts extension issues are fixed
+            for (const problem of problems) console.warn(formatProblem(problem));
+
+            console.warn(`@arethetypeswrong found ${problems.length} problem(s) in ${pkg.name}`);
         } else {
             console.log('Types check passed');
         }

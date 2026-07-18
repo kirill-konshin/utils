@@ -4,7 +4,11 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "prepare": "husky && nx show projects > /dev/null",
+    "prepare": "yarn prepare:agents && yarn prepare:nx && yarn prepare:eslint && yarn prepare:husky",
+    "prepare:agents": "node packages/agents/bin/index.js init",
+    "prepare:nx": "nx show projects > /dev/null",
+    "prepare:eslint": "node packages/eslint-config-next-custom/install.js",
+    "prepare:husky": "husky",
     "----- LINT -----": "",
     "eslint": "eslint --fix --concurrency=auto --cache --cache-location node_modules/.cache/eslint",
     "prettier": "prettier --write --log-level=warn --ignore-path .gitignore --ignore-path .prettierignore",

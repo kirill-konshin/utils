@@ -1,0 +1,1 @@
+../../../packages/agents/skills/verify-agent-rules.md

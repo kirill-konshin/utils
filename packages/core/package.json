@@ -47,5 +47,8 @@
     "tags": [
       "platform:universal"
     ]
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

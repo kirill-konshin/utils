@@ -1,0 +1,1 @@
+../../packages/agents/rules/npm-yarn.md

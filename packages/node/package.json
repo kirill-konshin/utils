@@ -47,5 +47,8 @@
     "tags": [
       "platform:node"
     ]
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

@@ -43,12 +43,31 @@ export function deriveController(signal?: AbortSignal): [AbortController, AbortS
 }
 
 export function rejectOnSignal(promise: Promise<any>, signal: AbortSignal): Promise<Event['data']> {
+    if (signal.aborted) return Promise.reject('RaceAborted:' + signal.reason);
     return Promise.race([
         promise,
         new Promise((resolve, reject) => {
-            signal.addEventListener('abort', () => reject('RaceAborted:' + signal.reason), { once: true, signal });
+            /*
+             * NOTE: no { signal } disposal here — abort algorithms (which remove signal-disposed
+             * listeners) run BEFORE the abort event is dispatched, so a listener disposed by the very
+             * signal it listens to would be removed without ever firing. { once } self-removes on fire.
+             */
+            signal.addEventListener('abort', () => reject('RaceAborted:' + signal.reason), { once: true });
         }),
     ]);
+}
+
+/*
+ * Names that must never be used as responder method names: `then`/`catch`/`finally` would make the
+ * caller thenable (`await caller` would dispatch a bogus RPC), and `toJSON`/`toString`/`constructor`
+ * must keep resolving to the plain-object natives so the caller stays introspectable.
+ */
+export const RESERVED_NAMES: string[] = ['then', 'catch', 'finally', 'toJSON', 'toString', 'constructor'];
+
+function validateResponders(responders: Responders) {
+    for (const key of Object.keys(responders)) {
+        if (RESERVED_NAMES.includes(key)) throw new Error(`Responder name "${key}" is reserved`);
+    }
 }
 
 // Lib
@@ -98,11 +117,11 @@ export function wrpc({
         signal: AbortSignal,
         once: boolean = false,
     ) {
+        // no { signal } disposal — see the note in rejectOnSignal; { once } self-removes on fire
         signal.addEventListener(
             'abort',
             () => logWarn(LogLevel.detail, context, 'LISTEN SIGNAL ABORT', signal.reason),
             {
-                signal,
                 once: true,
             },
         );
@@ -149,6 +168,8 @@ export function wrpc({
         responders: T;
         stop: () => void;
     } {
+        validateResponders(responders);
+
         const mainController = new AbortController();
 
         worker.addEventListener('messageerror', (e) => logError(LogLevel.error, null, 'MESSAGE ERROR', e), {
@@ -170,7 +191,7 @@ export function wrpc({
                     // always recover signal so that promises also can abort
                     if (ctx.signalName) payload[ctx.signalName] = subSignal;
 
-                    const iterator = responder(payload); // no await!
+                    const iterator = responder.call(responders, payload); // no await! `.call` so responders can use `this`
 
                     log(LogLevel.lifecycle, ctx, 'START', iterator);
 
@@ -186,6 +207,7 @@ export function wrpc({
 
                     // GENERATOR
 
+                    let res: any;
                     try {
                         /*
                          * Listen outside the loop to react immediately
@@ -202,7 +224,6 @@ export function wrpc({
                             subSignal,
                         );
 
-                        let res: any;
                         let nextPayload: any = payload; // does not matter, will be ignored anyway
                         do {
                             res = await rejectOnSignal(iterator.next(nextPayload), subSignal);
@@ -228,6 +249,19 @@ export function wrpc({
                             send(worker, { ...ctx, error: true, done: true }, e);
                         }
                     } finally {
+                        /*
+                         * Run the generator's own finally/cleanup when the loop ended early (abort, break,
+                         * error). Best-effort, not awaited: if the generator is suspended on an await that
+                         * never settles, the queued return() never executes — cooperative cancellation via
+                         * the recovered AbortSignal remains the responder's own job.
+                         */
+                        if (!res?.done) {
+                            try {
+                                void Promise.resolve(iterator.return?.(undefined)).catch(() => {});
+                            } catch {
+                                // sync generator threw during cleanup
+                            }
+                        }
                         log(LogLevel.detail, ctx, 'LOOP DONE');
                     }
                 } catch (e) {
@@ -252,12 +286,24 @@ export function wrpc({
 
     //TODO Name arg
     function createCaller<T extends Responders>(worker: WorkerLike, responders: T): T {
+        validateResponders(responders);
+
         worker.addEventListener('messageerror', (e) => logError(LogLevel.error, null, 'MESSAGE ERROR', e));
 
         //TODO Stop
 
         return new Proxy<T>(responders as any, {
             get(target, prop, receiver) {
+                /*
+                 * Reserved names and symbols fall through to the plain object: `then` stays undefined so
+                 * the caller is not thenable (`await caller` would otherwise dispatch a bogus RPC), and
+                 * `toString`/`constructor` resolve to the inherited natives so the caller can be
+                 * introspected. validateResponders() forbids creating responders with these names.
+                 */
+                if (typeof prop !== 'string' || RESERVED_NAMES.includes(prop)) {
+                    return Reflect.get(target, prop, receiver);
+                }
+
                 function gen(payload: any) {
                     const ctx: Context = { message: prop.toString(), id: crypto.randomUUID() };
 
@@ -287,27 +333,37 @@ export function wrpc({
 
                     const [promiseController, promiseSignal] = deriveController(mainSignal);
 
-                    const promise = waitFor(
-                        worker,
-                        ctx,
-                        (data) => !!data.ctx.promise || !!data.ctx.error,
-                        promiseSignal,
-                    ).then(({ ctx, payload }) => {
-                        if (ctx.error) {
+                    const promise = waitFor(worker, ctx, undefined, promiseSignal).then((data) => {
+                        const { ctx: ctxIn, payload } = data;
+                        if (ctxIn.error) {
                             logError(LogLevel.error, ctx, 'PROMISE ERROR', payload);
                             throw payload;
                         }
-                        log(LogLevel.lifecycle, ctx, 'PROMISE RESOLVED', payload);
-                        return payload;
+                        if (ctxIn.promise) {
+                            log(LogLevel.lifecycle, ctx, 'PROMISE RESOLVED', payload);
+                            return payload;
+                        }
+                        // a generator frame means the method was awaited instead of iterated
+                        logError(LogLevel.error, ctx, 'ERROR', 'Cannot await a generator method', data);
+                        cancel(true, 'AwaitedGenerator');
+                        throw new Error('Cannot await a generator method, use `for await ... of`', {
+                            cause: data,
+                        });
                     });
+
+                    /*
+                     * Keep at least one rejection handler attached: the promise rejects unobserved when a
+                     * generator's first frame arrives before iteration starts, or when a fire-and-forget
+                     * promise call errors. Awaiters get their own branch via the bound then/catch below.
+                     */
+                    promise.catch(() => {});
 
                     async function* generator() {
                         let done = false;
                         try {
-                            // React immediately
+                            // React immediately (no { signal } disposal — see the note in rejectOnSignal)
                             mainSignal.addEventListener('abort', () => cancel(true, mainSignal.reason), {
                                 once: true,
-                                signal: mainSignal,
                             });
 
                             log(LogLevel.detail, ctx, 'GENERATOR START');

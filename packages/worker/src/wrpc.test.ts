@@ -5,6 +5,13 @@ import type { responder } from './wrpc.fixture'; // DO NOT IMPORT ANYTHING OTHER
 
 // Prepare
 
+/*
+ * For tests that never exchange messages (proxy shape, creation-time validation). A real Worker's
+ * async boot would dangle past the test's end, and @vitest/web-worker corrupts concurrently booting
+ * workers (module evaluations share the swapped-in `self` global), breaking later tests.
+ */
+const stubWorker = (): any => ({ addEventListener: () => {}, removeEventListener: () => {}, postMessage: () => {} });
+
 const createWorker = () => {
     const mainWorker = new Worker(new URL('./wrpc.fixture', import.meta.url), { type: 'module' });
     mainWorker.addEventListener('error', (e) => console.error('Worker Error', e));
@@ -207,7 +214,7 @@ describe('WRPC', async () => {
         await expect(it.next(9)).resolves.toEqual({ value: 'done', done: true }); // 9 is ignored as generator has returned and is done
     });
 
-    test.todo('setTimeout & setInterval', async () => {
+    test('setTimeout & setInterval', async () => {
         const { caller } = createWorker();
 
         await caller.setTimeout({ timeout: 10 });
@@ -219,5 +226,82 @@ describe('WRPC', async () => {
             i++;
             if (i >= 3) break;
         }
+
+        expect(i).toBe(3);
+    });
+
+    test('caller is not thenable', async () => {
+        const caller = wrpc().createCaller(stubWorker(), {} as typeof responder.responders);
+
+        expect((caller as any).then).toBeUndefined();
+        expect((caller as any).catch).toBeUndefined();
+        expect((caller as any).finally).toBeUndefined();
+        await expect(Promise.resolve(caller)).resolves.toBe(caller);
+    });
+
+    test('caller is introspectable', () => {
+        const caller = wrpc().createCaller(stubWorker(), {} as typeof responder.responders);
+
+        expect((caller as any)[Symbol.asyncIterator]).toBeUndefined();
+        expect((caller as any)[Symbol.iterator]).toBeUndefined();
+        expect(String(caller)).toBe('[object Object]');
+        expect(JSON.stringify(caller)).toBe('{}');
+    });
+
+    test('reserved responder names throw on create', () => {
+        expect(() => wrpc().createCaller(stubWorker(), { then: async () => {} } as any)).toThrowError('reserved');
+        expect(() => wrpc().createResponder(stubWorker(), { toJSON: async () => {} } as any)).toThrowError('reserved');
+    });
+
+    test('await generator method rejects instead of hanging', async () => {
+        const { caller } = createWorker();
+
+        await expect(caller.test()).rejects.toThrowError('Cannot await a generator method');
+
+        // the responder loop was aborted and released — the same worker keeps serving
+        const fn = vi.fn();
+        for await (const data of caller.test()) fn(data);
+        expect(fn).toBeCalledTimes(3);
+    });
+
+    test('await generator that throws rejects with the original error', async () => {
+        const { caller } = createWorker();
+
+        await expect(caller.error()).rejects.toThrowError('Test');
+    });
+
+    test('unawaited generator produces no unhandled rejection', async () => {
+        const { caller } = createWorker();
+
+        const onRejection = vi.fn();
+        process.on('unhandledRejection', onRejection);
+        try {
+            void caller.test();
+            await new Promise((res) => setTimeout(res, 200));
+            expect(onRejection).not.toHaveBeenCalled();
+        } finally {
+            process.off('unhandledRejection', onRejection);
+        }
+    });
+
+    test('iteration started after first frame already arrived fails loudly', async () => {
+        const { caller } = createWorker();
+
+        const it = caller.test();
+        await new Promise((res) => setTimeout(res, 100)); // first frame consumed by the eager promise → cancelled
+        await expect(it.next()).rejects.toMatch('RaceAborted');
+    });
+
+    test('responder generator cleanup runs on break', async () => {
+        const { caller } = createWorker();
+
+        for await (const data of caller.cleanupGen()) {
+            console.log('DATA', data);
+            break;
+        }
+
+        await vi.waitFor(async () => {
+            expect(await caller.wasCleaned()).toBe(true);
+        });
     });
 });

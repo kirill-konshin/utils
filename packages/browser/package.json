@@ -47,5 +47,8 @@
     "tags": [
       "platform:browser"
     ]
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

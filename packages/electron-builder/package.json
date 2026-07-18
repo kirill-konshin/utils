@@ -10,7 +10,7 @@
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test:disabled": "vitest run --coverage",
+    "test": "vitest run --coverage",
     "test:watch": "vitest watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
@@ -22,13 +22,14 @@
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
+    "builder-util-runtime": "^9.3.1",
     "electron": "^37.2.5",
     "electron-builder": "^26.0.12"
   },
   "peerDependencies": {
+    "builder-util-runtime": "^9",
     "electron": "^37",
-    "electron-builder": "^26",
-    "builder-util-runtime": "^9"
+    "electron-builder": "^26"
   },
   "publishConfig": {
     "access": "public"
@@ -47,13 +48,13 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "peerDependenciesMeta": {
+    "builder-util-runtime": {
+      "optional": true
+    },
     "electron": {
       "optional": true
     },
     "electron-builder": {
-      "optional": true
-    },
-    "builder-util-runtime": {
       "optional": true
     }
   },
@@ -66,5 +67,8 @@
     "tags": [
       "platform:electron"
     ]
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

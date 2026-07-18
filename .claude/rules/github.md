@@ -1,0 +1,1 @@
+../../packages/agents/rules/github.md

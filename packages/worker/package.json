@@ -44,5 +44,8 @@
     "tags": [
       "platform:worker"
     ]
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

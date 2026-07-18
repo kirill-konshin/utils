@@ -5,6 +5,8 @@ import { wrpc } from './wrpc';
  * call (createResponder<T>), but as long as this object's own members are fully annotated it can
  * stay local and untyped — the export below then just borrows its shape via `typeof`.
  */
+let cleaned = false; // observed via wasCleaned() to prove cleanupGen's finally ran in the worker
+
 const responders = {
     // note it's not async, and works properly
     test: function* ({ buf, signal }: { signal?: AbortSignal; buf?: ArrayBuffer } = {}): Generator<
@@ -58,6 +60,19 @@ const responders = {
             yield await this.setTimeout({ timeout });
         }
     },
+
+    cleanupGen: async function* (): AsyncGenerator<number, void, unknown> {
+        let i = 0;
+        try {
+            while (true) {
+                yield i++;
+            }
+        } finally {
+            cleaned = true;
+        }
+    },
+
+    wasCleaned: async (): Promise<boolean> => cleaned,
 };
 
 export const responder: { responders: typeof responders; stop: () => void } = wrpc().createResponder(self, responders);

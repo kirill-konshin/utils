@@ -2,7 +2,17 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import preserveDirectives from 'rollup-preserve-directives';
-import { pkg, fixExports, formats, entry, external, distDir, generateIndex, checkTypes } from './vite.exports';
+import {
+    pkg,
+    fixExports,
+    fixDtsExtensions,
+    formats,
+    entry,
+    external,
+    distDir,
+    generateIndex,
+    checkTypes,
+} from './vite.exports';
 
 // https://rbardini.com/how-to-build-ts-library-with-vite/
 // https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
@@ -31,6 +41,7 @@ export default defineConfig({
         },
     },
     test: {
+        passWithNoTests: true,
         coverage: {
             reporter: ['text', 'html', 'cobertura'],
             include: ['src/**/*.{ts,tsx,js,jsx}'],
@@ -43,7 +54,10 @@ export default defineConfig({
     plugins: [
         react(),
         preserveDirectives(), // https://github.com/vitejs/vite/discussions/15721#discussioncomment-10572828
-        dts(), //TODO Check https://github.com/alloc/vite-dts
+        //TODO Check https://github.com/alloc/vite-dts
+        dts({
+            beforeWriteFile: (filePath, content) => ({ filePath, content: fixDtsExtensions(filePath, content) }),
+        }),
         {
             name: 'Generate Index & Exports',
             async buildStart() {

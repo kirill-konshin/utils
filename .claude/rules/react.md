@@ -1,0 +1,1 @@
+../../packages/agents/rules/react.md

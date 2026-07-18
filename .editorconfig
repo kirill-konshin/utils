@@ -10,7 +10,7 @@ insert_final_newline = false
 [*.{mjs,js,jsx,ts,tsx,htm,html,md,mdx}]
 indent_size = 4
 
-[*.{css,sass,scss,yml,json}]
+[*.{css,sass,scss,yml,json,xml}]
 indent_size = 2
 
 [Makefile]

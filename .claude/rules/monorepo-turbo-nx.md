@@ -1,0 +1,1 @@
+../../packages/agents/rules/monorepo-turbo-nx.md

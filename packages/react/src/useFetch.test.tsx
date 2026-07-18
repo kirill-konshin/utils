@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { expect, describe, test, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useFetch } from './useFetch';

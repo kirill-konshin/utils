@@ -27,7 +27,7 @@ import { testColocation } from './rules/testColocation.js';
 
 export const tsExtsRaw = 'js,jsx,ts,tsx,cjs,cts,mjs,mts'; // TODO mdx, needs loader
 export const eslintExtsRaw = `${tsExtsRaw},md,mdx,htm,html,vue`;
-export const prettierExtsRaw = 'css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls';
+export const prettierExtsRaw = 'css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml';
 
 export const tsExts = `{${tsExtsRaw}}`;
 export const eslintExts = `*.{${eslintExtsRaw}}`;
