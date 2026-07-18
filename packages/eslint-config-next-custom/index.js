@@ -6,7 +6,6 @@ import js from '@eslint/js';
 import prettierFlat from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import nextTs from 'eslint-config-next/typescript';
-import nextPlugin from '@next/eslint-plugin-next';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
@@ -15,10 +14,13 @@ import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescrip
 import unicornPlugin from 'eslint-plugin-unicorn';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 import promisePlugin from 'eslint-plugin-promise';
+/*
+ * jest/vitest plugins stay statically imported even though their recommended sets are gated below:
+ * the runner-agnostic 'Test rules' block registers both plugins unconditionally (its rules are pure
+ * AST checks that work without the runner installed).
+ */
 import jestPlugin from 'eslint-plugin-jest';
 import vitestPlugin from '@vitest/eslint-plugin';
-import turboPlugin from 'eslint-plugin-turbo';
-import nxPlugin from '@nx/eslint-plugin';
 import jsoncParser from 'jsonc-eslint-parser';
 
 import { testColocation } from './rules/testColocation.js';
@@ -41,6 +43,14 @@ function isPackageResolvable(specifier) {
 }
 
 const hasNext = isPackageResolvable('next/package.json');
+
+/*
+ * Plugins used only behind capability gates (and for the re-exports at the bottom) are imported
+ * lazily so consumers without the tool don't pay their load cost — @nx/eslint-plugin in particular
+ * drags in a large part of nx itself. Like storybookConfig below, the re-exported bindings are null
+ * when the underlying tool isn't installed.
+ */
+const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
 
 const hasStorybook = isPackageResolvable('storybook/package.json');
 
@@ -116,6 +126,10 @@ const hasTurbo = isPackageResolvable('turbo/package.json');
 
 const hasNx = isPackageResolvable('nx/package.json');
 
+// lazy for the same reason as nextPlugin above
+const turboPlugin = hasTurbo ? (await import('eslint-plugin-turbo')).default : null;
+const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : null;
+
 const index = [
     js.configs.recommended,
 
@@ -190,6 +204,12 @@ const index = [
             'import-x/namespace': 'off',
             'import-x/default': 'off',
             'import-x/export': 'off',
+            /*
+             * Same resolution caveat, and also the two most expensive rules in the recommended set
+             * (they parse every imported module looking for its named exports).
+             */
+            'import-x/no-named-as-default': 'off',
+            'import-x/no-named-as-default-member': 'off',
             // packages/agents/rules/typescript.md
             'import-x/no-default-export': 'warn', // see 'Storybook overrides' below
         },

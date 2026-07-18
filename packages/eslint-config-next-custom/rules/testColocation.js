@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const TEST_SUFFIX = /\.test\.(ts|tsx|js|jsx|mts|mjs|cts|cjs)$/;
 const SOURCE_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs', '.cts', '.cjs'];
+const TEST_SUFFIX = new RegExp(`\\.test\\.(${SOURCE_EXTS.map((ext) => ext.slice(1)).join('|')})$`);
 
 /**
  * Only `*.test.*` is checked, not `*.spec.*` - per testing.md, spec files cover e2e/integration
@@ -21,17 +21,21 @@ export const testColocation = {
         },
     },
     create(context) {
-        const filename = context.filename ?? context.getFilename();
-        const base = path.basename(filename);
+        const base = path.basename(context.filename);
         const match = base.match(TEST_SUFFIX);
 
         if (!match) return {};
 
-        const dir = path.dirname(filename);
         const stem = base.slice(0, -match[0].length);
-        const hasSibling = SOURCE_EXTS.some((ext) => fs.existsSync(path.join(dir, `${stem}${ext}`)));
 
-        if (hasSibling) return {};
+        let siblings;
+        try {
+            siblings = fs.readdirSync(path.dirname(context.filename));
+        } catch {
+            return {}; // virtual filename (stdin, editor buffer) - no directory to check against
+        }
+
+        if (SOURCE_EXTS.some((ext) => siblings.includes(`${stem}${ext}`))) return {};
 
         return {
             Program(node) {
