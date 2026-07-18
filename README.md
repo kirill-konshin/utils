@@ -21,3 +21,9 @@ Commit messages are validated locally by a `commit-msg` hook (commitlint) and on
 - `yarn lint` — lint everything (eslint + prettier)
 - `yarn release --dry-run` — preview what the next release would do
 - Coordinated release of all packages at once (or force an exact version): GitHub → Actions → Release → Run workflow, with a specifier (`patch`, `minor`, `major`, or an exact version like `1.0.0`)
+
+## AI Commands
+
+`/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency
+`/verify-agent-rules` — runs all rules from `agents` package
+`/eslint-config-next-custom` — runs checks agains `eslint-config-next-custom` package `README`

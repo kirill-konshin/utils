@@ -1,11 +1,11 @@
 import { defineConfig } from 'eslint/config';
-import customConfig, { includeIgnoreFile, nxPlugin } from '@kirill.konshin/eslint-config-next-custom';
+import customConfig, { includeIgnoreFile, nxPlugin, tsExts } from '@kirill.konshin/eslint-config-next-custom';
 
 export default defineConfig([
     ...customConfig,
     {
         name: 'Nx module boundaries',
-        files: ['packages/*/src/**/*.{ts,tsx,js,jsx,mjs,mts}'],
+        files: [`packages/*/src/**/*.${tsExts}`],
         plugins: { '@nx': nxPlugin },
         rules: {
             '@nx/enforce-module-boundaries': [

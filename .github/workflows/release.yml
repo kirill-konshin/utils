@@ -50,6 +50,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      # Yarn Berry never runs the top-level `prepare` script on install — run it explicitly.
+      # Without it the Nx project graph cache is missing and @nx/eslint-plugin rules silently skip.
+      - name: Prepare
+        run: yarn prepare
+
       # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
       # `sha`, making the range invalid.
       - name: Validate commit messages

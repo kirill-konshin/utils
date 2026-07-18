@@ -7,10 +7,10 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = false
 
-[*.{mjs,js,jsx,ts,tsx,htm,html,md,mdx}]
+[*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}]
 indent_size = 4
 
-[*.{css,sass,scss,yml,json,xml}]
+[*.{css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml}]
 indent_size = 2
 
 [Makefile]
