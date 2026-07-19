@@ -20,7 +20,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -321,6 +321,6 @@ export function main() {
 }
 
 // Only run when executed directly (e.g. `lint-prepare init`), not when imported.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(__filename)) {
     main();
 }
