@@ -6095,6 +6095,12 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@kirill.konshin/agents@workspace:packages/agents":
+  version: 0.0.0-use.local
+  resolution: "@kirill.konshin/agents@workspace:packages/agents"
+  languageName: unknown
+  linkType: soft
+
 "@kirill.konshin/bootstrap@npm:*, @kirill.konshin/bootstrap@workspace:packages/bootstrap":
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/bootstrap@workspace:packages/bootstrap"
@@ -6179,6 +6185,12 @@ __metadata:
   peerDependenciesMeta:
     electron:
       optional: true
+  languageName: unknown
+  linkType: soft
+
+"@kirill.konshin/eslint-config-next-custom@workspace:packages/eslint-config-next-custom":
+  version: 0.0.0-use.local
+  resolution: "@kirill.konshin/eslint-config-next-custom@workspace:packages/eslint-config-next-custom"
   languageName: unknown
   linkType: soft
 
