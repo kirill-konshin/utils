@@ -74,12 +74,12 @@ export const Screen: FC<ScreenProps> = memo(function Screen({
     // useLoadingTimeout(1000); // less jerky UI
 
     return (
-        <div className={`d-flex flex-column flex-grow-1 flex-lg-grow-0 ${isMobile ? 'vh-100' : ''}`} data-id="screen">
+        <div className={`d-flex flex-column flex-lg-grow-0 flex-grow-1 ${isMobile ? 'vh-100' : ''}`} data-id="screen">
             {/* HEADER */}
 
             {/* FIXME postition fixed does not assign z-index automatically https://getbootstrap.com/docs/4.0/layout/overview/#z-index*/}
             {!noHeader && (
-                <header className={isDesktop ? '' : 'shadow-sm border-bottom'} data-id="header">
+                <header className={isDesktop ? '' : 'border-bottom shadow-sm'} data-id="header">
                     {/* {!noFolders && <FolderBar />} */}
 
                     {/* {isDesktop && !noFooter && <Footer />} */}
@@ -128,7 +128,7 @@ export const Screen: FC<ScreenProps> = memo(function Screen({
                             <Stack gap={3} direction="horizontal">
                                 {/* No container since already in container */}
                                 {backBtn && <Nav className="hstack gap-3">{backBtn}</Nav>}
-                                {forwardBtn && <Nav className="hstack gap-3 flex-grow-1">{forwardBtn}</Nav>}
+                                {forwardBtn && <Nav className="hstack flex-grow-1 gap-3">{forwardBtn}</Nav>}
                             </Stack>
                         )}
                     </>
@@ -138,7 +138,7 @@ export const Screen: FC<ScreenProps> = memo(function Screen({
             {/* FOOTER */}
 
             {!noMenu && !noFooter && (
-                <footer className="shadow-lg border-top d-block d-lg-none" data-id="footer">
+                <footer className="border-top d-block d-lg-none shadow-lg" data-id="footer">
                     {!noFooter && footer}
                     {!noMenu && menu}
                 </footer>

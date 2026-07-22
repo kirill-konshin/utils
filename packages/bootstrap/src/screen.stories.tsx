@@ -148,7 +148,7 @@ export const ForwardBtn: Story = {
 export const HeaderForm: Story = {
     args: {
         header: (
-            <Navbar className="pt-0 py-lg-3">
+            <Navbar className="py-lg-3 pt-0">
                 <AdaptiveContainer>
                     <div className="position-relative w-100">
                         <span className="bi-search position-absolute" style={{ right: '8px', top: '3px' }} />

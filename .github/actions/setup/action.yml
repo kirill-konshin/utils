@@ -27,7 +27,7 @@ runs:
       shell: bash
 
     - name: Cache Nx
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .nx/cache
         key: ${{ runner.os }}-nx-${{ github.sha }}
@@ -35,7 +35,7 @@ runs:
           ${{ runner.os }}-nx-
 
 #      - name: Cache Next.js
-#        uses: actions/cache@v4
+#        uses: actions/cache@v6
 #        with:
 #          path: |
 #            packages/.next/cache

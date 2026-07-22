@@ -59,6 +59,8 @@ jobs:
           set -o pipefail
           yarn release:preview ${{ inputs.specifier }} 2>&1 | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g' | tee /tmp/preview.log
           echo "has_releases=$(grep -aq "releases/tag/" /tmp/preview.log && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # still needs token to NOT create release, lol
 
       - name: Preview Summary
         run: |

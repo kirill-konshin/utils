@@ -13,7 +13,7 @@ export const GlobalLoading: FC<GlobalLoadingProps> = memo(function GlobalLoading
     if (!loading) return null;
 
     return (
-        <div className="bg-white position-absolute top-0 start-0 w-100 h-100 z-3 d-flex align-items-center justify-content-center">
+        <div className="position-absolute d-flex align-items-center justify-content-center start-0 top-0 z-3 size-100 bg-white">
             <Loading />
         </div>
     );

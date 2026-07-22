@@ -24,7 +24,7 @@ export const Toaster: FC<ToasterProps> = memo(function Toaster({ toast }) {
             delay={10000}
             autohide
             bg={variant?.toLowerCase()}
-            className="position-fixed top-50 right-50 min-w-200px z-3"
+            className="position-fixed min-w-200px top-50 right-50 z-3"
         >
             <Toast.Header>
                 <strong className="me-auto">Notification</strong>

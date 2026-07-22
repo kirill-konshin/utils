@@ -69,7 +69,7 @@ function UseBreakpointDemo() {
             </table>
             <div className="alert alert-info">
                 <strong>Breakpoint ranges:</strong>
-                <ul className="mb-0 mt-2">
+                <ul className="mt-2 mb-0">
                     <li>
                         <strong>Mobile:</strong> xs (&lt;576px), sm (≥576px), md (≥768px)
                     </li>

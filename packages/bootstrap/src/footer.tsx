@@ -36,7 +36,7 @@ export const FooterNavItem: FC<FooterNavItemProps> = memo(function FooterNavItem
             // as={Link}
             href={href}
             // active={active} // has no effect when not pills or tabs
-            className={`px-0 px-lg-3 d-flex align-items-center flex-column flex-lg-row ${active ? 'text-primary' : ''}`}
+            className={`px-lg-3 d-flex align-items-center flex-column flex-lg-row px-0 ${active ? 'text-primary' : ''}`}
         >
             {iconElement}
             {children}
@@ -59,7 +59,7 @@ export const Footer: FC<FooterProps> = memo(function Footer({ children }) {
             <Navbar className={isDesktop ? '' : 'py-0'}>
                 <AdaptiveContainer>
                     {isDesktop && <Navbar.Brand href="/">Le Brand</Navbar.Brand>}
-                    <Nav className={isDesktop ? 'me-auto' : 'justify-content-center flex-nowrap w-100'}>{children}</Nav>
+                    <Nav className={isDesktop ? 'me-auto' : 'justify-content-center w-100 flex-nowrap'}>{children}</Nav>
                 </AdaptiveContainer>
             </Navbar>
         </div>

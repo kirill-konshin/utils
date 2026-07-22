@@ -11,7 +11,7 @@ export const Fullpage: FC<FullpageProps> = memo(function Fullpage({ ref, classNa
         <div
             ref={ref}
             {...props}
-            className={`container h-screen flex flex-col justify-center items-center ${className}`}
+            className={`container flex h-screen flex-col items-center justify-center ${className}`}
         >
             {children}
         </div>

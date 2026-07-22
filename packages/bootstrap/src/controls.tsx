@@ -28,7 +28,7 @@ export type LabelProps = Pick<ControlProps, 'name' | 'value' | 'defaultValue'> &
 
 export const Label: FC<LabelProps> = memo(function Label({ name, reset, value, defaultValue }) {
     return (
-        <label className="flex-grow-1 mb-0 d-flex align-items-center justify-content-start gap-2">
+        <label className="d-flex align-items-center justify-content-start mb-0 flex-grow-1 gap-2">
             {name}
             {value !== defaultValue && (
                 <>

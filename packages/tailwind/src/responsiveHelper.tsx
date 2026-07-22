@@ -6,8 +6,8 @@ export type ResponsiveHelperTWProps = Record<string, never>;
 
 export const ResponsiveHelperTW: FC<ResponsiveHelperTWProps> = memo(function ResponsiveHelperTW() {
     return (
-        <span className="fixed bottom-0 right-2 z-30 leading-none text-xs">
-            <small className="hidden xs:max-sm:block">XS</small>
+        <span className="fixed right-2 bottom-0 z-30 text-xs leading-none">
+            <small className="hidden max-sm:block">XS</small>
             <small className="hidden sm:max-md:block">SM</small>
             <small className="hidden md:max-lg:block">MD</small>
             <small className="hidden lg:max-xl:block">LG</small>
