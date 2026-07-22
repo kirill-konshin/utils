@@ -9,20 +9,22 @@
   },
   "main": "index.js",
   "module": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
     "build": "echo 'No build required'",
     "start": "echo 'No start required'",
     "----- TEST -----": "",
-    "test": "echo 'No tests yet'"
+    "test": "vitest run"
   },
   "files": [
     "index.js",
-    "findTailwindEntry.js",
+    "index.d.ts",
+    "configs",
+    "!configs/*.test.js",
     "lib.js",
     "lintPrepare.js",
-    "ruleTestColocation.js",
     "rules",
     "skills"
   ],
@@ -53,12 +55,16 @@
     "globals": "^16.4.0",
     "jsonc-eslint-parser": "^2.4.2"
   },
+  "devDependencies": {
+    "vitest": "*"
+  },
   "peerDependencies": {
     "eslint": "^10",
     "husky": "^9",
     "jest": "*",
     "lint-staged": "^16",
     "next": "^16",
+    "prettier": "^3",
     "storybook": "^10.5.2",
     "tailwindcss": "*",
     "vite": "*",
