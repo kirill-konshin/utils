@@ -19,6 +19,8 @@
   },
   "files": [
     "index.js",
+    "findTailwindEntry.js",
+    "lib.js",
     "lintPrepare.js",
     "ruleTestColocation.js",
     "rules",
@@ -43,9 +45,11 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "eslint-plugin-storybook": "^10.5.2",
+    "eslint-plugin-tailwindcss": "^4.2.0",
     "eslint-plugin-turbo": "^2.10.5",
     "eslint-plugin-unicorn": "^72.0.0",
     "eslint-plugin-unused-imports": "^4.4.1",
+    "glob": "^13.0.6",
     "globals": "^16.4.0",
     "jsonc-eslint-parser": "^2.4.2"
   },
@@ -56,6 +60,7 @@
     "lint-staged": "^16",
     "next": "^16",
     "storybook": "^10.5.2",
+    "tailwindcss": "*",
     "vite": "*",
     "vitest": "*"
   },
@@ -67,6 +72,9 @@
       "optional": true
     },
     "storybook": {
+      "optional": true
+    },
+    "tailwindcss": {
       "optional": true
     },
     "vite": {

@@ -17,7 +17,6 @@
  * normally has exactly one of these, and applying the other runner's correctness rules to it would
  * be conceptually wrong (even if mechanically harmless, since the rule namespaces don't collide).
  */
-import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
@@ -38,6 +37,8 @@ import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 
+import { findTailwindEntry } from './findTailwindEntry.js';
+import { GLOBAL_IGNORES, hasWorkspaceFile, isPackageResolvable } from './lib.js';
 import { testColocation } from './ruleTestColocation.js';
 
 export const tsExtsRaw = 'js,jsx,ts,tsx,cjs,cts,mjs,mts'; // TODO mdx, needs loader
@@ -48,21 +49,18 @@ export const tsExts = `{${tsExtsRaw}}`;
 export const eslintExts = `*.{${eslintExtsRaw}}`;
 export const prettierExts = `*.{${prettierExtsRaw}}`;
 
-function isPackageResolvable(specifier) {
-    try {
-        import.meta.resolve(specifier);
-        return true;
-    } catch {
-        return false;
-    }
-}
+export const hasNext = isPackageResolvable('next/package.json');
+export const hasStorybook = isPackageResolvable('storybook/package.json');
+export const hasVite = isPackageResolvable('vite/package.json');
+export const hasJest = isPackageResolvable('jest/package.json');
+export const hasVitest = isPackageResolvable('vitest/package.json');
+export const hasTurbo = isPackageResolvable('turbo/package.json');
+export const hasNx = hasWorkspaceFile('nx.json');
+export const hasTailwind = isPackageResolvable('tailwindcss/package.json');
 
-const hasNext = isPackageResolvable('next/package.json');
 const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
-const hasStorybook = isPackageResolvable('storybook/package.json');
-const hasVite = isPackageResolvable('vite/package.json');
-const hasJest = isPackageResolvable('jest/package.json');
-const hasVitest = isPackageResolvable('vitest/package.json');
+
+export const tailwindEntry = hasTailwind ? findTailwindEntry(GLOBAL_IGNORES) : null;
 
 const ENABLE_TYPE_AWARE_RULES = false;
 
@@ -76,6 +74,7 @@ const ENABLE_TYPE_AWARE_RULES = false;
  */
 let storybookConfig = null;
 try {
+    //TODO Add hasStorybook?
     const storybook = await import('eslint-plugin-storybook');
     storybookConfig = storybook.default.configs['flat/recommended'];
 } catch {
@@ -114,39 +113,10 @@ const reactFallbackConfig = hasNext
           jsxA11yPlugin.flatConfigs.recommended,
       ];
 
-/*
- * Gate the Turbo rule set on the tool actually being installed, same as jest/vitest above. A bare cwd
- * config-file check would make lint results depend on the invocation directory (IDE integrations and
- * per-package runs launch eslint from subdirectories). Without the turbo gate,
- * `turbo/no-undeclared-env-vars` treats "no turbo.json" as "nothing declared" and flags every single
- * env var access - useless noise for consumers that use NX (or nothing) instead. `eslint-plugin-turbo`
- * is bundled but does not drag in `turbo` itself, so this resolvability check stays honest.
- */
-const hasTurbo = isPackageResolvable('turbo/package.json');
-
-/*
- * NX cannot use the same resolvability gate: `nx` core is always resolvable here as a transitive dep of
- * the bundled @nx/eslint-plugin (-> @nx/devkit -> nx), so `isPackageResolvable('nx')` reports true in
- * every consumer - including plain non-Nx projects, where it wrongly switches on @nx/dependency-checks,
- * which then fails with no project graph. Detect an actual Nx workspace by walking up from cwd to an
- * `nx.json` instead: unlike a bare cwd check this is stable across subdirectory / per-package / IDE runs
- * (they resolve to the same workspace root) and correctly stays off outside an Nx workspace.
- */
-function hasWorkspaceFile(fileName) {
-    let dir = process.cwd();
-    for (;;) {
-        if (existsSync(resolve(dir, fileName))) return true;
-        const parent = dirname(dir);
-        if (parent === dir) return false;
-        dir = parent;
-    }
-}
-
-const hasNx = hasWorkspaceFile('nx.json');
-
 // lazy for the same reason as nextPlugin above
 const turboPlugin = hasTurbo ? (await import('eslint-plugin-turbo')).default : null;
 const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : null;
+const tailwindPlugin = hasTailwind ? (await import('eslint-plugin-tailwindcss')).default : null;
 
 const index = [
     js.configs.recommended,
@@ -160,16 +130,7 @@ const index = [
      * which would corrupt them if autofixed into a `/* *\/` block).
      */
     {
-        ignores: [
-            //TODO coverage, dist, out, build?
-            '**/next-env.d.ts',
-            '**/viteEnv.d.ts',
-            '**/node_modules',
-            '**/.cache',
-            '**/.nx',
-            '**/.turbo',
-            '**/.yarn',
-        ],
+        ignores: GLOBAL_IGNORES,
     },
 
     ...nextConfig,
@@ -378,7 +339,8 @@ const index = [
                         /^opengraph-image\.[jt]sx?$/,
                         /^twitter-image\.[jt]sx?$/,
                         /^apple-icon\.[jt]sx?$/,
-                        /^next-env\.d\.ts$/,
+                        /^mdx-components\.[jt]sx?$/,
+                        /\.d\.tsx?$/,
                         /^electron-builder\..+$/,
                     ],
                 },
@@ -495,10 +457,25 @@ const index = [
             '**/.prettierrc*',
             `**/App.${tsExts}`,
             `**/index.${tsExts}`,
+            `**/main.${tsExts}`,
+            '**/*.d.ts',
+            `**/default.${tsExts}`,
+            `**/error.${tsExts}`,
+            `**/forbidden.${tsExts}`,
+            `**/global-error.${tsExts}`,
             `**/layout.${tsExts}`,
             `**/loading.${tsExts}`,
-            `**/main.${tsExts}`,
+            `**/not-found.${tsExts}`,
             `**/page.${tsExts}`,
+            `**/template.${tsExts}`,
+            `**/unauthorized.${tsExts}`,
+            `**/apple-icon.${tsExts}`,
+            `**/icon.${tsExts}`,
+            `**/manifest.${tsExts}`,
+            `**/opengraph-image.${tsExts}`,
+            `**/robots.${tsExts}`,
+            `**/sitemap.${tsExts}`,
+            `**/twitter-image.${tsExts}`,
         ],
         rules: {
             /*
@@ -522,6 +499,25 @@ const index = [
                        */
                       'turbo/no-undeclared-env-vars': 'warn',
                   },
+              },
+          ]
+        : []),
+
+    /*
+     * Recommended rules (warnings + `no-contradicting-classname` as error), re-scoped from the
+     * plugin's global js/jsx/ts/tsx default to only the detected Tailwind project dirs - see the
+     * two-gate comment above findTailwindProjectDirs().
+     */
+    /*
+     * Standalone block (simple to override wholesale), auto-added only when exactly one Tailwind v4
+     * entry CSS was found - see the auto-find comment above findTailwindEntry(). Recommended rules:
+     * warnings + `no-contradicting-classname` as error.
+     */
+    ...(tailwindEntry
+        ? [
+              {
+                  ...tailwindPlugin.configs.recommended,
+                  settings: { tailwindcss: { cssConfigPath: tailwindEntry } },
               },
           ]
         : []),
@@ -611,7 +607,7 @@ const index = [
 
 export default index;
 
-export { nextPlugin, nxPlugin, turboPlugin, jestPlugin, vitestPlugin, storybookConfig };
+export { nextPlugin, nxPlugin, turboPlugin, jestPlugin, vitestPlugin, findTailwindEntry };
 
 /**
  * @param {string} importMetaUrl

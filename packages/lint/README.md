@@ -104,6 +104,29 @@ indent_style = tab
 }
 ```
 
+### Tailwind CSS rules
+
+When `tailwindcss` (v4+) is installed, the config auto-enables [`eslint-plugin-tailwindcss`](https://github.com/francoismassart/eslint-plugin-tailwindcss) recommended rules. The plugin **must** be able to resolve the Tailwind entry CSS — it hard-crashes lint (ENOENT) otherwise — so the entry is auto-detected: the workspace is scanned for `*.css` files containing `@import "tailwindcss"` (up to three directory levels deep — covers `packages/<x>/src` — skipping dot dirs, `node_modules`, and everything in `.gitignore`).
+
+- Exactly **one** entry found → rules enable automatically with it (added as a standalone config block, easy to override).
+- **Zero or several** entries → nothing is added; enable manually with a **mandatory** `settings.tailwindcss.cssConfigPath` in `eslint.config.mjs`:
+
+```js
+import customConfig, { tailwindPlugin } from '@kirill.konshin/lint';
+
+export default defineConfig([
+    ...customConfig,
+    {
+        ...tailwindPlugin.configs.recommended,
+        settings: {
+            tailwindcss: {
+                cssConfigPath: './src/styles/tailwind.css', // relative to the package root
+            },
+        },
+    },
+]);
+```
+
 ### IDEA settings
 
 - Eslint: `**/*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}`
