@@ -6223,12 +6223,14 @@ __metadata:
     glob: "npm:^13.0.6"
     globals: "npm:^16.4.0"
     jsonc-eslint-parser: "npm:^2.4.2"
+    vitest: "npm:*"
   peerDependencies:
     eslint: ^10
     husky: ^9
     jest: "*"
     lint-staged: ^16
     next: ^16
+    prettier: ^3
     storybook: ^10.5.2
     tailwindcss: "*"
     vite: "*"
@@ -24712,7 +24714,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^4.1.10":
+"vitest@npm:*, vitest@npm:^4.1.10":
   version: 4.1.10
   resolution: "vitest@npm:4.1.10"
   dependencies:

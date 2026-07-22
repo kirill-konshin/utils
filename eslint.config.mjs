@@ -1,8 +1,8 @@
-import customConfig, { includeIgnoreFile, nxPlugin, tsExts } from '@kirill.konshin/lint';
+import { defineLintConfig, nxPlugin, tsExts } from '@kirill.konshin/lint';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
-    ...customConfig,
+    ...(await defineLintConfig({ defaultIgnore: { importMetaUrl: import.meta.url } })),
     {
         name: 'Nx module boundaries',
         files: [`packages/*/src/**/*.${tsExts}`],
@@ -104,6 +104,4 @@ export default defineConfig([
             '@nx/dependency-checks': 'off',
         },
     },
-    includeIgnoreFile(import.meta.url, '.gitignore'),
-    includeIgnoreFile(import.meta.url, '.prettierignore'),
 ]);
