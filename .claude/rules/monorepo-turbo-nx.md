@@ -1,1 +1,0 @@
-../../packages/lint/rules/monorepo-turbo-nx.md

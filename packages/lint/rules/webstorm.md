@@ -131,3 +131,49 @@ Applies if project is using Tailwind.
   </component>
 </project>
 ```
+
+# Configure `.idea/jsonSchemas.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JsonSchemaMappingsProjectConfiguration">
+    <state>
+      <map>
+        <entry key="Gemini CLI settings">
+          <value>
+            <SchemaInfo>
+              <option name="name" value="Gemini CLI settings" />
+              <option name="relativePathToSchema" value="https://raw.githubusercontent.com/google-gemini/gemini-cli/refs/heads/main/schemas/settings.schema.json" />
+              <option name="applicationDefined" value="true" />
+              <option name="patterns">
+                <list>
+                  <Item>
+                    <option name="path" value=".gemini/settings.json" />
+                  </Item>
+                </list>
+              </option>
+            </SchemaInfo>
+          </value>
+        </entry>
+        <entry key="Yarn Config (.yarnrc.yml)">
+          <value>
+            <SchemaInfo>
+              <option name="name" value="Yarn Config (.yarnrc.yml)" />
+              <option name="relativePathToSchema" value="https://yarnpkg.com/configuration/yarnrc.json" />
+              <option name="applicationDefined" value="true" />
+              <option name="patterns">
+                <list>
+                  <Item>
+                    <option name="path" value=".yarnrc.yml" />
+                  </Item>
+                </list>
+              </option>
+            </SchemaInfo>
+          </value>
+        </entry>
+      </map>
+    </state>
+  </component>
+</project>
+```

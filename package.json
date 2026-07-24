@@ -49,7 +49,7 @@
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.17.1",
   "workspaces": {
     "packages": [
       "demo/*",

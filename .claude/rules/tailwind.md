@@ -1,1 +1,0 @@
-../../packages/lint/rules/tailwind.md
