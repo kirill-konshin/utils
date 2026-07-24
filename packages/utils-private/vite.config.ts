@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import react from '@vitejs/plugin-react';
 import preserveDirectives from 'rollup-preserve-directives';
 import dts from 'vite-plugin-dts';
@@ -44,6 +45,7 @@ export default defineConfig({
     },
     test: {
         passWithNoTests: true,
+        setupFiles: [path.join(__dirname, 'vitest.setup.ts')], // absolute: setupFiles resolve against each project's root
         coverage: {
             reporter: ['text', 'html', 'cobertura'],
             include: ['src/**/*.{ts,tsx,js,jsx}'],
