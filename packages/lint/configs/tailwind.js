@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 
-import { findWorkspaceRoot, GLOBAL_IGNORES, hasTailwind, scanWorkspace, toolGate } from '../lib.js';
+import { findWorkspaceRoot, GLOBAL_IGNORES, hasTailwind, packageDirOf, scanWorkspace, toolGate } from '../lib.js';
 
 /**
  * All Tailwind v4 entry CSS candidates: every `*.css` below the workspace root (see
@@ -90,10 +90,22 @@ export async function tailwindConfig(option, strict = false) {
     // served the probes); an auto-found entry is the absolute evidence file
     const cssConfigPath = options.cssConfigPath ?? files[0];
 
+    /*
+     * The entry CSS pins down the ONE package that uses Tailwind, so by default the block is
+     * scoped to it via `basePath` (ESLint >= 9.30, absolute paths supported) instead of flagging
+     * class-like strings across the whole workspace. `files[0]` is the absolutized evidence path
+     * even when `cssConfigPath` was supplied relative. Owning package == workspace root (single-
+     * package repo, or no manifest found) makes scoping a no-op - the block stays untouched.
+     */
+    const { scoped = true } = options;
+    const packageDir = scoped ? packageDirOf(files[0]) : null;
+    const basePath = packageDir && packageDir !== findWorkspaceRoot() ? { basePath: packageDir } : {};
+
     const tailwindPlugin = (await import('eslint-plugin-tailwindcss')).default;
     return [
         {
             ...tailwindPlugin.configs.recommended,
+            ...basePath,
             settings: { tailwindcss: { cssConfigPath } },
         },
     ];

@@ -64,6 +64,14 @@ export type TailwindOptions = ToggleOptions & {
      * {@link findTailwindEntry}.
      */
     cssConfigPath?: TailwindPluginSettings['cssConfigPath'];
+    /**
+     * Scope the Tailwind rules to the package that owns the entry CSS - the nearest `package.json`
+     * directory, emitted as the block's `basePath` (ESLint >= 9.30) - instead of the whole
+     * workspace. No-op when the owning package is the workspace root itself.
+     *
+     * @default true
+     */
+    scoped?: boolean;
 };
 
 /**

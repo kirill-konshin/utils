@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isAbsolute, join } from 'node:path';
 import { test } from 'vitest';
 
 import { inTempDir, TAILWIND_ENTRY, tailwindBlockOf } from '../testUtils.js';
@@ -55,6 +56,46 @@ test('scan reaches deep entries and ignores copies in build outputs', async () =
             assert.ok(
                 tailwindBlockOf(config).settings.tailwindcss.cssConfigPath.endsWith('packages/x/src/styles/app.css'),
             );
+        },
+    );
+});
+
+test('scopes the block to the package owning the entry CSS by default', async () => {
+    await inTempDir(
+        {
+            'package.json': '{}',
+            'packages/x/package.json': '{}',
+            'packages/x/src/styles/app.css': TAILWIND_ENTRY,
+        },
+        async () => {
+            const block = tailwindBlockOf(await tailwindConfig());
+            assert.ok(isAbsolute(block.basePath));
+            assert.ok(block.basePath.endsWith(join('packages', 'x')));
+        },
+    );
+});
+
+test('scoping uses the absolutized path when cssConfigPath is relative', async () => {
+    await inTempDir({ 'packages/x/package.json': '{}', 'packages/x/app.css': TAILWIND_ENTRY }, async () => {
+        const block = tailwindBlockOf(await tailwindConfig({ cssConfigPath: 'packages/x/app.css' }));
+        assert.ok(block.basePath.endsWith(join('packages', 'x')));
+        // the consumer's own notation still reaches the plugin settings untouched
+        assert.equal(block.settings.tailwindcss.cssConfigPath, 'packages/x/app.css');
+    });
+});
+
+test('root-owned entry and scoped: false stay workspace-wide (no basePath)', async () => {
+    await inTempDir({ 'package.json': '{}', 'src/app.css': TAILWIND_ENTRY }, async () => {
+        assert.equal('basePath' in tailwindBlockOf(await tailwindConfig()), false);
+    });
+    await inTempDir(
+        {
+            'package.json': '{}',
+            'packages/x/package.json': '{}',
+            'packages/x/src/app.css': TAILWIND_ENTRY,
+        },
+        async () => {
+            assert.equal('basePath' in tailwindBlockOf(await tailwindConfig({ scoped: false })), false);
         },
     );
 });

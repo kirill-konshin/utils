@@ -11,6 +11,7 @@ description: Set of rules for projects which use Tailwind
 
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
 - Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned ≤5 dir levels, `.gitignore`-aware), rules auto-enable with that entry
+- Rules auto-scope to the package owning the entry CSS (block `basePath` = its nearest `package.json` dir); pass `tailwind: { scoped: false }` to lint the whole workspace
 - Several entry CSS candidates are ALWAYS a HARD ERROR (a silent skip is hard to notice)
     - pass `cssConfigPath` to pick one (if others are not useful) OR
     - create multiple leaf `eslint.config.ts` per app (if ALL need to be linted)

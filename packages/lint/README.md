@@ -124,6 +124,8 @@ export default defineLintConfig({
 
 [Detection](#detection) runs against the **workspace root** even from a nested config, so per-app tool settings (`cssConfigPath`) should be explicit absolute paths — relative ones depend on the lint cwd.
 
+The Tailwind block auto-scopes to the package owning the entry CSS (the block's `basePath` = the entry's nearest `package.json` directory), so a single root config doesn't flag class-like strings in non-Tailwind packages; pass `tailwind: { scoped: false }` to apply it workspace-wide (no-op when the owning package is the workspace root itself).
+
 ## Prettier `.prettierrc.mjs`:
 
 ```js
@@ -338,6 +340,8 @@ The machinery is controlled by the `detection` option (same toggle notation as t
 - `detection: false` — tools are OFF unless explicitly enabled; enabled tools still auto-detect their settings (steps 2–3)
 - `detection: { strict: true }` — only step 1 runs: the `has*` package probes **are** the strict detection (same-scope `import.meta.resolve`, no walking) — no workspace scans (2), no symlink bridges (3). Mandatory settings (`cssConfigPath`) must then be explicit, and `nx.json` is checked at **cwd** instead of the workspace root (`hasNx` is the only non-strict `has*`)
 - `detection: { enabled: false, strict: true }` — fully explicit: tools on only when set, probes only
+
+Set `LINT_DEBUG=1` to trace the machinery: `has*` probe results, every workspace scan (glob, root, files found) and each tool's gate verdict (supplied options, absolutized & scanned evidence files, effective enabled status + reason).
 
 > `basePath: 'packages/xxx'` (ESLint ≥ 9.30) can scope a config object to a directory within a single root config, but it won't help with detection — `defineLintConfig` detects once, workspace-wide (e.g. Tailwind still demands exactly one entry CSS), so per-app settings would still have to be spelled out block by block; nested configs are the cleaner tool for this.
 

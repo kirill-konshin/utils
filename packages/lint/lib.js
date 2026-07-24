@@ -24,6 +24,17 @@ export const GLOBAL_IGNORES = [
     '**/.yarn',
 ];
 
+const LINT_DEBUG = Boolean(process.env.LINT_DEBUG);
+
+/**
+ * Structured debug logging, gated by the `LINT_DEBUG` env var (any non-empty value). Traces the
+ * detection machinery: capability probes, workspace scans and per-tool gate verdicts.
+ */
+function debug(message, ...args) {
+    if (!LINT_DEBUG) return;
+    console.log(`[@kirill.konshin/lint] ${message}`, ...args);
+}
+
 /**
  * Capability gate: is a package installed in the consumer's project?
  *
@@ -168,6 +179,26 @@ export function findWorkspaceRoot(cwd = process.cwd()) {
     return root;
 }
 
+/**
+ * Nearest directory containing a `package.json`, walking up from `file` and bounded by the
+ * workspace root (inclusive) - the package that owns an evidence file (e.g. the Tailwind entry
+ * CSS). Returns the workspace root when no closer manifest exists or `file` lies outside the
+ * workspace altogether.
+ *
+ * @param {string} file absolute path
+ * @returns {string} absolute directory path
+ */
+export function packageDirOf(file) {
+    const root = findWorkspaceRoot();
+    let dir = dirname(file);
+    while (dir !== root && !existsSync(join(dir, 'package.json'))) {
+        const parent = dirname(dir);
+        if (parent === dir) return root; // hit the filesystem root - `file` is outside the workspace
+        dir = parent;
+    }
+    return dir;
+}
+
 /*
  * Build outputs regularly contain COPIES of the scanned files (compiled css, a next.config.js in a
  * published dist) and would poison the scans even in repos that don't gitignore them. Scan-only -
@@ -220,13 +251,17 @@ export function scanWorkspace(fileGlob, ignores = [], { dot = false } = {}) {
         pattern.endsWith('/') ? `${pattern}**` : `${pattern}/**`,
     ]);
 
-    return globSync(`**/${fileGlob}`, {
+    const files = globSync(`**/${fileGlob}`, {
         cwd: root,
         maxDepth: SCAN_DEPTH,
         ignore,
         absolute: true,
         dot,
     });
+
+    // debug('scanWorkspace', { fileGlob, root, dot, ignores, files });
+
+    return files;
 }
 
 /**
@@ -315,6 +350,8 @@ export const hasTurbo = isPackageResolvable('turbo/package.json');
 export const hasNx = existsSync(resolve(findWorkspaceRoot(), 'nx.json'));
 export const hasTailwind = isPackageResolvable('tailwindcss/package.json');
 
+debug('capability probes', { hasNext, hasStorybook, hasVite, hasJest, hasVitest, hasTurbo, hasNx, hasTailwind });
+
 /**
  * Normalize a defineLintConfig flag into its options object with a canonical `enabled`:
  * - `true` / `false` → `{ enabled: true | false }`
@@ -367,8 +404,28 @@ export function asOptions(option) {
  */
 export function toolGate(option, strict, spec) {
     const { enabled, ...options } = asOptions(option);
+    let absolutized = [];
+    let scanned = [];
+    // every return path funnels through here so the effective verdict is always traceable
+    const trace = (result, reason) => {
+        debug(
+            `toolGate \`${spec.tool}\` %o`,
+            {
+                strict,
+                has: spec.has,
+                enabled: result.enabled,
+                reason,
+            },
+            {
+                supplied: option,
+                absolutized,
+                scanned,
+            },
+        );
+        return result;
+    };
     const off = { enabled: false, options, files: [] };
-    if (enabled === false) return off;
+    if (enabled === false) return trace(off, 'disabled explicitly');
 
     const {
         tool,
@@ -399,25 +456,27 @@ export function toolGate(option, strict, spec) {
     };
 
     if (strict) {
-        if (!(enabled ?? strictHas)) return off;
+        if (!(enabled ?? strictHas)) return trace(off, 'strict probe negative');
         if (requirePackage && !has) {
             throw new Error(
                 `${prefix} is on under strict detection, but the \`${packageName}\` package is not ` +
                     `resolvable at this scope - install it here or set \`${tool}: false\`.`,
             );
         }
-        const files = usable(absolutizeOptions?.(options) ?? []);
+        absolutized = absolutizeOptions?.(options) ?? [];
+        const files = usable(absolutized);
         if (needs && files.length === 0) {
             throw new Error(
                 `${prefix} is on under strict detection, which cannot scan for the ${needs.what} - ` +
                     `pass ${needs.hint} or set \`${tool}: false\`.`,
             );
         }
-        return { enabled: true, options, files };
+        return trace({ enabled: true, options, files }, enabled ? 'strict, forced on' : 'strict probe positive');
     }
 
-    const optionFiles = absolutizeOptions?.(options) ?? [];
-    const files = usable(optionFiles.length > 0 ? optionFiles : (scan?.() ?? []));
+    absolutized = absolutizeOptions?.(options) ?? [];
+    scanned = absolutized.length > 0 ? [] : (scan?.() ?? []);
+    const files = usable(absolutized.length > 0 ? absolutized : scanned);
 
     if (needs && files.length === 0) {
         // `enabled` is only defined when the consumer explicitly turned the tool on - fail loudly
@@ -428,10 +487,10 @@ export function toolGate(option, strict, spec) {
                     `candidates. Pass ${needs.hint} explicitly.`,
             );
         }
-        return off;
+        return trace(off, `no ${needs.what} found`);
     }
 
-    if (!(enabled ?? (has || files.length > 0))) return off;
+    if (!(enabled ?? (has || files.length > 0))) return trace(off, 'not detected');
 
     const resolvable = !packageName || has || files.some((file) => ensurePackageResolvable(packageName, file, has));
     if (!resolvable) {
@@ -442,8 +501,8 @@ export function toolGate(option, strict, spec) {
                     `in the package that owns them or at the workspace root.`,
             );
         }
-        if (!enabled) return off;
+        if (!enabled) return trace(off, `\`${packageName}\` unresolvable`);
     }
 
-    return { enabled: true, options, files };
+    return trace({ enabled: true, options, files }, enabled ? 'forced on' : 'detected');
 }
