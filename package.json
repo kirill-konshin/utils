@@ -60,7 +60,6 @@
     "@types/node": "$@types/node",
     "@types/react": "$@types/react",
     "@types/react-dom": "$@types/react-dom",
-    "next": "$next",
     "eslint": "$eslint",
     "typescript": "$typescript",
     "vite": "$vite"
