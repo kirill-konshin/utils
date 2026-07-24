@@ -85,8 +85,8 @@ export async function defineLintConfig(options = {}) {
     /*
      * `detection` uses the same toggle notation as the tool flags (true <> { enabled: true } <>
      * false <> { enabled: false }): `enabled` = are tools ON unless said otherwise (default true),
-     * `strict` = same-scope package probes only, no workspace scans / symlink bridges (default
-     * false; ideal for per-package monorepo configs).
+     * `strict` = same-scope package probes only, no workspace evidence scans (default false;
+     * ideal for per-package monorepo configs).
      */
     const { enabled: defaultOn = true, strict = false } = asOptions(options.detection);
     // with detection off, tools not mentioned explicitly are OFF instead of auto-detected

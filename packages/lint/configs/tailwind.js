@@ -4,9 +4,9 @@ import { isAbsolute, resolve } from 'node:path';
 import { findWorkspaceRoot, GLOBAL_IGNORES, hasTailwind, packageDirOf, scanWorkspace, toolGate } from '../lib.js';
 
 /**
- * All Tailwind v4 entry CSS candidates: every `*.css` below the workspace root (see
- * `scanWorkspace` - up to five directory levels, `.gitignore`- and build-output-aware) containing
- * the Tailwind v4 marker `@import "tailwindcss"`.
+ * All Tailwind v4 entry CSS candidates: every `*.css` across the workspace (see `scanWorkspace` -
+ * the root plus every workspace package, `.gitignore`- and build-output-aware) containing the
+ * Tailwind v4 marker `@import "tailwindcss"`.
  *
  * @param {string[]} ignores glob patterns to skip
  * @returns {string[]} absolute paths
@@ -47,11 +47,11 @@ export function findTailwindEntry(ignores) {
  * Auto-detection is driven by the entry CSS (see {@link findTailwindEntries}), not by the package
  * probe: explicit `cssConfigPath` wins, otherwise auto-find. Zero entries stays inert in auto mode
  * (nothing marks the repo as Tailwind) but fails loudly when Tailwind was FORCED on (`true` /
- * options object) - and so does an entry whose `tailwindcss` package cannot be resolved at all.
- * SEVERAL entries fail loudly even in auto mode: they prove the repo uses Tailwind, the right one
- * cannot be guessed, and a silent skip would be hard to detect - pass `cssConfigPath` to pick one. Leaf-only installs (tailwindcss next to the entry but invisible from the
- * workspace root, where the plugin's theme-loading workers resolve it) are bridged via
- * `ensurePackageResolvable` in lib.js - see its doc for the full mechanism and PnP behavior.
+ * options object). SEVERAL entries fail loudly even in auto mode: they prove the repo uses
+ * Tailwind, the right one cannot be guessed, and a silent skip would be hard to detect - pass
+ * `cssConfigPath` to pick one. `tailwindcss` must be resolvable from the workspace root (where
+ * the plugin's theme-loading workers resolve it); a leaf-only install is a hard error with
+ * hoisting guidance (see `toolGate` in lib.js).
  *
  * @param {boolean | TailwindOptions} [option] the defineLintConfig `tailwind` flag; auto-detected when omitted
  * @param {boolean} [strict] same-scope detection only - no entry scan, no bridge (defineLintConfig `detection.strict`)
@@ -71,8 +71,8 @@ export async function tailwindConfig(option, strict = false) {
         needs: {
             what: 'entry CSS',
             detail:
-                'single Tailwind v4 entry CSS (a *.css containing `@import "tailwindcss"`, scanned up to ' +
-                '5 directory levels below the workspace root)',
+                'single Tailwind v4 entry CSS (a *.css containing `@import "tailwindcss"`, scanned across ' +
+                'the workspace root and every workspace package)',
             hint: '`tailwind: { cssConfigPath }`',
         },
         // the plugin takes exactly ONE entry - several scan candidates are a hard error
@@ -95,7 +95,8 @@ export async function tailwindConfig(option, strict = false) {
      * scoped to it via `basePath` (ESLint >= 9.30, absolute paths supported) instead of flagging
      * class-like strings across the whole workspace. `files[0]` is the absolutized evidence path
      * even when `cssConfigPath` was supplied relative. Owning package == workspace root (single-
-     * package repo, or no manifest found) makes scoping a no-op - the block stays untouched.
+     * package repo, or the entry is not inside a declared workspace package) makes scoping a
+     * no-op - the block stays untouched.
      */
     const { scoped = true } = options;
     const packageDir = scoped ? packageDirOf(files[0]) : null;

@@ -10,8 +10,9 @@ description: Set of rules for projects which use Tailwind
 # ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
 
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
-- Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned ≤5 dir levels, `.gitignore`-aware), rules auto-enable with that entry
-- Rules auto-scope to the package owning the entry CSS (block `basePath` = its nearest `package.json` dir); pass `tailwind: { scoped: false }` to lint the whole workspace
+- Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned across the root + every workspace package, `.gitignore`-aware), rules auto-enable with that entry
+- Rules auto-scope to the workspace package owning the entry CSS (block `basePath`); pass `tailwind: { scoped: false }` to lint the whole workspace
+- `tailwindcss` must be resolvable from the workspace root — if lint fails with "not resolvable from the workspace root", hoist it (see npm-yarn.md "Hoisting") or add it to root `devDependencies`; run eslint with `LINT_DEBUG=1` to trace detection
 - Several entry CSS candidates are ALWAYS a HARD ERROR (a silent skip is hard to notice)
     - pass `cssConfigPath` to pick one (if others are not useful) OR
     - create multiple leaf `eslint.config.ts` per app (if ALL need to be linted)

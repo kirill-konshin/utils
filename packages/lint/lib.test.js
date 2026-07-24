@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
-import { lstatSync, readlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'vitest';
 
-import { asOptions, ensurePackageResolvable, findWorkspaceRoot, toolGate } from './lib.js';
+import { asOptions, findWorkspaceRoot, toolGate } from './lib.js';
 import { inTempDir } from './testUtils.js';
 
 test('asOptions: booleans normalize to { enabled }', () => {
@@ -46,7 +45,8 @@ test('findWorkspaceRoot: resolves a Yarn 1 style workspace (package.json workspa
             const previousNpmPrefix = process.env.npm_config_local_prefix;
             delete process.env.npm_config_local_prefix;
             try {
-                // the nested package HAS its own package.json - `npm prefix` must not stop there
+                // the nested package HAS its own package.json - the workspace-manifest walk
+                // (@manypkg/find-root) must not stop there
                 assert.equal(findWorkspaceRoot(join(root, 'packages/a')), root);
             } finally {
                 if (previousNpmPrefix !== undefined) process.env.npm_config_local_prefix = previousNpmPrefix;
@@ -62,7 +62,7 @@ test('findWorkspaceRoot: rejects env that does not contain cwd and resolves the 
         assert.equal(findWorkspaceRoot(join(root, 'packages/x')), root);
 
         // stale env from an unrelated checkout must be rejected (containment check), and the root
-        // re-resolved via the CLI probes / lockfile walk (fresh cwd - the result is cached per cwd)
+        // re-resolved via the nearest-package.json fallback (fresh cwd - the result is cached per cwd)
         process.env.PROJECT_CWD = '/somewhere/else';
         const previousNpmPrefix = process.env.npm_config_local_prefix;
         delete process.env.npm_config_local_prefix;
@@ -71,49 +71,6 @@ test('findWorkspaceRoot: rejects env that does not contain cwd and resolves the 
         } finally {
             if (previousNpmPrefix !== undefined) process.env.npm_config_local_prefix = previousNpmPrefix;
         }
-    });
-});
-
-test('ensurePackageResolvable: bridges a leaf-only install with a root symlink', async () => {
-    await inTempDir(
-        {
-            'packages/web/src/entry.css': '',
-            'packages/web/node_modules/leafpkg/package.json': '{"name":"leafpkg","version":"1.0.0"}',
-        },
-        async () => {
-            const fromFile = join(process.cwd(), 'packages/web/src/entry.css');
-            const bridge = join(process.cwd(), 'node_modules/leafpkg');
-            const leaf = join(process.cwd(), 'packages/web/node_modules/leafpkg');
-
-            assert.equal(ensurePackageResolvable('leafpkg', fromFile, false), true);
-            assert.ok(lstatSync(bridge).isSymbolicLink());
-            assert.equal(readlinkSync(bridge), leaf);
-
-            // idempotent - a second call leaves the existing bridge alone
-            assert.equal(ensurePackageResolvable('leafpkg', fromFile, false), true);
-        },
-    );
-});
-
-test('ensurePackageResolvable: scoped packages get their @scope directory', async () => {
-    await inTempDir(
-        {
-            'packages/web/src/entry.js': '',
-            'packages/web/node_modules/@scope/leafpkg/package.json': '{"name":"@scope/leafpkg","version":"1.0.0"}',
-        },
-        async () => {
-            const fromFile = join(process.cwd(), 'packages/web/src/entry.js');
-            assert.equal(ensurePackageResolvable('@scope/leafpkg', fromFile, false), true);
-            assert.ok(lstatSync(join(process.cwd(), 'node_modules/@scope/leafpkg')).isSymbolicLink());
-        },
-    );
-});
-
-test('ensurePackageResolvable: without a leaf install the chain answer decides', async () => {
-    await inTempDir({ 'entry.css': '' }, async () => {
-        const fromFile = join(process.cwd(), 'entry.css');
-        assert.equal(ensurePackageResolvable('leafpkg', fromFile, false), false);
-        assert.equal(ensurePackageResolvable('leafpkg', fromFile, true), true);
     });
 });
 
@@ -162,24 +119,30 @@ test('toolGate: allowMultiple: false makes several candidates a hard error, even
     assert.deepEqual(toolGate(undefined, false, { ...spec, scan: () => ['/x/a'] }).files, ['/x/a']);
 });
 
-test('toolGate: leaf-only install of the plugin package is bridged from the evidence file', async () => {
+test('toolGate: leaf-only install is a hard error pointing at the leaf - hoisting, not bridging, is the fix', async () => {
     await inTempDir(
         {
             'packages/web/demo.config.js': '',
-            'packages/web/node_modules/gatepkg/package.json': '{"name":"gatepkg","version":"1.0.0"}',
+            'packages/web/node_modules/gatepkg/package.json': '{"name":"gatepkg","version":"1.0.0","main":"i.js"}',
+            'packages/web/node_modules/gatepkg/i.js': '',
         },
         async () => {
             const scan = () => [join(process.cwd(), 'packages/web/demo.config.js')];
-            assert.equal(toolGate(undefined, false, { ...SPEC, packageName: 'gatepkg', scan }).enabled, true);
+            assert.throws(
+                () => toolGate(undefined, false, { ...SPEC, packageName: 'gatepkg', scan }),
+                /not resolvable from the workspace root \(it is installed near/,
+            );
         },
     );
 });
 
-test('toolGate: evidence with an unresolvable package - detection stays off, forcing throws unless the plugin can cope', async () => {
+test('toolGate: evidence with an unresolvable package always fails loudly unless the plugin can cope', async () => {
     await inTempDir({ 'demo.config.js': '' }, async () => {
         const spec = { ...SPEC, packageName: 'gatemissingpkg', scan: () => [join(process.cwd(), 'demo.config.js')] };
-        assert.equal(toolGate(undefined, false, spec).enabled, false);
-        assert.throws(() => toolGate(true, false, spec), /resolvable neither/);
+        // auto-detected AND forced: the evidence proves the tool is in use - a silent skip would
+        // hide a broken setup, so both throw with hoisting guidance
+        assert.throws(() => toolGate(undefined, false, spec), /hoist it/);
+        assert.throws(() => toolGate(true, false, spec), /hoist it/);
         // jest/vitest: the rules work without the runner installed
         assert.equal(toolGate(true, false, { ...spec, requirePackage: false }).enabled, true);
     });

@@ -17,6 +17,17 @@ description: NPM & Yarn patterns
 - Always try to use the latest version of a library.
 - Always try to find if there is a suitable library for a given task before writing custom code, ask user if library is not very popular.
 
+# Hoisting
+
+- Hoist everything: keep the package manager's DEFAULT hoisting — do not set `installConfig.hoistingLimits`/`nmHoistingLimits` or Yarn 1 `nohoist`; the historical React Native/Expo/Electron reasons are obsolete (Metro follows symlinks since RN 0.72, Expo SDK 54+ supports monorepos with any strategy, hoisting limits break Electron Forge and duplicate React instances)
+- Electron + pnpm needs MORE hoisting, not less: set `node-linker=hoisted` (or `shamefully-hoist=true`) in `.npmrc`, otherwise packaged apps miss dependencies (electron-builder/electron-vite guidance)
+- Binary packagers don't need hoisting limits either: bundle to a single file first (esbuild), then package — node_modules layout becomes irrelevant; use Node's SEA (stable since Node 22, one-step `--build-sea` since 25.5) or `@yao-pkg/pkg` (maintained fork of the deprecated `vercel/pkg`)
+- Shared root configs (e.g. `@kirill.konshin/lint`) must be able to resolve leaf tools (`next`, `tailwindcss`, `storybook`, `jest`) from the workspace root:
+    - npm / Yarn: default hoisting already exposes them
+    - pnpm: add to `.npmrc`: `public-hoist-pattern[]=next`, `public-hoist-pattern[]=tailwindcss`, `public-hoist-pattern[]=storybook`, `public-hoist-pattern[]=jest` (`*eslint*`/`*prettier*` are hoisted by default)
+    - Yarn PnP: declare the tools at the workspace root as well
+- If lint fails with "not resolvable from the workspace root": apply the above or add the package to root `devDependencies`; run eslint with `LINT_DEBUG=1` to trace detection
+
 # Consistent versions
 
 In Monorepos pin versions of sub-packages to main.
@@ -28,9 +39,6 @@ Root `package.json`:
 
 ```json
 {
-    "installConfig": {
-        "hoistingLimits": "dependencies"
-    },
     "overrides": {
         "next": "$next",
         "eslint": "$eslint",

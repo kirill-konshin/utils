@@ -64,7 +64,7 @@ import { defineLintConfig, scanWorkspace } from '@kirill.konshin/lint';
 // function form shown
 export default defineLintConfig(() => ({
     // enabled (default true) = tools are ON unless said otherwise;
-    // strict (default false) = same-scope package probes only, no workspace scans and no symlink bridges
+    // strict (default false) = same-scope package probes only, no workspace evidence scans
     // `{ enabled: false, strict: true }` is ideal for per-package configs
     detection: { enabled: true, strict: false }, // default
 
@@ -124,7 +124,7 @@ export default defineLintConfig({
 
 [Detection](#detection) runs against the **workspace root** even from a nested config, so per-app tool settings (`cssConfigPath`) should be explicit absolute paths — relative ones depend on the lint cwd.
 
-The Tailwind block auto-scopes to the package owning the entry CSS (the block's `basePath` = the entry's nearest `package.json` directory), so a single root config doesn't flag class-like strings in non-Tailwind packages; pass `tailwind: { scoped: false }` to apply it workspace-wide (no-op when the owning package is the workspace root itself).
+The Tailwind block auto-scopes to the **workspace package** owning the entry CSS (emitted as the block's `basePath`), so a single root config doesn't flag class-like strings in non-Tailwind packages; pass `tailwind: { scoped: false }` to apply it workspace-wide (no-op when the entry is owned by the workspace root itself).
 
 ## Prettier `.prettierrc.mjs`:
 
@@ -297,6 +297,9 @@ export default [
 - **New:** every block is a composable exported `*Config()` function; gated ones accept `true` / `false` / an options object with optional `enabled` (defaults to `true` in the object form); `typeAware: true` enables the (slow) type-aware rules
 - **`prettier` is now a declared (required) peer dependency** — it was always required by the setup, so no action needed in practice
 - **TypeScript consumers get real types** — `index.d.ts` ships with the package (`LintOptions` and friends)
+- **Hoisting** if tools can't find packages, fix it once in the package manager config: keep default hoisting (drop `installConfig.hoistingLimits`/`nohoist`), on pnpm add `public-hoist-pattern[]=<pkg>` to `.npmrc`, or add the tool to root `devDependencies`. Run eslint with `LINT_DEBUG=1` to trace detection.
+- **Scans follow the declared workspace.** `scanWorkspace` (also used by all evidence scans) now covers the root directory plus the real `workspaces`/`pnpm-workspace.yaml` packages via `@manypkg/get-packages` instead of a blind ≤5-level glob — config files in directories that are not declared workspace members are only found via the root scan, and the depth limit is gone.
+- `has*` probes are anchored at the **workspace root** (via `local-pkg`) instead of this package's install location — identical for standard root installs.
 
 Everything else — `prettier`, `listStaged`, extension lists (`tsExts`, …), `has*` detection exports, plugin re-exports (`nxPlugin`, …) — is unchanged.
 
@@ -318,10 +321,10 @@ Tool-gated functions take the same value as their `defineLintConfig` flag and ga
 
 Due to limitations package visibility between leaf and root this package has to be creative to support config-free detection.
 
-1. **Package probe** — `import.meta.resolve('<pkg>/package.json')` from this package's install location (`has<Pkg>` exported for debugging).
-2. **Evidence scan** — tool config files below the **workspace root** (≤5 directory levels, skipping dot dirs, build outputs, and `.gitignore`d files; exported as `scanWorkspace`). Catches tools installed only in **leaf** packages, invisible to the probe (1). The workspace root itself comes from the package manager (env `PROJECT_CWD`/`npm_config_local_prefix` → CLIs `pnpm root -w`, Berry `yarn node`, `npm prefix` → lockfile walk bounded by `.git`; exported as `findWorkspaceRoot`), so linting from inside a package still sees the whole repo.
-3. **Leaf bridge** — when a plugin needs the tool's package itself but it's only installed in a leaf, a symlink `<workspace root>/node_modules/<pkg>` → leaf install is created automatically (the next install prunes it, the next lint recreates it). Forcing a tool whose package resolves nowhere fails with an actionable error instead of a cryptic plugin crash.
-4. **Yarn Berry PnP quirk** — leaf resolutions point inside the zip cache (virtual paths), so the bridge is skipped and leaf-only tools degrade gracefully (auto → off, forced → actionable error). Under PnP install the tools at the workspace root as well, keeping versions in sync with the leaves (e.g. the `"vitest": "$vitest"` version-alias hack); `next` documents its own monorepo ESLint setup.
+1. **Package probe** — `local-pkg`'s `isPackageExists` anchored at the **workspace root**, the same scope the plugins resolve from at lint time (`has<Pkg>` exported for debugging).
+2. **Evidence scan** — tool config files across the workspace: the root directory plus every **workspace package** (the real `workspaces`/`pnpm-workspace.yaml` globs via `@manypkg/get-packages`, not a depth heuristic), skipping dot dirs, build outputs, and `.gitignore`d files; exported as `scanWorkspace`. Catches tools installed only in **leaf** packages, invisible to the probe (1). The workspace root itself comes from env (`PROJECT_CWD`/`npm_config_local_prefix`) with `@manypkg/find-root` as the fallback (workspace manifest walk, nearest `package.json` for single-package repos; exported as `findWorkspaceRoot`), so linting from inside a package still sees the whole repo.
+3. **Hoisting, not bridging** — the plugins need the tool's package resolvable from the workspace root; a tool that is evidently in use (2) but not resolvable there (1) is a **hard error** with hoisting guidance (keep default hoisting, pnpm `public-hoist-pattern`, or a root devDependency — see the error text) instead of a silent skip or a cryptic plugin crash. Fix it once in the package manager config; nothing is symlinked at lint time.
+4. **Yarn Berry PnP** — there is no hoisting to configure; declare the tools at the workspace root as well, keeping versions in sync with the leaves (e.g. the `"vitest": "$vitest"` version-alias hack); `next` documents its own monorepo ESLint setup.
 
 | Option      | Package          | Evidence glob                                                               | When zero / many found                                                                              |
 | ----------- | ---------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -333,12 +336,12 @@ Due to limitations package visibility between leaf and root this package has to 
 | `nx`        | (plugin bundled) | `nx.json` at the workspace root                                             | —                                                                                                   |
 | `turbo`     | `turbo`          | package probe only                                                          | —                                                                                                   |
 
-¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — covered by the leaf bridge above.
+¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires.
 
 The machinery is controlled by the `detection` option (same toggle notation as the tools):
 
-- `detection: false` — tools are OFF unless explicitly enabled; enabled tools still auto-detect their settings (steps 2–3)
-- `detection: { strict: true }` — only step 1 runs: the `has*` package probes **are** the strict detection (same-scope `import.meta.resolve`, no walking) — no workspace scans (2), no symlink bridges (3). Mandatory settings (`cssConfigPath`) must then be explicit, and `nx.json` is checked at **cwd** instead of the workspace root (`hasNx` is the only non-strict `has*`)
+- `detection: false` — tools are OFF unless explicitly enabled; enabled tools still auto-detect their settings (step 2)
+- `detection: { strict: true }` — only step 1 runs: the `has*` package probes **are** the strict detection — no workspace evidence scans (2). Mandatory settings (`cssConfigPath`) must then be explicit, and `nx.json` is checked at **cwd** instead of the workspace root (`hasNx` is the only non-package `has*`)
 - `detection: { enabled: false, strict: true }` — fully explicit: tools on only when set, probes only
 
 Set `LINT_DEBUG=1` to trace the machinery: `has*` probe results, every workspace scan (glob, root, files found) and each tool's gate verdict (supplied options, absolutized & scanned evidence files, effective enabled status + reason).
@@ -365,10 +368,10 @@ paths:
 - Package managers
     - [ ] TODO verify the package end-to-end (workspace-root detection, Tailwind / `next.config.*` scans, `has*` capability probes, plugin resolution, `defineLintConfig` under a real lint run) with each manager:
         - [x] Yarn Berry, node-modules linker — this repo, fully covered
-        - [ ] Yarn Berry **PnP** — partially verified (scratch workspace): Tailwind leaf resolution is PnP-aware but points into the zip cache, so the node_modules symlink bridge is skipped by design (see "Tailwind CSS rules"); root-declared `tailwindcss` verified working; full config run (plugin loading, capability probes) still unverified
-        - [ ] Yarn 1 (classic) — workspace-root detection verified in a scratch workspace (no root env, `npm prefix`/lockfile-walk path); full config unverified
-        - [ ] pnpm — workspace-root detection verified in a scratch workspace (`pnpm root -w`, no usable env); full config unverified
-        - [ ] npm — root probes verified (`npm_config_local_prefix`, workspace-aware `npm prefix`); full config unverified
+        - [ ] Yarn Berry **PnP** — root-declared `tailwindcss` verified working (see "Detection" step 4); full config run (plugin loading, capability probes) unverified since the switch to `@manypkg/find-root`/`local-pkg`
+        - [ ] Yarn 1 (classic) — root detection now delegates to `@manypkg/find-root` (workspace-manifest walk); unverified since the switch
+        - [ ] pnpm — root detection via `@manypkg/find-root` (`pnpm-workspace.yaml`); `public-hoist-pattern` guidance unverified in a real pnpm workspace
+        - [ ] npm — env fast-path (`npm_config_local_prefix`) verified previously; `@manypkg/find-root` fallback unverified since the switch
 - ESLint 9
     - [x] https://github.com/microsoft/rushstack/issues/4635 Failed to patch ESLint because the calling module was not recognized
     - [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized

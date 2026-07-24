@@ -60,11 +60,17 @@ test('scan reaches deep entries and ignores copies in build outputs', async () =
     );
 });
 
-test('scopes the block to the package owning the entry CSS by default', async () => {
+// a workspace root is only recognized next to its lockfile (@manypkg/tools), like in a real repo
+const WORKSPACE_FIXTURE = {
+    'package.json': '{"name":"root","private":true,"workspaces":["packages/*"]}',
+    'yarn.lock': '',
+    'packages/x/package.json': '{"name":"x"}',
+};
+
+test('scopes the block to the workspace package owning the entry CSS by default', async () => {
     await inTempDir(
         {
-            'package.json': '{}',
-            'packages/x/package.json': '{}',
+            ...WORKSPACE_FIXTURE,
             'packages/x/src/styles/app.css': TAILWIND_ENTRY,
         },
         async () => {
@@ -76,22 +82,40 @@ test('scopes the block to the package owning the entry CSS by default', async ()
 });
 
 test('scoping uses the absolutized path when cssConfigPath is relative', async () => {
-    await inTempDir({ 'packages/x/package.json': '{}', 'packages/x/app.css': TAILWIND_ENTRY }, async () => {
-        const block = tailwindBlockOf(await tailwindConfig({ cssConfigPath: 'packages/x/app.css' }));
-        assert.ok(block.basePath.endsWith(join('packages', 'x')));
-        // the consumer's own notation still reaches the plugin settings untouched
-        assert.equal(block.settings.tailwindcss.cssConfigPath, 'packages/x/app.css');
-    });
-});
-
-test('root-owned entry and scoped: false stay workspace-wide (no basePath)', async () => {
-    await inTempDir({ 'package.json': '{}', 'src/app.css': TAILWIND_ENTRY }, async () => {
-        assert.equal('basePath' in tailwindBlockOf(await tailwindConfig()), false);
-    });
     await inTempDir(
         {
-            'package.json': '{}',
-            'packages/x/package.json': '{}',
+            ...WORKSPACE_FIXTURE,
+            'packages/x/app.css': TAILWIND_ENTRY,
+        },
+        async () => {
+            const block = tailwindBlockOf(await tailwindConfig({ cssConfigPath: 'packages/x/app.css' }));
+            assert.ok(block.basePath.endsWith(join('packages', 'x')));
+            // the consumer's own notation still reaches the plugin settings untouched
+            assert.equal(block.settings.tailwindcss.cssConfigPath, 'packages/x/app.css');
+        },
+    );
+});
+
+test('root-owned entry, undeclared package dirs and scoped: false stay workspace-wide (no basePath)', async () => {
+    // single-package repo: the root owns the entry
+    await inTempDir({ 'package.json': '{"name":"single"}', 'src/app.css': TAILWIND_ENTRY }, async () => {
+        assert.equal('basePath' in tailwindBlockOf(await tailwindConfig()), false);
+    });
+    // a package.json dir that is NOT a declared workspace member belongs to the root
+    await inTempDir(
+        {
+            'package.json': '{"name":"single"}',
+            'yarn.lock': '',
+            'packages/x/package.json': '{"name":"x"}',
+            'app.css': TAILWIND_ENTRY,
+        },
+        async () => {
+            assert.equal('basePath' in tailwindBlockOf(await tailwindConfig()), false);
+        },
+    );
+    await inTempDir(
+        {
+            ...WORKSPACE_FIXTURE,
             'packages/x/src/app.css': TAILWIND_ENTRY,
         },
         async () => {

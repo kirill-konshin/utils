@@ -31,6 +31,8 @@
   "dependencies": {
     "@eslint/compat": "^2.0.3",
     "@eslint/js": "^10.0.1",
+    "@manypkg/find-root": "^3.1.0",
+    "@manypkg/get-packages": "^3.1.0",
     "@next/eslint-plugin-next": "^16.2.1",
     "@nx/eslint-plugin": "^23.1.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
@@ -53,7 +55,8 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "glob": "^13.0.6",
     "globals": "^16.4.0",
-    "jsonc-eslint-parser": "^2.4.2"
+    "jsonc-eslint-parser": "^2.4.2",
+    "local-pkg": "^1.2.1"
   },
   "devDependencies": {
     "vitest": "*"

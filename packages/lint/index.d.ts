@@ -32,12 +32,12 @@ export type ToggleOptions = {
  * - `false` / `{ enabled: false }` - tools default OFF; explicitly enabled tools still
  *   auto-detect their settings
  * - `strict: true` - same-scope package probes only (exactly what the `has*` checks are): no
- *   workspace walks, no evidence scans, no symlink bridges; mandatory settings like
- *   `cssConfigPath` must be explicit, and `nx.json` is checked at cwd instead of the workspace
- *   root. `{ enabled: false, strict: true }` is ideal for per-package monorepo configs.
+ *   evidence scans; mandatory settings like `cssConfigPath` must be explicit, and `nx.json` is
+ *   checked at cwd instead of the workspace root. `{ enabled: false, strict: true }` is ideal for
+ *   per-package monorepo configs.
  */
 export type DetectionOptions = ToggleOptions & {
-    /** same-scope package probes only - no workspace walks/scans/bridges */
+    /** same-scope package probes only - no workspace evidence scans */
     strict?: boolean;
 };
 
@@ -65,9 +65,10 @@ export type TailwindOptions = ToggleOptions & {
      */
     cssConfigPath?: TailwindPluginSettings['cssConfigPath'];
     /**
-     * Scope the Tailwind rules to the package that owns the entry CSS - the nearest `package.json`
-     * directory, emitted as the block's `basePath` (ESLint >= 9.30) - instead of the whole
-     * workspace. No-op when the owning package is the workspace root itself.
+     * Scope the Tailwind rules to the workspace package that owns the entry CSS (emitted as the
+     * block's `basePath`, ESLint >= 9.30) instead of the whole workspace. No-op when the entry is
+     * owned by the workspace root itself (single-package repo, or not inside a declared
+     * workspace package).
      *
      * @default true
      */
@@ -246,15 +247,15 @@ export const vitestPlugin: typeof import('@vitest/eslint-plugin').default;
 // ----- Helpers & companion configs -----
 
 /**
- * Auto-find the Tailwind v4 entry CSS: the single `*.css` (scanned up to 5 directory levels below
- * the workspace root, skipping `.gitignore`d files and build outputs) containing
+ * Auto-find the Tailwind v4 entry CSS: the single `*.css` (scanned across the workspace root and
+ * every workspace package, skipping `.gitignore`d files and build outputs) containing
  * `@import "tailwindcss"`; null when zero or several match.
  */
 export function findTailwindEntry(ignores: string[]): string | null;
 
 /**
- * Auto-find Next.js app roots below the workspace root (scanned up to 5 levels, skipping
- * `.gitignore`d files and build outputs). `next.config.*` is optional in Next.js, so any of three
+ * Auto-find Next.js app roots (scanned across the workspace root and every workspace package,
+ * skipping `.gitignore`d files and build outputs). `next.config.*` is optional in Next.js, so any of three
  * signals marks an app root: a `next.config.*`, a `package.json` depending on `next`
  * (dependencies/devDependencies - peer declarations mark libraries, not apps), or a
  * `src/app`/`src/pages` directory (the reported root is the directory containing `src`);
@@ -263,8 +264,9 @@ export function findTailwindEntry(ignores: string[]): string | null;
 export function findNextRoots(ignores: string[]): string[];
 
 /**
- * Glob for config-file candidates below the workspace root (up to 5 directory levels, skipping
- * dot dirs unless `dot`, build outputs, extra `ignores` and everything in the root `.gitignore`).
+ * Glob for config-file candidates across the workspace - the root directory plus every workspace
+ * package (the real `workspaces` globs, not a depth heuristic) - skipping dot dirs unless `dot`,
+ * build outputs, extra `ignores` and everything in the root `.gitignore`.
  * Returns absolute paths - useful for building file lists like `typeAware.allowDefaultProject`.
  */
 export function scanWorkspace(fileGlob: string, ignores?: string[], options?: { dot?: boolean }): string[];

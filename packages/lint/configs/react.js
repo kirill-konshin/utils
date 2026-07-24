@@ -106,11 +106,11 @@ export function reactBaseConfig() {
  * evidence (see {@link findNextRoots} - `next.config.*`, a `package.json` depending on `next`, a
  * `src/app`/`src/pages` tree) marks a Next repo even when the `next` package is installed only in
  * a leaf app (invisible to `hasNext`) - and because `eslint-config-next` `require`s files INSIDE
- * the `next` package, leaf-only installs are bridged from each app's own `package.json` (see
- * `ensurePackageResolvable` in lib.js for the mechanism and PnP behavior).
+ * the `next` package, `next` must be resolvable from the workspace root (hoisted); a leaf-only
+ * install is a hard error with hoisting guidance (see `toolGate` in lib.js).
  *
  * @param {boolean | NextOptions} [option] the defineLintConfig `next` flag
- * @param {boolean} [strict] same-scope detection only - no `next.config.*` scan, no bridge (defineLintConfig `detection.strict`)
+ * @param {boolean} [strict] same-scope detection only - no `next.config.*` scan (defineLintConfig `detection.strict`)
  * @returns {Promise<import('eslint').Linter.Config[]>}
  */
 export async function nextConfig(option, strict = false) {
@@ -120,11 +120,11 @@ export async function nextConfig(option, strict = false) {
         packageName: 'next',
         /*
          * rootDir entries may be relative or absolute paths OR globs (`apps/*` - the plugin
-         * expands them itself for its settings), so for the bridge probes each entry is expanded
-         * against the workspace root into real app dirs; a plain path that exists simply matches
-         * itself. An entry matching nothing falls back to the literal path as the probe anchor
-         * (harmless - resolution just walks up from there). The probes resolve from each app's
-         * package.json.
+         * expands them itself for its settings), so for the evidence probes each entry is
+         * expanded against the workspace root into real app dirs; a plain path that exists simply
+         * matches itself. An entry matching nothing falls back to the literal path as the probe
+         * anchor (harmless - resolution just walks up from there). The probes resolve from each
+         * app's package.json.
          */
         absolutizeOptions: ({ rootDir }) =>
             (Array.isArray(rootDir) ? rootDir : [rootDir]).filter(Boolean).flatMap((dir) => {
