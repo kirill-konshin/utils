@@ -1,16 +1,16 @@
-import { asOptions, hasTurbo } from '../lib.js';
+import { hasTurbo, toolGate } from '../lib.js';
 
 // lazy so consumers without Turbo don't pay the load cost - re-exported from index.js
 export const turboPlugin = hasTurbo ? (await import('eslint-plugin-turbo')).default : null;
 
 /**
- * Turborepo rules.
+ * Turborepo rules. Probe-only gate (see `toolGate` in lib.js) - no evidence scan, no bridge.
  *
  * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `turbo` flag; auto-detected when omitted
  * @returns {Promise<import('eslint').Linter.Config[]>}
  */
 export async function turboConfig(option) {
-    const { enabled = hasTurbo } = asOptions(option);
+    const { enabled } = toolGate(option, false, { tool: 'turbo', has: hasTurbo });
     if (!enabled) return [];
     const turbo = (await import('eslint-plugin-turbo')).default;
     return [

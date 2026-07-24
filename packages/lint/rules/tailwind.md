@@ -10,8 +10,11 @@ description: Set of rules for projects which use Tailwind
 # ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
 
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
-- Zero-config happy path: when `tailwindcss` is installed and the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned ≤3 dir levels, `.gitignore`-aware), rules auto-enable with that entry
-- When detection can't see `tailwindcss` (e.g. it lives only in leaf packages of a monorepo), force it with `tailwind: true` — then a missing/ambiguous entry CSS is a HARD ERROR instead of a silent skip
+- Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned ≤5 dir levels, `.gitignore`-aware), rules auto-enable with that entry
+- Several entry CSS candidates are ALWAYS a HARD ERROR (a silent skip is hard to notice)
+    - pass `cssConfigPath` to pick one (if others are not useful) OR
+    - create multiple leaf `eslint.config.ts` per app (if ALL need to be linted)
+- When detection can't see `tailwindcss` (e.g. it lives only in leaf packages of a monorepo), force it with `tailwind: true` — then a missing entry CSS is a HARD ERROR instead of a silent skip
 - ONLY when auto-find finds nothing (or several entries) pass the MANDATORY entry explicitly in `eslint.config.mjs`:
 
 ```js

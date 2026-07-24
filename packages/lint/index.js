@@ -17,21 +17,21 @@
  */
 import { baseConfig, defaultIgnoreConfig } from './configs/base.js';
 import { importSortConfig, importXConfig, unusedImportsConfig } from './configs/imports.js';
-import { nextConfig, nextOverridesConfig, reactSettingsConfig, typescriptOverridesConfig } from './configs/next.js';
 import { nxConfig } from './configs/nx.js';
 import { prettierConfig } from './configs/prettier.js';
 import { promiseConfig } from './configs/promise.js';
+import { reactConfig } from './configs/react.js';
 import { storybookConfig } from './configs/storybook.js';
 import { tailwindConfig } from './configs/tailwind.js';
 import { jestConfig, testConfig, vitestConfig } from './configs/testing.js';
 import { turboConfig } from './configs/turbo.js';
 import { typeAwareConfig } from './configs/typescriptTypeAware.js';
 import { unicornConfig } from './configs/unicorn.js';
-import { eslintExts, prettierExts } from './lib.js';
+import { asOptions, eslintExts, prettierExts } from './lib.js';
 
 export * from './configs/base.js';
 export * from './configs/imports.js';
-export * from './configs/next.js';
+export * from './configs/react.js';
 export * from './configs/nx.js';
 export * from './configs/prettier.js';
 export * from './configs/promise.js';
@@ -82,23 +82,30 @@ export async function defineLintConfig(options = {}) {
     if (typeof options === 'function') options = options();
     options = (await options) ?? {};
 
+    /*
+     * `detection` uses the same toggle notation as the tool flags (true <> { enabled: true } <>
+     * false <> { enabled: false }): `enabled` = are tools ON unless said otherwise (default true),
+     * `strict` = same-scope package probes only, no workspace scans / symlink bridges (default
+     * false; ideal for per-package monorepo configs).
+     */
+    const { enabled: defaultOn = true, strict = false } = asOptions(options.detection);
+    // with detection off, tools not mentioned explicitly are OFF instead of auto-detected
+    const flag = (option) => (option === undefined && !defaultOn ? false : option);
+
     // blocks from the same configs/* file stay consecutive - ordering inside a family matters
     // (e.g. next: base config, then the TS wiring stemming from it, then overrides, then settings)
     return [
         // base.js
         ...baseConfig(),
         ...defaultIgnoreConfig(options.defaultIgnore),
-        // next.js
-        ...(await nextConfig(options.next)),
-        ...typescriptOverridesConfig(),
-        ...nextOverridesConfig(),
-        ...reactSettingsConfig(),
+        // react.js - the whole family (Next or plain React + TS wiring + overrides + settings)
+        ...(await reactConfig(flag(options.next), strict)),
         // prettier.js
         ...prettierConfig(),
         // storybook.js
-        ...(await storybookConfig(options.storybook)),
+        ...(await storybookConfig(flag(options.storybook), strict)),
         // typescriptTypeAware (should be before imports)
-        ...typeAwareConfig(options.typeAware),
+        ...typeAwareConfig(options.typeAware, strict),
         // imports.js
         ...importXConfig(),
         ...importSortConfig(),
@@ -108,14 +115,14 @@ export async function defineLintConfig(options = {}) {
         // unicorn.js
         ...unicornConfig(),
         // turbo.js
-        ...(await turboConfig(options.turbo)),
+        ...(await turboConfig(flag(options.turbo))),
         // tailwind.js
-        ...(await tailwindConfig(options.tailwind)),
+        ...(await tailwindConfig(flag(options.tailwind), strict)),
         // nx.js
-        ...(await nxConfig(options.nx)),
+        ...(await nxConfig(flag(options.nx), strict)),
         // testing.js
-        ...jestConfig(options.jest),
-        ...vitestConfig(options.vitest),
+        ...jestConfig(flag(options.jest), strict),
+        ...vitestConfig(flag(options.vitest), strict),
         ...testConfig(),
     ];
 }

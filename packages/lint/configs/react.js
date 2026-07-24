@@ -1,10 +1,12 @@
-import { dirname } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import nextTs from 'eslint-config-next/typescript';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import { globSync } from 'glob';
 
-import { asOptions, GLOBAL_IGNORES, hasNext, scanWorkspace, tsExts } from '../lib.js';
+import { findWorkspaceRoot, GLOBAL_IGNORES, hasNext, scanWorkspace, toolGate, tsExts } from '../lib.js';
 
 // lazy so consumers without Next don't pay the load cost - re-exported from index.js
 export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
@@ -12,16 +14,47 @@ export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).d
 /** @typedef {import('../index.js').NextOptions} NextOptions Defined in index.d.ts. */
 
 /**
- * Auto-find Next.js app roots: every directory below the workspace root containing a
- * `next.config.*` (scanned like the Tailwind entry - see `scanWorkspace`).
+ * Does this `package.json` declare `next` as a dependency? Peer/optional declarations are
+ * deliberately ignored - they mark component libraries, not apps.
+ *
+ * @param {string} file absolute path of a `package.json`
+ * @returns {boolean}
+ */
+function dependsOnNext(file) {
+    try {
+        const { dependencies, devDependencies } = JSON.parse(readFileSync(file, 'utf-8'));
+        return Boolean(dependencies?.next ?? devDependencies?.next);
+    } catch {
+        return false; // unreadable / malformed - not evidence
+    }
+}
+
+/**
+ * Auto-find Next.js app roots below the workspace root (scanned like the Tailwind entry - see
+ * `scanWorkspace`). `next.config.*` is optional in Next.js, so any of three signals marks an app
+ * root:
+ * - a `next.config.*` file
+ * - a `package.json` depending on `next` (see {@link dependsOnNext})
+ * - a `src/app` or `src/pages` directory - the reported root is the directory CONTAINING `src`,
+ *   because the plugin resolves both layouts (`pages`/`app` and `src/pages`/`src/app`) from the
+ *   package root itself; the bare root-level dir names are too generic to scan for, but such apps
+ *   are caught by the other two signals
  *
  * @param {string[]} ignores glob patterns to skip
- * @returns {string[]} absolute directories
+ * @returns {string[]} absolute directories, deduplicated (one app usually shows several signals) and
+ *   sorted so the emitted settings block is deterministic across filesystems
  */
 export function findNextRoots(ignores) {
-    // Set: a dir can hold several matches (next.config.js + next.config.ts mid-migration);
-    // sorted so the emitted settings block is deterministic across filesystems
-    return [...new Set(scanWorkspace('next.config.*', ignores).map((file) => dirname(file)))].sort();
+    return [
+        ...new Set([
+            ...scanWorkspace('next.config.*', ignores).map((file) => dirname(file)),
+            ...scanWorkspace('package.json', ignores)
+                .filter(dependsOnNext)
+                .map((file) => dirname(file)),
+            // the trailing slash makes glob match directories only
+            ...scanWorkspace('src/{app,pages}/', ignores).map((dir) => dirname(dirname(dir))),
+        ]),
+    ].sort();
 }
 
 /**
@@ -58,7 +91,7 @@ export async function nextBaseConfig({ rootDir = findNextRoots(GLOBAL_IGNORES) }
  *
  * @returns {import('eslint').Linter.Config[]}
  */
-export function reactConfig() {
+export function reactBaseConfig() {
     return [
         reactPlugin.configs.flat.recommended,
         reactPlugin.configs.flat['jsx-runtime'],
@@ -68,15 +101,45 @@ export function reactConfig() {
 }
 
 /**
- * Composite: {@link nextBaseConfig} when Next is enabled (auto-detected or forced via the flag),
- * the {@link reactConfig} fallback otherwise.
+ * Composite: {@link nextBaseConfig} when Next is enabled, the {@link reactBaseConfig} fallback
+ * otherwise. Full evidence-based gate (see `toolGate` in lib.js), mirroring Tailwind: app-root
+ * evidence (see {@link findNextRoots} - `next.config.*`, a `package.json` depending on `next`, a
+ * `src/app`/`src/pages` tree) marks a Next repo even when the `next` package is installed only in
+ * a leaf app (invisible to `hasNext`) - and because `eslint-config-next` `require`s files INSIDE
+ * the `next` package, leaf-only installs are bridged from each app's own `package.json` (see
+ * `ensurePackageResolvable` in lib.js for the mechanism and PnP behavior).
  *
  * @param {boolean | NextOptions} [option] the defineLintConfig `next` flag
+ * @param {boolean} [strict] same-scope detection only - no `next.config.*` scan, no bridge (defineLintConfig `detection.strict`)
  * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function nextConfig(option) {
-    const { enabled = hasNext, ...options } = asOptions(option);
-    return enabled ? await nextBaseConfig(options) : reactConfig();
+export async function nextConfig(option, strict = false) {
+    const { enabled, options, files } = toolGate(option, strict, {
+        tool: 'next',
+        has: hasNext,
+        packageName: 'next',
+        /*
+         * rootDir entries may be relative or absolute paths OR globs (`apps/*` - the plugin
+         * expands them itself for its settings), so for the bridge probes each entry is expanded
+         * against the workspace root into real app dirs; a plain path that exists simply matches
+         * itself. An entry matching nothing falls back to the literal path as the probe anchor
+         * (harmless - resolution just walks up from there). The probes resolve from each app's
+         * package.json.
+         */
+        absolutizeOptions: ({ rootDir }) =>
+            (Array.isArray(rootDir) ? rootDir : [rootDir]).filter(Boolean).flatMap((dir) => {
+                const pattern = isAbsolute(dir) ? dir : resolve(findWorkspaceRoot(), dir);
+                // trailing slash = directories only; backslash normalization mirrors the plugin
+                const dirs = globSync(`${pattern.replace(/\\/g, '/').replace(/\/+$/, '')}/`, { absolute: true });
+                return (dirs.length > 0 ? dirs : [pattern]).map((appDir) => join(appDir, 'package.json'));
+            }),
+        scan: () => findNextRoots(GLOBAL_IGNORES).map((dir) => join(dir, 'package.json')),
+    });
+    if (!enabled) return reactBaseConfig();
+
+    // explicit rootDir is passed through in the consumer's own notation; auto-detected roots are
+    // the evidence dirs (absolute; empty under strict → no settings block, the setting is optional)
+    return nextBaseConfig({ ...options, rootDir: options.rootDir ?? files.map((file) => dirname(file)) });
 }
 
 /**
@@ -141,7 +204,7 @@ export function typescriptOverridesConfig() {
 
 /**
  * Overrides of rules set by `eslint-config-next`. Always applied (not gated on Next): the
- * jsx-a11y/react entries matter for {@link reactConfig} consumers too, and turning off rules of an
+ * jsx-a11y/react entries matter for {@link reactBaseConfig} consumers too, and turning off rules of an
  * unregistered plugin is harmless.
  *
  * @returns {import('eslint').Linter.Config[]}
@@ -175,5 +238,25 @@ export function reactSettingsConfig() {
                 react: { version: '19' },
             },
         },
+    ];
+}
+
+/**
+ * The whole React family in its load-bearing order: {@link nextConfig} (Next when enabled, plain
+ * React otherwise - Next is just a shortcut to an opinionated React/TypeScript setup), then
+ * {@link typescriptOverridesConfig}, {@link nextOverridesConfig} and {@link reactSettingsConfig} -
+ * which apply NO MATTER whether Next or plain React won, so composing them individually risks
+ * ordering mistakes; defineLintConfig uses this composite.
+ *
+ * @param {boolean | NextOptions} [option] the defineLintConfig `next` flag
+ * @param {boolean} [strict] same-scope detection only (defineLintConfig `detection.strict`)
+ * @returns {Promise<import('eslint').Linter.Config[]>}
+ */
+export async function reactConfig(option, strict = false) {
+    return [
+        ...(await nextConfig(option, strict)),
+        ...typescriptOverridesConfig(),
+        ...nextOverridesConfig(),
+        ...reactSettingsConfig(),
     ];
 }

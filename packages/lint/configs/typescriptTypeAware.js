@@ -22,14 +22,15 @@ import { asOptions, findWorkspaceRoot } from '../lib.js';
  *   nothing to auto-detect, so only an explicit `true` / options object enables the block
  * @returns {import('eslint').Linter.Config[]}
  */
-export function typeAwareConfig(option) {
+export function typeAwareConfig(option, strict = false) {
     let {
         enabled = false,
         allowDefaultProject,
         // matches the list when it's exact files (the scanWorkspace flow); with multi-match globs
         // set the cap explicitly - typescript-eslint errors loudly when matches exceed it
         maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING = allowDefaultProject?.length,
-        tsconfigRootDir = findWorkspaceRoot(),
+        // strict detection avoids the workspace walk
+        tsconfigRootDir = strict ? process.cwd() : findWorkspaceRoot(),
     } = asOptions(option);
     if (!enabled) return [];
 

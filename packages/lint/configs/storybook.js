@@ -1,15 +1,26 @@
-import { asOptions, hasStorybook } from '../lib.js';
+import { GLOBAL_IGNORES, hasStorybook, scanWorkspace, toolGate } from '../lib.js';
 
 /**
- * Storybook recommended rules. `eslint-plugin-storybook` statically imports the `storybook` package
- * itself, so it can only be loaded when Storybook is actually installed - hence the lazy import.
+ * Storybook recommended rules. Full evidence-based gate (see `toolGate` in lib.js), mirroring
+ * Tailwind: a `.storybook/main.*` marks a Storybook repo even when the `storybook` package is
+ * installed only in a leaf package (invisible to `hasStorybook`) - and because
+ * `eslint-plugin-storybook` statically imports the `storybook` package itself, leaf-only installs
+ * are bridged (see `ensurePackageResolvable` in lib.js for the mechanism and PnP behavior); the
+ * plugin stays lazily imported so consumers without Storybook never pay for it.
  *
  * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `storybook` flag; auto-detected when omitted
+ * @param {boolean} [strict] same-scope detection only - no `.storybook` scan, no bridge (defineLintConfig `detection.strict`)
  * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function storybookConfig(option) {
-    const { enabled = hasStorybook } = asOptions(option);
+export async function storybookConfig(option, strict = false) {
+    const { enabled } = toolGate(option, strict, {
+        tool: 'storybook',
+        has: hasStorybook,
+        packageName: 'storybook',
+        scan: () => scanWorkspace('.storybook/main.*', GLOBAL_IGNORES, { dot: true }),
+    });
     if (!enabled) return [];
+
     const storybookPlugin = (await import('eslint-plugin-storybook')).default;
     return storybookPlugin.configs['flat/recommended'];
 }

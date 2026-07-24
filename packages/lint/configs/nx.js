@@ -1,6 +1,8 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import jsoncParser from 'jsonc-eslint-parser';
 
-import { asOptions, hasNx } from '../lib.js';
+import { hasNx, toolGate } from '../lib.js';
 
 // lazy so consumers without Nx don't pay the load cost (it drags in a large part of nx itself) -
 // re-exported from index.js
@@ -17,10 +19,16 @@ export const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : nu
  * @typescript-eslint/recommended that would relitigate rules already configured deliberately here.
  *
  * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `nx` flag; auto-detected (workspace `nx.json`) when omitted
+ * @param {boolean} [strict] same-scope detection only: `nx.json` at cwd instead of the workspace root (defineLintConfig `detection.strict`)
  * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function nxConfig(option) {
-    const { enabled = hasNx } = asOptions(option);
+export async function nxConfig(option, strict = false) {
+    const { enabled } = toolGate(option, strict, {
+        tool: 'nx',
+        has: hasNx,
+        // hasNx is the one non-strict `has*` (a workspace-root file check) - strict stays at cwd
+        strictHas: strict && existsSync(resolve(process.cwd(), 'nx.json')),
+    });
     if (!enabled) return [];
     const nx = (await import('@nx/eslint-plugin')).default;
     return [

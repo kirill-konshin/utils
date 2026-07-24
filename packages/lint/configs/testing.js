@@ -13,9 +13,18 @@ import path from 'node:path';
 import vitestPlugin from '@vitest/eslint-plugin';
 import jestPlugin from 'eslint-plugin-jest';
 
-import { asOptions, hasJest, hasVitest, tsExts, tsExtsRaw } from '../lib.js';
+import { GLOBAL_IGNORES, hasJest, hasVitest, scanWorkspace, toolGate, tsExts, tsExtsRaw } from '../lib.js';
 
 export { jestPlugin, vitestPlugin };
+
+/*
+ * Both runners use the evidence-based `toolGate` (see lib.js): a runner config file marks the repo
+ * even when the runner is installed only in a leaf package (invisible to the `has*` probe), and
+ * the runner package itself must then be resolvable - eslint-plugin-jest sniffs the installed
+ * `jest` version (jest/no-deprecated-functions) - so leaf-only installs are bridged. Unlike the
+ * plugin-crashing tools (next/storybook/tailwind) the rules are pure AST checks that work without
+ * the runner, so forcing a runner on never throws (`requirePackage: false`).
+ */
 
 // derived from the shared extension list - one source of truth with the lint file globs
 const SOURCE_EXTS = tsExtsRaw.split(',').map((ext) => `.${ext}`);
@@ -73,8 +82,14 @@ const testColocation = {
  * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `jest` flag; auto-detected when omitted
  * @returns {import('eslint').Linter.Config[]}
  */
-export function jestConfig(option) {
-    const { enabled = hasJest } = asOptions(option);
+export function jestConfig(option, strict = false) {
+    const { enabled } = toolGate(option, strict, {
+        tool: 'jest',
+        has: hasJest,
+        packageName: 'jest',
+        requirePackage: false,
+        scan: () => scanWorkspace('jest.config.*', GLOBAL_IGNORES),
+    });
     if (!enabled) return [];
     return [
         {
@@ -91,8 +106,15 @@ export function jestConfig(option) {
  * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `vitest` flag; auto-detected when omitted
  * @returns {import('eslint').Linter.Config[]}
  */
-export function vitestConfig(option) {
-    const { enabled = hasVitest } = asOptions(option);
+export function vitestConfig(option, strict = false) {
+    const { enabled } = toolGate(option, strict, {
+        tool: 'vitest',
+        has: hasVitest,
+        packageName: 'vitest',
+        requirePackage: false,
+        // vitest is often configured inside vite.config.* - both count as evidence
+        scan: () => scanWorkspace('{vitest,vite}.config.*', GLOBAL_IGNORES),
+    });
     if (!enabled) return [];
     return [
         {

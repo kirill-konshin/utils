@@ -25,13 +25,31 @@ export type ToggleOptions = {
     enabled?: boolean;
 };
 
+/**
+ * Detection behavior ({@link defineLintConfig} `detection`) - the same toggle notation as the
+ * tool flags:
+ * - `undefined` / `true` / `{}` - tools default ON via full auto-detection
+ * - `false` / `{ enabled: false }` - tools default OFF; explicitly enabled tools still
+ *   auto-detect their settings
+ * - `strict: true` - same-scope package probes only (exactly what the `has*` checks are): no
+ *   workspace walks, no evidence scans, no symlink bridges; mandatory settings like
+ *   `cssConfigPath` must be explicit, and `nx.json` is checked at cwd instead of the workspace
+ *   root. `{ enabled: false, strict: true }` is ideal for per-package monorepo configs.
+ */
+export type DetectionOptions = ToggleOptions & {
+    /** same-scope package probes only - no workspace walks/scans/bridges */
+    strict?: boolean;
+};
+
 /** Options for the Next.js blocks ({@link nextBaseConfig}). */
 export type NextOptions = ToggleOptions & {
     /**
      * Root of the Next.js app(s) for `@next/eslint-plugin-next` (`settings.next.rootDir`) - needed
      * when the apps don't live at the workspace root, e.g. `path/to/next-app` (globs are supported
-     * by the plugin). When omitted, auto-detected via {@link findNextRoots}: no `next.config.*`
-     * found → no settings (the setting is optional), several apps → all of them as an array.
+     * by the plugin; pass the package root, not `src` - the plugin resolves both the `pages`/`app`
+     * and `src/pages`/`src/app` layouts from it). When omitted, auto-detected via
+     * {@link findNextRoots}: no evidence found → no settings (the setting is optional), several
+     * apps → all of them as an array.
      *
      * @see https://nextjs.org/docs/app/api-reference/config/eslint
      */
@@ -86,6 +104,8 @@ export type DefaultIgnoreOptions = ToggleOptions & {
  * The gated `*Config()` block functions accept the same flag value directly.
  */
 export type LintOptions = {
+    /** Detection behavior: default tool state + strict mode; see {@link DetectionOptions} */
+    detection?: boolean | DetectionOptions;
     /** Next.js (`eslint-config-next`); when off, generic React/JSX rules apply instead */
     next?: boolean | NextOptions;
     /** Storybook (`eslint-plugin-storybook`) */
@@ -98,7 +118,7 @@ export type LintOptions = {
     jest?: boolean | ToggleOptions;
     /** Vitest recommended rules for `*.{test,spec}.*` */
     vitest?: boolean | ToggleOptions;
-    /** Tailwind (`eslint-plugin-tailwindcss`); forcing ON without a resolvable entry CSS is a hard error */
+    /** Tailwind (`eslint-plugin-tailwindcss`); forcing ON without a resolvable entry CSS is a hard error, several entry CSS candidates always are */
     tailwind?: boolean | TailwindOptions;
     /** Type-aware TypeScript rules; off by default (slow), nothing to auto-detect */
     typeAware?: boolean | TypeAwareOptions;
@@ -129,9 +149,16 @@ export function defaultIgnoreConfig(option?: boolean | DefaultIgnoreOptions): Li
 /** The whole `eslint-config-next` flat config, plus `settings.next.rootDir` when given. Next-only, ungated. */
 export function nextBaseConfig(options?: NextOptions): Promise<Linter.Config[]>;
 /** React/React Hooks/jsx-a11y rules for non-Next (e.g. Vite) React projects. Ungated. */
-export function reactConfig(): Linter.Config[];
-/** Composite: {@link nextBaseConfig} when Next is enabled, the {@link reactConfig} fallback otherwise. */
-export function nextConfig(option?: boolean | NextOptions): Promise<Linter.Config[]>;
+export function reactBaseConfig(): Linter.Config[];
+/** Chooser: {@link nextBaseConfig} when Next is enabled, the {@link reactBaseConfig} fallback otherwise. */
+export function nextConfig(option?: boolean | NextOptions, strict?: boolean): Promise<Linter.Config[]>;
+/**
+ * The whole React family in its load-bearing order - {@link nextConfig} (Next is just a shortcut
+ * to an opinionated React/TypeScript setup), then {@link typescriptOverridesConfig},
+ * {@link nextOverridesConfig} and {@link reactSettingsConfig}, which apply no matter whether Next
+ * or plain React won. Used by {@link defineLintConfig}; `option` is the `next` flag.
+ */
+export function reactConfig(option?: boolean | NextOptions, strict?: boolean): Promise<Linter.Config[]>;
 /** `eslint-config-next/typescript` (typescript-eslint wiring, which stems from Next) + deliberate rule overrides. */
 export function typescriptOverridesConfig(): Linter.Config[];
 /** Overrides of rules set by `eslint-config-next` (always applied, harmless without Next). */
@@ -141,7 +168,7 @@ export function reactSettingsConfig(): Linter.Config[];
 /** Prettier compatibility (`eslint-config-prettier/flat`). */
 export function prettierConfig(): Linter.Config[];
 /** Storybook recommended rules. */
-export function storybookConfig(option?: boolean | ToggleOptions): Promise<Linter.Config[]>;
+export function storybookConfig(option?: boolean | ToggleOptions, strict?: boolean): Promise<Linter.Config[]>;
 /** eslint-plugin-import-x recommended rules + overrides + the default-export relaxation for conventional files. */
 export function importXConfig(): Linter.Config[];
 /** Deterministic import ordering (eslint-plugin-simple-import-sort). */
@@ -153,21 +180,21 @@ export function promiseConfig(): Linter.Config[];
 /** Filename casing + node: protocol (two hand-picked unicorn rules). */
 export function unicornConfig(): Linter.Config[];
 /** Type-aware rules via typescript-eslint's projectService; off unless the flag is set (nothing to auto-detect). */
-export function typeAwareConfig(option?: boolean | TypeAwareOptions): Linter.Config[];
+export function typeAwareConfig(option?: boolean | TypeAwareOptions, strict?: boolean): Linter.Config[];
 /** Turborepo rules. */
 export function turboConfig(option?: boolean | ToggleOptions): Promise<Linter.Config[]>;
 /**
  * Tailwind recommended rules. Explicit `cssConfigPath` wins; otherwise auto-found via
- * {@link findTailwindEntry}. Forced on (`true`/options) + zero-or-ambiguous scan throws;
- * auto-detected stays inert.
+ * {@link findTailwindEntry}. Zero entries: inert when auto-detected, throws when forced on
+ * (`true`/options). Several entries ALWAYS throw - pass `cssConfigPath` to pick one.
  */
-export function tailwindConfig(option?: boolean | TailwindOptions): Promise<Linter.Config[]>;
+export function tailwindConfig(option?: boolean | TailwindOptions, strict?: boolean): Promise<Linter.Config[]>;
 /** Nx plugin registration + `@nx/dependency-checks`. */
-export function nxConfig(option?: boolean | ToggleOptions): Promise<Linter.Config[]>;
+export function nxConfig(option?: boolean | ToggleOptions, strict?: boolean): Promise<Linter.Config[]>;
 /** Jest recommended rules, scoped to test files. */
-export function jestConfig(option?: boolean | ToggleOptions): Linter.Config[];
+export function jestConfig(option?: boolean | ToggleOptions, strict?: boolean): Linter.Config[];
 /** Vitest recommended rules + globals, scoped to test files. */
-export function vitestConfig(option?: boolean | ToggleOptions): Linter.Config[];
+export function vitestConfig(option?: boolean | ToggleOptions, strict?: boolean): Linter.Config[];
 /** Runner-agnostic test rules (consistent-test-it, test colocation). Always applied. */
 export function testConfig(): Linter.Config[];
 
@@ -218,18 +245,21 @@ export const vitestPlugin: typeof import('@vitest/eslint-plugin').default;
 export function findTailwindEntry(ignores: string[]): string | null;
 
 /**
- * Auto-find Next.js app roots: every directory below the workspace root (scanned up to 5 levels,
- * skipping `.gitignore`d files and build outputs) containing a `next.config.*`; deduplicated and
- * sorted.
+ * Auto-find Next.js app roots below the workspace root (scanned up to 5 levels, skipping
+ * `.gitignore`d files and build outputs). `next.config.*` is optional in Next.js, so any of three
+ * signals marks an app root: a `next.config.*`, a `package.json` depending on `next`
+ * (dependencies/devDependencies - peer declarations mark libraries, not apps), or a
+ * `src/app`/`src/pages` directory (the reported root is the directory containing `src`);
+ * deduplicated and sorted.
  */
 export function findNextRoots(ignores: string[]): string[];
 
 /**
  * Glob for config-file candidates below the workspace root (up to 5 directory levels, skipping
- * dot dirs, build outputs, extra `ignores` and everything in the root `.gitignore`). Returns
- * absolute paths - useful for building file lists like `typeAware.allowDefaultProject`.
+ * dot dirs unless `dot`, build outputs, extra `ignores` and everything in the root `.gitignore`).
+ * Returns absolute paths - useful for building file lists like `typeAware.allowDefaultProject`.
  */
-export function scanWorkspace(fileGlob: string, ignores?: string[]): string[];
+export function scanWorkspace(fileGlob: string, ignores?: string[], options?: { dot?: boolean }): string[];
 
 /** Convert an ignore file (`.gitignore`, `.prettierignore`) into an ESLint ignores block. */
 export function includeIgnoreFile(importMetaUrl: string, ignoreFile: string): Linter.Config;

@@ -26,9 +26,13 @@ test('forced on with no entry CSS fails loudly', async () => {
     });
 });
 
-test('forced on with ambiguous entries fails loudly', async () => {
+test('ambiguous entries fail loudly even in auto mode (a silent skip is hard to detect)', async () => {
     await inTempDir({ 'a.css': TAILWIND_ENTRY, 'b.css': TAILWIND_ENTRY }, async () => {
-        await assert.rejects(tailwindConfig(true), /no single Tailwind v4 entry CSS/);
+        await assert.rejects(tailwindConfig(), /several entry CSS candidates/);
+        await assert.rejects(tailwindConfig(true), /several entry CSS candidates/);
+        // explicit path resolves the ambiguity
+        const config = await tailwindConfig({ cssConfigPath: 'a.css' });
+        assert.equal(tailwindBlockOf(config).settings.tailwindcss.cssConfigPath, 'a.css');
     });
 });
 
@@ -55,12 +59,7 @@ test('scan reaches deep entries and ignores copies in build outputs', async () =
     );
 });
 
-test('false and enabled: false force the block off even when an entry exists', async () => {
-    await inTempDir({ 'app.css': TAILWIND_ENTRY }, async () => {
-        assert.deepEqual(await tailwindConfig(false), []);
-        assert.deepEqual(await tailwindConfig({ enabled: false, cssConfigPath: 'x.css' }), []);
-    });
-});
+// the generic off/forced/strict gate mechanics are covered by the toolGate tests in lib.test.js
 
 test('findTailwindEntry: single entry found, ambiguous returns null', async () => {
     await inTempDir({ 'app.css': TAILWIND_ENTRY, 'plain.css': 'body {}\n' }, async () => {
