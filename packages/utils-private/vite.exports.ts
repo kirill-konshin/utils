@@ -16,7 +16,7 @@ export const distDir = './dist';
 // export { pkg };
 export const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 
-export const rootPkg = JSON.parse(fs.readFileSync(path.resolve('../../package.json'), 'utf-8'));
+export const rootPkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
 
 export const formats = {
     // cjs: ['require', 'cjs', 'd.ts'],

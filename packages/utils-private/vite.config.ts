@@ -20,6 +20,7 @@ import {
 
 const isWatch = process.argv.includes('--watch'); // https://github.com/vitejs/vite/discussions/7565#discussioncomment-2939256
 const isStorybook = process.argv[1]?.includes('storybook') || process.env.STORYBOOK === 'true';
+const isVitest = process.env.VITEST === 'true'; // index/exports/attw are build-time codegen; under vitest cwd may be the workspace root
 const isUmbrella = pkg.nx?.tags?.includes('platform:umbrella');
 
 export default defineConfig({
@@ -62,11 +63,11 @@ export default defineConfig({
         {
             name: 'Generate Index & Exports',
             async buildStart() {
-                if (isWatch || isStorybook || isUmbrella) return;
+                if (isWatch || isStorybook || isVitest || isUmbrella) return;
                 await generateIndex();
             },
             async closeBundle() {
-                if (isWatch || isStorybook) return;
+                if (isWatch || isStorybook || isVitest) return;
                 await fixExports();
                 await checkTypes();
             },

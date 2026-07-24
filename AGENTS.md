@@ -151,7 +151,7 @@ All packages use identical scripts (copy exactly):
 }
 ```
 
-Note: Use `"test:disabled"` instead of `"test"` if tests are not yet implemented.
+Exception: umbrella package `utils` omits the TEST and STORYBOOK sections — a `test` target there would pull `^build` of the entire workspace.
 
 ## `package.json` Structure Rules
 
