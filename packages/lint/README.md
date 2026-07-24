@@ -215,9 +215,10 @@ By default, always use the `prepare` script, as [Husky recommends](https://typic
 
 ```bash
 #!/bin/zsh
-source ~/.zshrc # for VSCode terminal
 yarn lint:staged
 ```
+
+Note `source ~/.zshrc # for VSCode terminal` may be added for VSCode terminal that is not aware of ZSH. Do not add unless specifically asked, and remove if present.
 
 ## AI Agent Rules
 
