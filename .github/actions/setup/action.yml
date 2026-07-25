@@ -10,6 +10,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Enable Corepack
+      run: corepack enable
+      shell: bash
+
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
@@ -17,10 +21,6 @@ runs:
         registry-url: ${{ inputs.registry-url }}
         cache: yarn
         cache-dependency-path: yarn.lock
-
-    - name: Enable Corepack
-      run: corepack enable
-      shell: bash
 
     - name: Install dependencies
       run: yarn install --immutable
