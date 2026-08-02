@@ -27,8 +27,9 @@ ALWAYS verify `turbo.json` or `nx.json` task definitions when modifying scripts 
 
 # The `dependsOn: ["^wait"]` Pattern
 
-https://github.com/vercel/turborepo/issues/1497
-https://github.com/vercel/turborepo/discussions/1299
+- https://github.com/vercel/turborepo/issues/1497
+- https://github.com/vercel/turborepo/discussions/1299
+- https://turborepo.dev/docs/guides/coordinating-runtime-dependencies
 
 Neither Turbo nor NX can run `persistent` or `continuous` dependent tasks in order. If package `A` depends on `B` and both have `start` command, in freshly checked out repo `A` will fail as `B` does not have anything built yet. Besides, two continuous tasks can't depend on each other as neither will ever exit. Options are:
 
@@ -54,3 +55,5 @@ The `start` task uses `"dependsOn": ["^wait"]` (upstream):
 3. `B` also runs `"start": "build --watch"` task (for example) which produces `dist/index.js`
 4. Once the file exists, `B`'s `wait-on` unblocks and exits, and `A`'s `start` can proceed
 5. If file existed before, `A` starts immediately, the only issue could be `A`'s double-build if `B`'s `start` will eventually modify the file, causing `A`'s watcher to rebuild
+
+For Turbo sibling runtime services (`web` <> `api`, not a package dependency) see the `with` + `wait` pattern in turbo.md.

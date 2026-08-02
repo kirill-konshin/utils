@@ -11,6 +11,7 @@ paths:
 
 - ALL projects must use TypeScript by default
     - JavaScript is acceptable for service scripts, but discouraged, use `ts-node`
+- Do NOT upgrade to TypeScript 7 until `typescript-eslint` supports it
 - ALL configs should use TypeScript if possible via `defineConfig` or at least import TS type for configuration.
 - Prefer short-circuit evaluation and early exit
 - Use structured logging with context, consider adding function arguments to log:

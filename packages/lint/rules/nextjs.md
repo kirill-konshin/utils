@@ -13,6 +13,12 @@ _EVERY_ Next.js page, layout, route handler or component must adhere to policy u
 - Use `iron-session` for authentication
 - `package.json` MUST ALWAYS have version of Next.js, NEVER `*`, otherwise Vercel will fall into legacy mode instead of serverless
 
+# Admin Pages & Login
+
+- ALWAYS use MUI + [`@toolpad/core`](https://mui.com/toolpad/core/introduction/) for admin page layouts and login screens, with the App Router integration (`NextAppProvider` from `@toolpad/core/nextjs`), see mui.md
+- Use as less custom JSX as possible — prefer Toolpad built-ins (`DashboardLayout`, `PageContainer`, `SignInPage`) over hand-rolled components
+- Tailwind is ONLY for user-facing sites, NEVER for admin (see tailwind.md)
+
 # Layouts
 
 Always use https://nextjs.org/docs/app/api-reference/file-conventions/layout#layout-props-helper:

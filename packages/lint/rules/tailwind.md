@@ -3,6 +3,7 @@ type: always_apply
 description: Set of rules for projects which use Tailwind
 ---
 
+- Use Tailwind ONLY for user-facing sites, NEVER for admin — admin interfaces ALWAYS use MUI + `@toolpad/core` (see mui.md)
 - Always use latest version of Tailwind
 - Default UI library for use with Tailwind is Hero UI v3+
 - Use the smallest possible configuration of Tailwind and Hero UI, adhere to their best practices (for Vite, Next.js integration, etc.)
