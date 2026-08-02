@@ -4,7 +4,7 @@ import { useActionState, useCallback, useState, useTransition } from 'react';
 
 import { type z } from 'zod';
 
-import { create, type MaybeTypeOf, type Validation } from './form';
+import { create, type MaybeTypeOf, type Validation } from './validation';
 
 const FORM_DEBUG = process.env.NEXT_PUBLIC_FORM_DEBUG === 'true';
 
