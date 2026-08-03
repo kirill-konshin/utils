@@ -13,6 +13,8 @@ paths:
 ```yml
 build:
     image: node:24
+    env:
+        YARN_ENABLE_GLOBAL_CACHE: false # so that .yarn/cache is written
     cache:
         key:
             files:
@@ -24,7 +26,7 @@ build:
             - '**/node_modules'
             - '**/.turbo'
             - '**/.tscache'
-            - web/.next/cache
+            - '**/.next/cache'
     script:
         - yarn --immutable
         - yarn prepare # Add this if Yarn 2+ is used and package is NOT private

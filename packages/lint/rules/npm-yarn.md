@@ -60,10 +60,21 @@ All other `package.json`:
 
 # `.yarnrc.yml`
 
+Make sure `yarnPath` is not specified, rely on `packageManager` in `package.json` and Corepack.
+
 ```yml
-yarnPath: .yarn/releases/yarn-4.5.1.cjs
+approvedGitRepositories:
+    - '**'
+
+compressionLevel: mixed
+
+enableScripts: true
+
 nodeLinker: node-modules
-# compressionLevel: mixed
-# enableGlobalCache: false
-# checksumBehavior: update
+
+npmMinimalAgeGate: 0
+
+# own packages are exempt from the minimum-release-age quarantine (npmMinimalAgeGate)
+npmPreapprovedPackages:
+    - '@kirill.konshin/*'
 ```

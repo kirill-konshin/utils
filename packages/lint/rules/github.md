@@ -28,6 +28,7 @@ jobs:
         runs-on: ubuntu-latest
         env:
             TURBO_CACHE_DIR: .turbo # if project uses Turbo
+            YARN_ENABLE_GLOBAL_CACHE: false # so that .yarn/cache is written
 
         # If project publishes to NPM
         # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
@@ -52,6 +53,10 @@ jobs:
             - name: Enable Corepack
               run: corepack enable
 
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
             - name: Install dependencies
               run: yarn install --immutable
 
@@ -59,10 +64,18 @@ jobs:
             - name: Prepare
               run: yarn prepare
 
+            - uses: actions/cache@v6
+              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+              with:
+                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-yarn-
+
               #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
             #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
             - name: Cache turbo build setup
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: .turbo
                   key: ${{ runner.os }}-turbo-${{ github.sha }}
