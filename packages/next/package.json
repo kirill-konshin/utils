@@ -22,11 +22,11 @@
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "next": "^15.4.5",
+    "next": "^16.2.12",
     "react": "^19.1.1"
   },
   "peerDependencies": {
-    "next": "^15",
+    "next": "^16",
     "react": "^19"
   },
   "peerDependenciesMeta": {

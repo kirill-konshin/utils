@@ -10,12 +10,16 @@ _EVERY_ Next.js page, layout, route handler or component must adhere to policy u
 - Prefer Route Handlers for redirects
 - Never use Pages Router
 - Always use App Router
-- Use `iron-session` for authentication
+- Use `iron-session` for authentication via `@kirill.konshin/auth`, see auth.md
+- Server-only modules (auth/session, DB access, anything touching secrets) MUST start with `import 'server-only'` (the npm package, add as dependency) — ENFORCED BY AGENT: no ESLint rule checks this, add it when creating such modules and flag it when reviewing
 - `package.json` MUST ALWAYS have version of Next.js, NEVER `*`, otherwise Vercel will fall into legacy mode instead of serverless
+- ALWAYS create `next.config.ts` with `defineNextConfig` from `@kirill.konshin/next`: sets `cacheComponents`, `typedRoutes`, `experimental.typedEnv`, `reactStrictMode: false` and an exhaustive `experimental.optimizePackageImports` (`@mui/*`, `@toolpad/core`, `@fortawesome/*`, `@gravity-ui/*`, `lodash`, `@heroui/react`, `react-bootstrap`, `@kirill.konshin/icons` — extra entries are ignored, missing ones cost dev startup and bundle size, see mui.md)
+- Use `@kirill.konshin/icons` for FontAwesome / Gravity UI icons — the barrel is safe with `optimizePackageImports` (`defineNextConfig` sets it)
 
 # Admin Pages & Login
 
 - ALWAYS use MUI + [`@toolpad/core`](https://mui.com/toolpad/core/introduction/) for admin page layouts and login screens, with the App Router integration (`NextAppProvider` from `@toolpad/core/nextjs`), see mui.md
+- ALWAYS prefer `@kirill.konshin/mui/admin` (`AdminAppProvider`, `AdminDashboardLayout`, `AdminSignInPage`) — encapsulates the Toolpad boilerplate and wires `@kirill.konshin/auth`, see mui.md
 - Use as less custom JSX as possible — prefer Toolpad built-ins (`DashboardLayout`, `PageContainer`, `SignInPage`) over hand-rolled components
 - Tailwind is ONLY for user-facing sites, NEVER for admin (see tailwind.md)
 

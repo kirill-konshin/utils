@@ -11,11 +11,13 @@
     "wait": "wait-on ./dist/index.js"
   },
   "dependencies": {
+    "@kirill.konshin/auth": "*",
     "@kirill.konshin/bootstrap": "*",
     "@kirill.konshin/browser": "*",
     "@kirill.konshin/core": "*",
     "@kirill.konshin/electron": "*",
     "@kirill.konshin/electron-builder": "*",
+    "@kirill.konshin/icons": "*",
     "@kirill.konshin/mui": "*",
     "@kirill.konshin/next": "*",
     "@kirill.konshin/node": "*",
@@ -75,6 +77,12 @@
         "types": "./dist/mui/index.d.ts"
       }
     },
+    "./icons": {
+      "import": {
+        "import": "./dist/icons/index.js",
+        "types": "./dist/icons/index.d.ts"
+      }
+    },
     "./electron-builder": {
       "import": {
         "import": "./dist/electron-builder/index.js",
@@ -103,6 +111,12 @@
       "import": {
         "import": "./dist/bootstrap/index.js",
         "types": "./dist/bootstrap/index.d.ts"
+      }
+    },
+    "./auth": {
+      "import": {
+        "import": "./dist/auth/index.js",
+        "types": "./dist/auth/index.d.ts"
       }
     },
     ".": {

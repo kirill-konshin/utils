@@ -1,13 +1,15 @@
 {
-  "name": "@kirill.konshin/mui",
-  "description": "Utilities",
+  "name": "@kirill.konshin/icons",
+  "description": "All FontAwesome and Gravity UI icons re-exported from one package, tree-shakeable via optimizePackageImports",
   "version": "0.0.0",
   "type": "module",
-  "hasStorybook": true,
+  "sideEffects": false,
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
     "build": "vite build",
+    "build:index": "cti create ./src",
+    "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
@@ -17,39 +19,14 @@
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
+  "dependencies": {
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.3.1",
+    "@gravity-ui/icons": "^2.21.0"
+  },
   "devDependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@kirill.konshin/auth": "*",
     "@kirill.konshin/utils-private": "*",
-    "@mui/material": "^7.3.0",
-    "@toolpad/core": "^0.16.0",
-    "next": "^16.2.12",
     "react": "^19.1.1"
-  },
-  "peerDependencies": {
-    "@kirill.konshin/auth": "*",
-    "@mui/material": "^7",
-    "@toolpad/core": "^0.16",
-    "next": "^16",
-    "react": "^19"
-  },
-  "peerDependenciesMeta": {
-    "@kirill.konshin/auth": {
-      "optional": true
-    },
-    "@mui/material": {
-      "optional": true
-    },
-    "@toolpad/core": {
-      "optional": true
-    },
-    "next": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    }
   },
   "publishConfig": {
     "access": "public"
@@ -57,12 +34,6 @@
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
   "exports": {
-    "./admin": {
-      "import": {
-        "import": "./dist/admin/index.js",
-        "types": "./dist/admin/index.d.ts"
-      }
-    },
     ".": {
       "import": {
         "import": "./dist/index.js",
@@ -76,11 +47,11 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/kirill-konshin/utils.git",
-    "directory": "packages/mui"
+    "directory": "packages/icons"
   },
   "nx": {
     "tags": [
-      "platform:next"
+      "platform:react"
     ]
   },
   "files": [
