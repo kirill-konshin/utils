@@ -45,7 +45,8 @@
     "typescript": "^5.9.2",
     "vite": "^8.1.5",
     "vitest": "^4.1.10",
-    "wait-on": "^9.0.10"
+    "wait-on": "^9.0.10",
+    "yalc": "^1.0.0-pre.53"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
