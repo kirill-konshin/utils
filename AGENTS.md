@@ -236,4 +236,6 @@ Rules:
 - The real dependency (e.g. `"@kirill.konshin/auth": "^0.0.1"`) is committed separately; the consumer's `yarn.lock` can only be updated after the version is actually published to npm
 - The consumer resolves the linked package's own dependencies from its node_modules — they must be installed there (usually already are as the consumer's own deps)
 - A later `yarn install` in the consumer removes the symlink — re-run `yalc link`
+- Unlinking: `yalc remove --all` cleans `.yalc/` and `yalc.lock` but leaves dangling symlinks in `node_modules` — delete them before `yarn install`
+- Yarn 4.17+ quarantines packages published <24h ago (`npmMinimalAgeGate`) — consumers need `npmPreapprovedPackages: ["@kirill.konshin/*"]` in `.yarnrc.yml` to install own packages right after release (older Yarn errors on that key — upgrade the consumer via `packageManager` first)
 - `.yarnrc.local.yml` is NOT a thing (open Yarn feature request, local overrides only via `YARN_*` env vars) and yalc runs NO registry (it is a file store in `~/.yalc`), so a registry override cannot replace linking — `yalc link` is the only mode that leaves all manifests untouched
