@@ -374,6 +374,7 @@ paths:
         - [ ] Yarn 1 (classic) — root detection now delegates to `@manypkg/find-root` (workspace-manifest walk); unverified since the switch
         - [ ] pnpm — root detection via `@manypkg/find-root` (`pnpm-workspace.yaml`); `public-hoist-pattern` guidance unverified in a real pnpm workspace
         - [ ] npm — env fast-path (`npm_config_local_prefix`) verified previously; `@manypkg/find-root` fallback unverified since the switch
+    - [ ] Explore Yarn [constraints](https://yarnpkg.com/features/constraints) & add a helper to Lint package so Yarn enforces version consistency w/o `overrides`, but be careful not to screw up NPM dependencies
 - ESLint 9
     - [x] https://github.com/microsoft/rushstack/issues/4635 Failed to patch ESLint because the calling module was not recognized
     - [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized

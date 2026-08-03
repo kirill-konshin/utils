@@ -57,13 +57,6 @@ jobs:
               id: yarn-cache-dir-path
               run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
 
-            - name: Install dependencies
-              run: yarn install --immutable
-
-            # Add this if Yarn 2+ is used and package is NOT private
-            - name: Prepare
-              run: yarn prepare
-
             - uses: actions/cache@v6
               id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
               with:
@@ -72,13 +65,28 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-yarn-
 
-              #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
+            #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
             #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
-            - name: Cache turbo build setup
+            - name: Cache Turbo
               uses: actions/cache@v6
               with:
                   path: .turbo
                   key: ${{ runner.os }}-turbo-${{ github.sha }}
                   restore-keys: |
                       ${{ runner.os }}-turbo-
+
+            - name: Cache NX
+              uses: actions/cache@v6
+              with:
+                  path: .nx
+                  key: ${{ runner.os }}-turbo-${{ github.sha }}
+                  restore-keys: |
+                      ${{ runner.os }}-turbo-
+
+            - name: Install dependencies
+              run: yarn install --immutable
+
+            # Add this if Yarn 2+ is used and package is NOT private, otherwise postinstall should be configured, and this block skipped
+            - name: Prepare
+              run: yarn prepare
 ```

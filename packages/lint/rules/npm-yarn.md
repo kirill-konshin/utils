@@ -30,7 +30,7 @@ description: NPM & Yarn patterns
 
 # Consistent versions
 
-In Monorepos pin versions of sub-packages to main.
+In Monorepos pin versions of sub-packages to main. Listed packages were seen to cause issues when versions drift.
 
 https://github.com/raineorshine/npm-check-updates/issues/1332#issuecomment-1717862332
 https://docs.npmjs.com/cli/v8/configuring-npm/package-json#overrides
@@ -40,9 +40,22 @@ Root `package.json`:
 ```json
 {
     "overrides": {
+        "@types/node": "$@types/node",
+        "@types/react": "$@types/react",
+        "@types/react-dom": "$@types/react-dom",
         "next": "$next",
         "eslint": "$eslint",
-        "typescript": "$typescript"
+        "typescript": "$typescript",
+        "vite": "$vite"
+    },
+    "resolutions": {
+        "@types/node": "^26",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "eslint": "^10",
+        "next": "^16",
+        "typescript": "^6",
+        "vite": "^8"
     }
 }
 ```
@@ -57,6 +70,8 @@ All other `package.json`:
     },
 }
 ```
+
+⚠️ Attention! Yarn does not support `overrides` with `$xxx` syntax, use `resolutions` instead. AI Agent MUST keep versions listed in `resolutions` in sync with real ones from `dependencies` and `devDependencies`, if it breaks anything, drop `resolutions` field and fix by changing actual dependencies in leaves to match root.
 
 # `.yarnrc.yml`
 
