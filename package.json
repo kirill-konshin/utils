@@ -57,13 +57,14 @@
       "packages/*"
     ]
   },
-  "overrides": {
-    "@types/node": "$@types/node",
-    "@types/react": "$@types/react",
-    "@types/react-dom": "$@types/react-dom",
-    "eslint": "$eslint",
-    "typescript": "$typescript",
-    "vite": "$vite"
+  "resolutions": {
+    "@types/node": "^26",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^10",
+    "next": "^16",
+    "typescript": "^6",
+    "vite": "^8"
   },
   "repository": {
     "type": "git",
