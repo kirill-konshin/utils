@@ -177,3 +177,23 @@ Applies if project is using Tailwind.
   </component>
 </project>
 ```
+
+# Configure `indexLayout.xml`
+
+Ban build directories from search using examples:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="UserContentModel">
+    <attachedFolders />
+    <explicitIncludes>
+    </explicitIncludes>
+    <explicitExcludes>
+      <Path>path-to-eve/.eve</Path>
+      <Path>path-to-vite/dist</Path>
+      <Path>path-to-next/.next</Path>
+    </explicitExcludes>
+  </component>
+</project>
+```

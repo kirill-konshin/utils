@@ -15,6 +15,7 @@ dist-*
 node_modules
 npm-debug*
 yarn-error*
+.yarnrc.local.yml
 
 # https://yarnpkg.com/advanced/qa#which-files-should-be-gitignored
 .yarn/*
