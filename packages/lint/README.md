@@ -157,6 +157,9 @@ trim_trailing_whitespace = true
 insert_final_newline = false
 max_line_length = 120
 
+[*.md]
+max_line_length = 99999
+
 [*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}]
 indent_size = 4
 
@@ -328,15 +331,15 @@ Due to limitations package visibility between leaf and root this package has to 
 3. **Hoisting, not bridging** — the plugins need the tool's package resolvable from the workspace root; a tool that is evidently in use (2) but not resolvable there (1) is a **hard error** with hoisting guidance (keep default hoisting, pnpm `public-hoist-pattern`, or a root devDependency — see the error text) instead of a silent skip or a cryptic plugin crash. Fix it once in the package manager config; nothing is symlinked at lint time.
 4. **Yarn Berry PnP** — there is no hoisting to configure; declare the tools at the workspace root as well, keeping versions in sync with the leaves (e.g. the `"vitest": "$vitest"` version-alias hack); `next` documents its own monorepo ESLint setup.
 
-| Option      | Package          | Evidence glob                                                               | When zero / many found                                                                              |
-| ----------- | ---------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `tailwind`  | `tailwindcss`¹   | `*.css` with `@import "tailwindcss"`                                        | needs exactly **one**: zero → off (forced → error), several → **always** error; set `cssConfigPath` |
-| `next`      | `next`¹          | `next.config.*`, `package.json` depending on `next`, `src/{app,pages}/` dir | zero → no `rootDir` (optional); many → all as array; or set `rootDir` (the package root, not `src`) |
-| `storybook` | `storybook`¹     | `.storybook/main.*`                                                         | presence is enough                                                                                  |
-| `jest`      | `jest`¹          | `jest.config.*`                                                             | presence is enough                                                                                  |
-| `vitest`    | `vitest`¹        | `{vitest,vite}.config.*`                                                    | presence is enough                                                                                  |
-| `nx`        | (plugin bundled) | `nx.json` at the workspace root                                             | —                                                                                                   |
-| `turbo`     | `turbo`          | package probe only                                                          | —                                                                                                   |
+| Option | Package | Evidence glob | When zero / many found |
+| --- | --- | --- | --- |
+| `tailwind` | `tailwindcss`¹ | `*.css` with `@import "tailwindcss"` | needs exactly **one**: zero → off (forced → error), several → **always** error; set `cssConfigPath` |
+| `next` | `next`¹ | `next.config.*`, `package.json` depending on `next`, `src/{app,pages}/` dir | zero → no `rootDir` (optional); many → all as array; or set `rootDir` (the package root, not `src`) |
+| `storybook` | `storybook`¹ | `.storybook/main.*` | presence is enough |
+| `jest` | `jest`¹ | `jest.config.*` | presence is enough |
+| `vitest` | `vitest`¹ | `{vitest,vite}.config.*` | presence is enough |
+| `nx` | (plugin bundled) | `nx.json` at the workspace root | — |
+| `turbo` | `turbo` | package probe only | — |
 
 ¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires.
 

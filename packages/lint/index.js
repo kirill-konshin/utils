@@ -132,6 +132,7 @@ export const prettier = {
     printWidth: 120,
     tabWidth: 2,
     singleQuote: true,
+    proseWrap: 'never',
     overrides: [
         {
             files: eslintExts,

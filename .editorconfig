@@ -8,6 +8,9 @@ trim_trailing_whitespace = true
 insert_final_newline = false
 max_line_length = 120
 
+[*.md]
+max_line_length = 99999
+
 [*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}]
 indent_size = 4
 
