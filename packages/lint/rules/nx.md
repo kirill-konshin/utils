@@ -23,9 +23,9 @@ paths:
 - Commit changes to root `package.json` or `yarn.lock` or `nx.json` ONLY as `chore` otherwise ALL packages will be bumped
     - https://github.com/nrwl/nx/issues/34542 (root file changes → all bumped)
 - NX Release attributes commits to projects by FILE PATHS via `nx affected` against the CURRENT graph — commit scope (`feat(pkg):`) does not limit attribution
-    - NEVER fully delete (or `nx g move`-rename) a package: a historical `feat`/`fix` that touched a `package.json`/`project.json` which no longer exists on disk is attributed to ALL projects, and mass-bumps the whole workspace on the very next release run (even a `chore` push);
-    - ALWAYS leave a tombstone `package.json` at the EXACT old path (`private: true`, no scripts), and exclude it in `release.projects` (`!packages/<retired>`) so it's never versioned/published;
-    - removable only once EVERY package has a tag newer than the last `feat`/`fix` that touched the retired `package.json`;
-    - moving the tombstone elsewhere breaks it — the check is on the historical file path
-    - https://github.com/nrwl/nx/issues/33374 (delete/rename → all released)
-    - https://github.com/nrwl/nx/issues/34277 (scans too much, slow, warnings for removed)
+    - NX ≥ 23.2 (23.2.0-beta.5+): deleted projects no longer affect all projects during RELEASE attribution (https://github.com/nrwl/nx/pull/36538) — packages can be deleted/renamed freely, no tombstones needed; commit the deletion as `chore:` (generic `nx affected` keeps the conservative "deleted → all affected" fallback)
+    - NX < 23.2: NEVER fully delete (or `nx g move`-rename) a package — a historical `feat`/`fix` that touched a `package.json`/`project.json` which no longer exists on disk is attributed to ALL projects, and mass-bumps the whole workspace on the very next release run (even a `chore` push) — https://github.com/nrwl/nx/issues/33374
+        - leave a tombstone `package.json` at the EXACT old path (`private: true`, no scripts), and exclude it in `release.projects` (`!packages/<retired>`) so it's never versioned/published;
+        - removable once EVERY package has a tag newer than the last `feat`/`fix` that touched the retired `package.json` — or after upgrading to NX ≥ 23.2;
+        - moving the tombstone elsewhere breaks it — the check is on the historical file path
+    - https://github.com/nrwl/nx/issues/34277 (scans too much, slow, warnings for removed) — still open
