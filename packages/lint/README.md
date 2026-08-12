@@ -24,20 +24,24 @@ node-linker=hoisted
 Every tool integration — Next.js, Nx, Turborepo, Storybook, Jest, Vitest, Tailwind — is auto-detected (the detection results are exported as `has*` booleans for debugging). Pass options (JSDoc-typed, see `LintOptions` in `index.js`) to force any of them on/off or to supply tool-specific settings:
 
 ```js
+import { defineConfig } from 'eslint/config';
 import { defineLintConfig } from '@kirill.konshin/lint';
 
 // every tool integration auto-detected
-export default defineLintConfig({
-    defaultIgnore: { importMetaUrl: import.meta.url }, // .gitignore + .prettierignore as ESLint ignores
-});
+export default defineConfig(
+    await defineLintConfig({
+        defaultIgnore: { importMetaUrl: import.meta.url }, // .gitignore + .prettierignore as ESLint ignores
+    }),
+);
 ```
 
 Config can be extended, `defineLintConfig` returns a `Promise` (natively awaited by ESLint), to compose with your own blocks, `await` it:
 
 ```js
+import { defineConfig } from 'eslint/config';
 import { defineLintConfig, includeIgnoreFile } from '@kirill.konshin/lint';
 
-export default [
+export default defineConfig([
     ...(await defineLintConfig({ defaultIgnore: { importMetaUrl: import.meta.url } })),
     {
         name: 'Custom rules',
@@ -46,7 +50,7 @@ export default [
         },
     },
     includeIgnoreFile(import.meta.url, '.customignore'), // extra ignore files beyond defaultIgnore
-];
+]);
 ```
 
 ### Full Config Example
@@ -59,40 +63,43 @@ Default behavior in the comments, all tools are optional (see [Detection](#detec
 - `{ /* tool options *./ }` — object configuration implies `enabled: true` even if omitted; set `enabled: false` to force OFF while keeping the other options in place, see example
 
 ```js
+import { defineConfig } from 'eslint/config';
 import { defineLintConfig, scanWorkspace } from '@kirill.konshin/lint';
 
 // function form shown
-export default defineLintConfig(() => ({
-    // enabled (default true) = tools are ON unless said otherwise;
-    // strict (default false) = same-scope package probes only, no workspace evidence scans
-    // `{ enabled: false, strict: true }` is ideal for per-package configs
-    detection: { enabled: true, strict: false }, // default
+export default defineConfig(
+    await defineLintConfig({
+        // enabled (default true) = tools are ON unless said otherwise;
+        // strict (default false) = same-scope package probes only, no workspace evidence scans
+        // `{ enabled: false, strict: true }` is ideal for per-package configs
+        detection: { enabled: true, strict: false }, // default
 
-    // ON by default; app roots auto-detected (next.config.*, package.json depending on next, src/{app,pages}/);
-    // can be force OFF; several apps auto-detect as array; pass the package root, not src
-    next: { rootDir: 'apps/web' }, // string or array
+        // ON by default; app roots auto-detected (next.config.*, package.json depending on next, src/{app,pages}/);
+        // can be force OFF; several apps auto-detect as array; pass the package root, not src
+        next: { rootDir: 'apps/web' }, // string or array
 
-    storybook: true, // force ON if detection failed
-    turbo: false, // force OFF
-    nx: true,
-    jest: false,
-    vitest: { enabled: true }, // object form implies ON; { enabled: false, ... } turns OFF keeping options
+        storybook: true, // force ON if detection failed
+        turbo: false, // force OFF
+        nx: true,
+        jest: false,
+        vitest: { enabled: true }, // object form implies ON; { enabled: false, ... } turns OFF keeping options
 
-    // ON by default; auto-detected single entry CSS; explicit path always wins over the scan
-    tailwind: { cssConfigPath: 'apps/web/src/app/index.css' },
+        // ON by default; auto-detected single entry CSS; explicit path always wins over the scan
+        tailwind: { cssConfigPath: 'apps/web/src/app/index.css' },
 
-    // OFF by default
-    defaultIgnore: {
-        importMetaUrl: import.meta.url, // required, error if turned on via `defaultIgnore: true`
-    },
+        // OFF by default
+        defaultIgnore: {
+            importMetaUrl: import.meta.url, // required, error if turned on via `defaultIgnore: true`
+        },
 
-    // OFF by default (slow) - see "Type-aware rules"
-    typeAware: {
-        allowDefaultProject: scanWorkspace('{vite,vitest}.config.ts'), // no default; absolute paths are relativized; ** globs are not supported
-        maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50, // defaults to the list length, (default 8), set it explicitly only when supplying multi-match globs
-        tsconfigRootDir: process.cwd(), // defaults to the detected workspace root
-    },
-}));
+        // OFF by default (slow) - see "Type-aware rules"
+        typeAware: {
+            allowDefaultProject: scanWorkspace('{vite,vitest}.config.ts'), // no default; absolute paths are relativized; ** globs are not supported
+            maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50, // defaults to the list length, (default 8), set it explicitly only when supplying multi-match globs
+            tsconfigRootDir: process.cwd(), // defaults to the detected workspace root
+        },
+    }),
+);
 ```
 
 ### Per-package configs (monorepo)
@@ -101,23 +108,27 @@ ESLint 10 resolves the config **per linted file**: the nearest `eslint.config.mj
 
 ```js
 // apps/web/eslint.config.mjs
+import { defineConfig } from 'eslint/config';
 import rootConfig from '../../eslint.config.mjs';
 
-export default [...(await rootConfig), { rules: { 'tailwindcss/no-custom-classname': 'off' } }];
+export default defineConfig([...(await rootConfig), { rules: { 'tailwindcss/no-custom-classname': 'off' } }]);
 ```
 
 …or simply call `defineLintConfig` again with the options this app needs:
 
 ```js
 // apps/web/eslint.config.mjs
+import { defineConfig } from 'eslint/config';
 import { fileURLToPath } from 'node:url';
 import { defineLintConfig } from '@kirill.konshin/lint';
 
-export default defineLintConfig({
-    detection: { enabled: false, strict: true }, // fully explicit: this config only sees its own scope
-    // do not use workspace-wide auto-scan, provide exactly ONE from THIS leaf package
-    tailwind: { cssConfigPath: fileURLToPath(new URL('src/app/index.css', import.meta.url)) },
-});
+export default defineConfig(
+    await defineLintConfig({
+        detection: { enabled: false, strict: true }, // fully explicit: this config only sees its own scope
+        // do not use workspace-wide auto-scan, provide exactly ONE from THIS leaf package
+        tailwind: { cssConfigPath: fileURLToPath(new URL('src/app/index.css', import.meta.url)) },
+    }),
+);
 ```
 
 ⚠️ Nearest-wins means root-only blocks (e.g. `defaultIgnore`, custom rules) do NOT apply to the subtree unless inherited or re-declared.
