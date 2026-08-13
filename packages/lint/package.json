@@ -10,6 +10,16 @@
   "main": "index.js",
   "module": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./yarn": {
+      "types": "./yarn.d.ts",
+      "require": "./yarn.cjs"
+    }
+  },
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
@@ -21,6 +31,8 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "yarn.cjs",
+    "yarn.d.ts",
     "configs",
     "!configs/*.test.js",
     "lib.js",
@@ -29,50 +41,51 @@
     "skills"
   ],
   "dependencies": {
-    "@eslint/compat": "^2.0.3",
+    "@eslint/compat": "^2.1.0",
     "@eslint/js": "^10.0.1",
     "@manypkg/find-root": "^3.1.0",
     "@manypkg/get-packages": "^3.1.0",
-    "@next/eslint-plugin-next": "^16.2.1",
-    "@nx/eslint-plugin": "^23.1.0",
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
-    "@typescript-eslint/parser": "^8.57.2",
-    "@vitest/eslint-plugin": "^1.6.23",
-    "eslint-config-next": "^16.2.1",
+    "@next/eslint-plugin-next": "^16.3.0",
+    "@nx/eslint-plugin": "23.2.0-beta.7",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "@vitest/eslint-plugin": "^1.6.27",
+    "@yarnpkg/types": "^4.0.1",
+    "eslint-config-next": "^16.3.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import-x": "^4.17.1",
-    "eslint-plugin-jest": "^29.15.4",
+    "eslint-plugin-jest": "^29.16.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-promise": "^7.3.0",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-simple-import-sort": "^14.0.0",
-    "eslint-plugin-storybook": "^10.5.2",
+    "eslint-plugin-storybook": "^10.5.7",
     "eslint-plugin-tailwindcss": "^4.2.0",
-    "eslint-plugin-turbo": "^2.10.5",
-    "eslint-plugin-unicorn": "^72.0.0",
+    "eslint-plugin-turbo": "^2.10.9",
+    "eslint-plugin-unicorn": "^73.0.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "glob": "^13.0.6",
-    "globals": "^16.4.0",
-    "jsonc-eslint-parser": "^2.4.2",
+    "globals": "^17.11.0",
+    "jsonc-eslint-parser": "^3.3.0",
     "local-pkg": "^1.2.1"
   },
   "devDependencies": {
-    "vitest": "*"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "eslint": "^10",
     "husky": "^9",
-    "jest": "*",
+    "jest": "^30",
     "lint-staged": "^16",
     "next": "^16",
     "prettier": "^3",
-    "storybook": "^10.5.2",
-    "tailwindcss": "*",
+    "storybook": "^10",
+    "tailwindcss": "^4",
     "typescript": "^6",
-    "vite": "*",
-    "vitest": "*"
+    "vite": "^8",
+    "vitest": "^4"
   },
   "peerDependenciesMeta": {
     "jest": {

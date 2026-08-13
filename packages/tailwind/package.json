@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "react": "^19.1.1",
-    "tailwindcss": "^4.1.11"
+    "react": "^19.2.8",
+    "tailwindcss": "^4.3.3"
   },
   "peerDependencies": {
     "react": "^19",

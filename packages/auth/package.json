@@ -25,7 +25,7 @@
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
     "@types/picomatch": "^4.0.3",
-    "next": "^16.2.12"
+    "next": "^16.3.0"
   },
   "peerDependencies": {
     "next": "^16"

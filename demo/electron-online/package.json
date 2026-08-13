@@ -21,8 +21,8 @@
     "@kirill.konshin/utils": "*"
   },
   "devDependencies": {
-    "electron": "37.2.5",
-    "electron-builder": "26.0.12"
+    "electron": "43.4.0",
+    "electron-builder": "26.15.7"
   },
   "nx": {
     "tags": [

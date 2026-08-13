@@ -25,9 +25,9 @@
   },
   "devDependencies": {
     "@demo/web-static": "*",
-    "dotenv-cli": "^10.0.0",
-    "electron": "37.2.5",
-    "electron-builder": "26.0.12"
+    "dotenv-cli": "^11.0.0",
+    "electron": "43.4.0",
+    "electron-builder": "26.15.7"
   },
   "nx": {
     "tags": [

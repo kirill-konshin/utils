@@ -19,11 +19,11 @@
   "dependencies": {
     "electron-default-menu": "^1.0.2",
     "electron-store": "^10.1.0",
-    "electron-updater": "^6.6.7"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
-    "electron": "^37.2.5"
+    "electron": "^43.4.0"
   },
   "peerDependencies": {
     "electron": "^37"

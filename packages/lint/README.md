@@ -5,8 +5,10 @@ ESLint + Prettier + lint-staged + Husky configuration, plus AI agent rules & ski
 ## Installation
 
 ```bash
-$ yarn add -D eslint prettier @kirill.konshin/lint husky lint-staged
+$ yarn add -D eslint prettier @kirill.konshin/lint @yarnpkg/types husky lint-staged
 ```
+
+Every project whose `packageManager` is Yarn must directly install `@yarnpkg/types`; Yarn PnP does not allow `yarn.config.cjs` to require a transitive dependency.
 
 ### PNPM
 
@@ -16,6 +18,68 @@ https://eslint.org/docs/latest/use/getting-started#manual-set-up
 auto-install-peers=true
 node-linker=hoisted
 ```
+
+## Yarn constraints
+
+`yarn.config.cjs`:
+
+```js
+/** @type {import('@yarnpkg/types')} */
+const { defineConfig } = require('@yarnpkg/types');
+const { defineYarnConfig } = require('@kirill.konshin/lint/yarn');
+
+module.exports = defineConfig(defineYarnConfig());
+```
+
+`defineYarnConfig` reads the root `overrides` and `resolutions`. Each named non-peer dependency in a leaf package must use the root override reference or resolution range; `overrides` wins when both fields name the same package. Nested npm overrides and `$dependency` references are supported.
+
+When the root has no `overrides` field, `@types/node`, `@types/react`, `@types/react-dom`, `next`, `eslint`, `typescript`, and `vite` must each use one range across the workspace. The root declaration wins; otherwise the first leaf path supplies the range. Run `yarn constraints --fix` to apply unambiguous changes.
+
+## `.gitignore`
+
+```gitignore
+.DS_Store
+*.tsbuildinfo
+.tscache
+.turbo
+.nx
+.next
+build
+coverage
+dist
+dist-*
+node_modules
+npm-debug*
+out
+*storybook.log
+yarn-error*
+.yarnrc.local.yml
+
+# https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+```
+
+List need to be verified, especially `build`, `coverage`, `dist` must be verified not to exclude legit folders.
+
+## `.prettierignore`
+
+Create `.prettierignore` file:
+
+```gitignore
+.idea
+.husky
+.yarn
+```
+
+https://prettier.io/docs/ignore:
+
+> Prettier will also follow rules specified in the ".gitignore" file if it exists in the same directory from which it is run.
 
 ## ESLint
 
@@ -388,7 +452,7 @@ paths:
         - [ ] Yarn 1 (classic) — root detection now delegates to `@manypkg/find-root` (workspace-manifest walk); unverified since the switch
         - [ ] pnpm — root detection via `@manypkg/find-root` (`pnpm-workspace.yaml`); `public-hoist-pattern` guidance unverified in a real pnpm workspace
         - [ ] npm — env fast-path (`npm_config_local_prefix`) verified previously; `@manypkg/find-root` fallback unverified since the switch
-    - [ ] Explore Yarn [constraints](https://yarnpkg.com/features/constraints) & add a helper to Lint package so Yarn enforces version consistency w/o `overrides`, but be careful not to screw up NPM dependencies
+    - [x] Yarn [constraints](https://yarnpkg.com/features/constraints) helper enforces root overrides/resolutions or default dependency consistency
 - ESLint 9
     - [x] https://github.com/microsoft/rushstack/issues/4635 Failed to patch ESLint because the calling module was not recognized
     - [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized

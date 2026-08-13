@@ -30,7 +30,7 @@ description: NPM & Yarn patterns
 
 # Consistent versions
 
-In Monorepos pin versions of sub-packages to main. Listed packages were seen to cause issues when versions drift.
+In monorepos pin versions of sub-packages to the root; these packages cause issues when versions drift.
 
 https://github.com/raineorshine/npm-check-updates/issues/1332#issuecomment-1717862332 https://docs.npmjs.com/cli/v8/configuring-npm/package-json#overrides
 
@@ -64,13 +64,25 @@ All other `package.json`:
 ```jsonc
 {
     "devDependencies": {
-        "next": "16.0.0", // except next, see nextjs.md
-        "typescript": "*", // vividly express version does not matter
+        "next": "^16.0.0", // except next, see nextjs.md
+        "typescript": "^6.0.0",
     },
 }
 ```
 
-⚠️ Attention! Yarn does not support `overrides` with `$xxx` syntax, use `resolutions` instead. AI Agent MUST keep versions listed in `resolutions` in sync with real ones from `dependencies` and `devDependencies`, if it breaks anything, drop `resolutions` field and fix by changing actual dependencies in leaves to match root.
+Yarn does not apply npm `overrides`; `defineYarnConfig` reads them as constraints together with `resolutions`, keeps non-peer leaf ranges equal, and falls back to the listed default packages when `overrides` is absent.
+
+Every package with `"packageManager": "yarn@..."` MUST directly install `@yarnpkg/types` and use:
+
+```js
+/** @type {import('@yarnpkg/types')} */
+const { defineConfig } = require('@yarnpkg/types');
+const { defineYarnConfig } = require('@kirill.konshin/lint/yarn');
+
+module.exports = defineConfig(defineYarnConfig());
+```
+
+Run `yarn constraints --fix` after dependency changes.
 
 # `.yarnrc.yml`
 
