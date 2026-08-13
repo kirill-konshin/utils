@@ -29,7 +29,7 @@
   },
   "peerDependencies": {
     "@kirill.konshin/auth": "*",
-    "@mui/material": "^7",
+    "@mui/material": "^9",
     "@toolpad/core": "^0.16",
     "next": "^16",
     "react": "^19"
@@ -57,17 +57,15 @@
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
   "exports": {
-    "./admin": {
-      "import": {
-        "import": "./dist/admin/index.js",
-        "types": "./dist/admin/index.d.ts"
-      }
-    },
     ".": {
-      "import": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.ts",
+      "import": "./dist/admin/index.js",
+      "default": "./dist/admin/index.js"
     }
   },
   "main": "./dist/index.js",

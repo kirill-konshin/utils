@@ -25,7 +25,9 @@ paths:
 - `isolatedDeclarations: true`: USE ONLY FOR PUBLISHED LIBRARIES, enables faster declaration emit and requires explicit type annotations on exports
     - In such case all exported functions and variables must have explicit type annotations:
 - `strictNullChecks: true`: Null and undefined are distinct types
-- `moduleResolution: "bundler"`
+- `moduleResolution: "bundler"`: MANDATORY for ALL TypeScript projects, no exceptions — never `node16`/`nodenext`/`node10`
+    - Keeps import specifiers extensionless (`next/link`, `./file`), which is what every bundler and every modern runtime target expects; `node16`/`nodenext` would force `.js` suffixes on source that never runs through Node's own resolver
+    - Requires `module: "esnext"` (or `preserve`) — `bundler` is rejected with CommonJS-emitting `module` settings
 - `jsx: "react-jsx"`: Modern JSX transform (no React default import needed)
 
 # File Structure
@@ -79,14 +81,18 @@ paths:
     6. Local CSS (e.g. `./styles.css`)
     - Side-effect imports (polyfills, CSS) are sorted into their group too; the linter only keeps the written order of multiple side-effect imports landing in the _same_ group, so sequence order-dependent ones yourself
 
+# Published Libraries
+
+- Publish ESM ONLY — NEVER add a `require` condition or a CJS build; the sole exception is a file a tool can only load as CJS (`@kirill.konshin/lint`'s `./yarn` entry, forced by Yarn constraints), which ships as an explicit `.cjs` with its own `.d.cts`
+- `exports` conditions must be FLAT and `types`-first (`{types, import, default}`) — a nested or `import`-only map matches NO condition outside `import`, so CJS resolvers get `ERR_PACKAGE_PATH_NOT_EXPORTED` (the entry is invisible, not merely interop-incompatible); `default` is the catch-all, not a CJS build, and Node >= 22.12 loads the ESM behind it through `require()`
+    - Next.js transpiles `next.config.ts` to CommonJS and `require()`s it, so config-only helpers MUST be reachable this way — keep them in their own subpath that imports nothing at runtime
+- Every subpath export needs its OWN bundler entry — a pure re-export barrel that is merely reachable from the main entry gets inlined, and its `dist/<mod>/index.js` is never written
+- NEVER import an OPTIONAL peerDependency at runtime, not even for a single constant — inline it (annotate with `typeof` of a type-only import as a drift guard); a barrel re-exporting such a module makes the WHOLE entry unresolvable when the peer is absent
+
 # Type Annotation Patterns
 
-- Use `interface` only for declaration merging/augmentation (e.g. extending a third-party global
-  interface) - a class can `implements` a `type` alias just as well, so that's not a reason to reach
-  for `interface`
-    - This is enforced by lint (`@typescript-eslint/consistent-type-definitions`), which can't special-case
-      augmentation - when it's genuinely needed, add
-      `// eslint-disable-next-line @typescript-eslint/consistent-type-definitions` above the `interface`
+- Use `interface` only for declaration merging/augmentation (e.g. extending a third-party global interface) - a class can `implements` a `type` alias just as well, so that's not a reason to reach for `interface`
+    - This is enforced by lint (`@typescript-eslint/consistent-type-definitions`), which can't special-case augmentation - when it's genuinely needed, add `// eslint-disable-next-line @typescript-eslint/consistent-type-definitions` above the `interface`
 - Prefer to inline types into function signature or variable declarations
 - Introduce types when reused or complex. Avoid creating a type for every single thing
 - Try to reuse types that exist in project (e.g. redux state, zod schema, component props, final function signature can have one shared type + derivatives like `Omit<>`, `Partial<>` etc.)

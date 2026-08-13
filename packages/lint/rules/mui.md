@@ -19,4 +19,4 @@ paths:
 # Next.js
 
 - When MUI is used with Next.js ALWAYS add barrel-heavy packages to `experimental.optimizePackageImports`: `@mui/material`, `@mui/system`, `@mui/icons-material`, `@mui/lab`, `@mui/x-data-grid`, `@toolpad/core`, plus the other usual suspects (`@fortawesome/*`, `@gravity-ui/icons`, `@gravity-ui/uikit`, `lodash`, `@heroui/react`, `react-bootstrap`, `@kirill.konshin/icons`)
-- Prefer `defineNextConfig` from `@kirill.konshin/next` which sets the exhaustive list — extra entries are ignored, missing ones cost dev startup and bundle size (see nextjs.md)
+- Prefer `defineNextConfig` from `@kirill.konshin/next/config` which sets the exhaustive list — extra entries are ignored, missing ones cost dev startup and bundle size (see nextjs.md)

@@ -44,10 +44,14 @@
   "license": "MIT",
   "exports": {
     ".": {
-      "import": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js",
+      "default": "./dist/config/index.js"
     }
   },
   "main": "./dist/index.js",

@@ -2,6 +2,12 @@
 
 MUI utilities (main entry) and Toolpad admin components (`/admin` entry).
 
+# Peer versions
+
+`@mui/material` is pinned to `^7` on purpose, even though MUI itself is already on v9: `@toolpad/core` (0.16, latest) still peers on `^7`, so v7 is the correct — and only working — choice today. Bump both together once Toolpad ships v9 support.
+
+`@kirill.konshin/auth` is an OPTIONAL peer and is only referenced in types: the `/admin` entry has no runtime dependency on it, so `AdminAppProvider` and `AdminDashboardLayout` work in apps with no auth at all. Install `@kirill.konshin/auth` only when you use `AdminSignInPage`.
+
 # Admin — `@kirill.konshin/mui/admin`
 
 Preconfigured [`@toolpad/core`](https://mui.com/toolpad/core/introduction/) building blocks for password-protected admin apps, wired to [`@kirill.konshin/auth`](https://github.com/kirill-konshin/utils/tree/main/packages/auth):
@@ -77,6 +83,8 @@ export function AdminSignIn({
 ```
 
 Root layout still needs `AppRouterCacheProvider` from `@mui/material-nextjs/v15-appRouter` (with `options={{ enableCssLayer: true }}`) and your theme.
+
+Wrap `AdminAppProvider` in `<Suspense>`: Toolpad's `NextAppProvider` calls `useSearchParams()`, and `cacheComponents` (set by `defineNextConfig`, see `@kirill.konshin/next`) fails the prerender of any client hook reading URL data outside a boundary.
 
 # Utilities (main entry)
 

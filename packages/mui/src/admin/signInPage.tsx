@@ -3,7 +3,7 @@
 import React, { type ComponentProps, type FC, memo, useCallback } from 'react';
 
 import { type PasswordAuth } from '@kirill.konshin/auth';
-import { STATE_PARAM } from '@kirill.konshin/auth/client';
+import type { STATE_PARAM as StateParam } from '@kirill.konshin/auth/client';
 import { formLabelClasses } from '@mui/material/FormLabel';
 import { SignInPage } from '@toolpad/core/SignInPage';
 
@@ -19,6 +19,14 @@ export type AdminSignInPageProps = Omit<SignInPageProps, 'signIn'> & {
     /** Sanitized return URL (`auth.getState(await searchParams)`), threaded into the login form */
     state?: string;
 };
+
+/*
+ * Inlined, NOT imported at runtime: `@kirill.konshin/auth` is an OPTIONAL peer, so importing
+ * `@kirill.konshin/auth/client` here would make the whole `/admin` entry unresolvable in apps that
+ * only use `AdminAppProvider`/`AdminDashboardLayout` (the barrel re-exports this module). The
+ * annotation is a compile-time guard: it stops resolving the day auth renames the param.
+ */
+const STATE_PARAM: typeof StateParam = 'state';
 
 const DEFAULT_PROVIDERS: SignInPageProps['providers'] = [{ id: 'credentials', name: 'password' }];
 
