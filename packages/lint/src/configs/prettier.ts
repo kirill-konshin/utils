@@ -1,3 +1,4 @@
+import type { Linter } from 'eslint';
 import prettierFlat from 'eslint-config-prettier/flat';
 
 /**
@@ -13,9 +14,7 @@ import prettierFlat from 'eslint-config-prettier/flat';
  * @see https://nextjs.org/docs/app/api-reference/config/eslint#with-prettier
  *   Note the `/flat` suffix here, the difference from default entry is that `/flat` added `name` property to the
  *   exported object to improve https://eslint.org/blog/2024/04/eslint-config-inspector/ experience.
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function prettierConfig() {
+export function prettierConfig(): Linter.Config[] {
     return [prettierFlat];
 }

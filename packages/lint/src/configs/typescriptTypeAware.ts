@@ -1,8 +1,8 @@
 import { isAbsolute, relative } from 'node:path';
+import type { Linter } from 'eslint';
 
+import type { TypeAwareOptions } from '../index.js';
 import { asOptions, findWorkspaceRoot } from '../lib.js';
-
-/** @typedef {import('../index.js').TypeAwareOptions} TypeAwareOptions Defined in index.d.ts. */
 
 /**
  * Type-aware rules. Off by default (FIXME: does not perform) - enable via
@@ -18,17 +18,15 @@ import { asOptions, findWorkspaceRoot } from '../lib.js';
  * `allowDefaultProject` when that list is given (upstream default is 8), and `tsconfigRootDir`
  * defaults to the detected workspace root.
  *
- * @param {boolean | TypeAwareOptions} [option] the defineLintConfig `typeAware` flag; there is
- *   nothing to auto-detect, so only an explicit `true` / options object enables the block
- * @returns {import('eslint').Linter.Config[]}
+ * There is nothing to auto-detect, so only an explicit `true` or options object enables the block.
  */
-export function typeAwareConfig(option, strict = false) {
-    let {
+export function typeAwareConfig(option?: boolean | TypeAwareOptions, strict = false): Linter.Config[] {
+    const {
         enabled = false,
-        allowDefaultProject,
+        allowDefaultProject: configuredDefaultProject,
         // matches the list when it's exact files (the scanWorkspace flow); with multi-match globs
         // set the cap explicitly - typescript-eslint errors loudly when matches exceed it
-        maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING = allowDefaultProject?.length,
+        maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING = configuredDefaultProject?.length,
         // strict detection avoids the workspace walk
         tsconfigRootDir = strict ? process.cwd() : findWorkspaceRoot(),
     } = asOptions(option);
@@ -36,7 +34,7 @@ export function typeAwareConfig(option, strict = false) {
 
     // typescript-eslint requires allowDefaultProject globs to be RELATIVE to tsconfigRootDir -
     // absolute entries (e.g. produced by scanWorkspace, see README) are relativized automatically
-    allowDefaultProject = allowDefaultProject?.map((file) =>
+    const allowDefaultProject = configuredDefaultProject?.map((file) =>
         isAbsolute(file) ? relative(tsconfigRootDir, file) : file,
     );
 

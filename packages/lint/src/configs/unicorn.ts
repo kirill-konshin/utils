@@ -1,3 +1,4 @@
+import type { Linter } from 'eslint';
 import unicornPlugin from 'eslint-plugin-unicorn';
 
 import { tsExts } from '../lib.js';
@@ -8,10 +9,8 @@ import { tsExts } from '../lib.js';
  * Deliberately NOT using unicorn.configs['flat/recommended'] - it's 337 rules (it even folds in
  * a few unprefixed core-ESLint rules), extremely opinionated, and far beyond what was asked for.
  * Only the two rules below are actually wanted.
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function unicornConfig() {
+export function unicornConfig(): Linter.Config[] {
     return [
         {
             name: 'Unicorn rules',

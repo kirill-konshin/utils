@@ -1,3 +1,6 @@
+import type { Linter } from 'eslint';
+
+import type { ToggleOptions } from '../index.js';
 import { GLOBAL_IGNORES, hasStorybook, scanWorkspace, toolGate } from '../lib.js';
 
 /**
@@ -9,11 +12,8 @@ import { GLOBAL_IGNORES, hasStorybook, scanWorkspace, toolGate } from '../lib.js
  * hoisting guidance (see `toolGate` in lib.js). The plugin stays lazily imported so consumers
  * without Storybook never pay for it.
  *
- * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `storybook` flag; auto-detected when omitted
- * @param {boolean} [strict] same-scope detection only - no `.storybook` scan (defineLintConfig `detection.strict`)
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function storybookConfig(option, strict = false) {
+export async function storybookConfig(option?: boolean | ToggleOptions, strict = false): Promise<Linter.Config[]> {
     const { enabled } = toolGate(option, strict, {
         tool: 'storybook',
         has: hasStorybook,
@@ -23,5 +23,6 @@ export async function storybookConfig(option, strict = false) {
     if (!enabled) return [];
 
     const storybookPlugin = (await import('eslint-plugin-storybook')).default;
-    return storybookPlugin.configs['flat/recommended'];
+    // Storybook still publishes ESLint 9 rule types; the runtime flat configs are valid in ESLint 10.
+    return storybookPlugin.configs['flat/recommended'] as unknown as Linter.Config[];
 }

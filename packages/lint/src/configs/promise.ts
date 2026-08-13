@@ -1,11 +1,10 @@
+import type { Linter } from 'eslint';
 import promisePlugin from 'eslint-plugin-promise';
 
 /**
  * Promise rules: recommended + overrides.
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function promiseConfig() {
+export function promiseConfig(): Linter.Config[] {
     return [
         promisePlugin.configs['flat/recommended'],
         {

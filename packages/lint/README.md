@@ -376,7 +376,7 @@ export default [
 - **`tailwindEntry` const removed** → call the exported `findTailwindEntry(ignores)` when needed
 - **New:** every block is a composable exported `*Config()` function; gated ones accept `true` / `false` / an options object with optional `enabled` (defaults to `true` in the object form); `typeAware: true` enables the (slow) type-aware rules
 - **`prettier` is now a declared (required) peer dependency** — it was always required by the setup, so no action needed in practice
-- **TypeScript consumers get real types** — `index.d.ts` ships with the package (`LintOptions` and friends)
+- **TypeScript consumers get generated declarations** — `LintOptions` and all public exports are typed from source
 - **Hoisting** if tools can't find packages, fix it once in the package manager config: keep default hoisting (drop `installConfig.hoistingLimits`/`nohoist`), on pnpm add `public-hoist-pattern[]=<pkg>` to `.npmrc`, or add the tool to root `devDependencies`. Run eslint with `LINT_DEBUG=1` to trace detection.
 - **Scans follow the declared workspace.** `scanWorkspace` (also used by all evidence scans) now covers the root directory plus the real `workspaces`/`pnpm-workspace.yaml` packages via `@manypkg/get-packages` instead of a blind ≤5-level glob — config files in directories that are not declared workspace members are only found via the root scan, and the depth limit is gone.
 - `has*` probes are anchored at the **workspace root** (via `local-pkg`) instead of this package's install location — identical for standard root installs.
@@ -385,15 +385,15 @@ Everything else — `prettier`, `listStaged`, extension lists (`tsExts`, …), `
 
 ## Development
 
-### Why raw JS (no build)
+### Incremental TypeScript build
 
-Deliberately plain ESM, **no TypeScript build**: the config is loaded by `eslint.config.mjs` and pre-commit `lint:staged` before anything is built, so a `dist/` `main` would force a build before the repo could lint — not worth it for a config package.
+The package compiles ESM and declarations from `src/*.ts`, plus the CommonJS Yarn entry from `src/yarn.cts`, with `tsc --build`. Build state is cached in `.tscache/tsconfig.tsbuildinfo`; consumers load `dist`, and this monorepo builds lint first in its root `postinstall` before running `lint-prepare`.
 
 ### Eslint
 
-The package ships hand-written types (`index.d.ts`) that pull real types from the underlying packages — `Linter.Config` from `eslint`, `PluginSettings` from `eslint-plugin-tailwindcss`, `prettier`'s `Config`, `lint-staged`'s `Configuration` — so `defineLintConfig` options and all exports are fully typed in `eslint.config.mjs` (via editor inference) and `eslint.config.ts`.
+Declarations are generated from the TypeScript source and retain the underlying package types — `Linter.Config`, Tailwind plugin settings, Prettier `Config`, and lint-staged `Configuration`.
 
-**Every** block lives in a themed `configs/*.js` file and is exported as a standalone function for manual composition (and easy testing/mocking), in the order `defineLintConfig` applies them: `baseConfig` (JS recommended + global ignores + globals + core-rule overrides), `defaultIgnoreConfig`, `reactConfig` (the whole React family, see below), `prettierConfig`, `storybookConfig`, `typeAwareConfig` (off by default; ordered before the import blocks so its naming-convention rule loses to the default-export relaxation), `importXConfig` (includes the default-export relaxation for conventional files), `importSortConfig`, `unusedImportsConfig`, `promiseConfig`, `unicornConfig`, `turboConfig`, `tailwindConfig`, `nxConfig`, `jestConfig`, `vitestConfig`, `testConfig`.
+**Every** block lives in a themed `src/configs/*.ts` file and is exported as a standalone function for manual composition (and easy testing/mocking), in the order `defineLintConfig` applies them: `baseConfig` (JS recommended + global ignores + globals + core-rule overrides), `defaultIgnoreConfig`, `reactConfig` (the whole React family, see below), `prettierConfig`, `storybookConfig`, `typeAwareConfig` (off by default; ordered before the import blocks so its naming-convention rule loses to the default-export relaxation), `importXConfig` (includes the default-export relaxation for conventional files), `importSortConfig`, `unusedImportsConfig`, `promiseConfig`, `unicornConfig`, `turboConfig`, `tailwindConfig`, `nxConfig`, `jestConfig`, `vitestConfig`, `testConfig`.
 
 Tool-gated functions take the same value as their `defineLintConfig` flag and gate themselves (`tailwindConfig(true)`, `nxConfig(false)` → `[]`, `tailwindConfig({ cssConfigPath })`). `reactConfig(nextFlag, strict)` is the whole family in its load-bearing order — Next is just a shortcut to an opinionated React/TypeScript setup, so the TS wiring, overrides and settings apply no matter whether Next or plain React won: `nextConfig` (chooser: `nextBaseConfig` when Next is enabled, `reactBaseConfig` fallback otherwise) → `typescriptOverridesConfig` → `nextOverridesConfig` → `reactSettingsConfig` — all exported individually too.
 

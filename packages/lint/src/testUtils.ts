@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import type { Linter } from 'eslint';
 
 export const TAILWIND_ENTRY = '@import "tailwindcss";\n';
 
@@ -12,10 +13,8 @@ export const TAILWIND_ENTRY = '@import "tailwindcss";\n';
  * symlink on macOS and the containment check compares paths literally. The `has*` capability
  * probes are module-load-time and unaffected.
  *
- * @param {Record<string, string>} files
- * @param {(dir: string) => Promise<unknown>} fn
  */
-export async function inTempDir(files, fn) {
+export async function inTempDir<T>(files: Record<string, string>, fn: (dir: string) => Promise<T>): Promise<T> {
     const dir = mkdtempSync(join(tmpdir(), 'lint-config-test-'));
     const previousCwd = process.cwd();
     const previousProjectCwd = process.env.PROJECT_CWD;
@@ -35,7 +34,11 @@ export async function inTempDir(files, fn) {
     }
 }
 
-export const tailwindBlockOf = (config) => config.find((block) => block?.settings?.tailwindcss);
-export const nextSettingsBlockOf = (config) => config.find((block) => block?.settings?.next);
-export const hasNextPluginIn = (config) => config.some((block) => block?.plugins?.['@next/next']);
-export const hasNxRuleIn = (config) => config.some((block) => block?.rules?.['@nx/dependency-checks']);
+export const tailwindBlockOf = (config: Linter.Config[]): Linter.Config | undefined =>
+    config.find((block) => block.settings?.tailwindcss);
+export const nextSettingsBlockOf = (config: Linter.Config[]): Linter.Config | undefined =>
+    config.find((block) => block.settings?.next);
+export const hasNextPluginIn = (config: Linter.Config[]): boolean =>
+    config.some((block) => block.plugins?.['@next/next']);
+export const hasNxRuleIn = (config: Linter.Config[]): boolean =>
+    config.some((block) => block.rules?.['@nx/dependency-checks']);

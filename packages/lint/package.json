@@ -5,43 +5,36 @@
   "type": "module",
   "skipGenerate": true,
   "bin": {
-    "lint-prepare": "./lintPrepare.js"
+    "lint-prepare": "./dist/lintPrepare.js"
   },
-  "main": "index.js",
-  "module": "index.js",
-  "types": "index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./yarn": {
-      "types": "./yarn.d.ts",
-      "require": "./yarn.cjs"
+      "types": "./dist/yarn.d.cts",
+      "require": "./dist/yarn.cjs"
     }
   },
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
-    "build": "echo 'No build required'",
-    "start": "echo 'No start required'",
+    "build": "tsc --build",
+    "start": "tsc --build --watch",
     "----- TEST -----": "",
-    "test": "vitest run"
+    "test": "yarn build && vitest run"
   },
   "files": [
-    "index.js",
-    "index.d.ts",
-    "yarn.cjs",
-    "yarn.d.ts",
-    "configs",
-    "!configs/*.test.js",
-    "lib.js",
-    "lintPrepare.js",
+    "dist",
     "rules",
     "skills"
   ],
   "dependencies": {
-    "@eslint/compat": "^2.1.0",
+    "@eslint/config-helpers": "^0.7.0",
     "@eslint/js": "^10.0.1",
     "@manypkg/find-root": "^3.1.0",
     "@manypkg/get-packages": "^3.1.0",
@@ -72,6 +65,8 @@
     "local-pkg": "^1.2.1"
   },
   "devDependencies": {
+    "@types/eslint-plugin-jsx-a11y": "^6.10.1",
+    "@types/eslint-plugin-promise": "^7.3.0",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {

@@ -1,9 +1,11 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { includeIgnoreFile as includeIgnoreFileCompat } from '@eslint/compat';
+import { includeIgnoreFile as includeIgnoreFileConfig } from '@eslint/config-helpers';
 import js from '@eslint/js';
+import type { Linter } from 'eslint';
 import globals from 'globals';
 
+import type { DefaultIgnoreOptions } from '../index.js';
 import { asOptions, GLOBAL_IGNORES } from '../lib.js';
 
 /**
@@ -16,10 +18,8 @@ import { asOptions, GLOBAL_IGNORES } from '../lib.js';
  * explicitly marked "should not be edited", so exclude it recursively instead of just working
  * around individual rules (its `///` reference directives otherwise trip multiline-comment-style,
  * which would corrupt them if autofixed into a `/* *\/` block).
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function baseConfig() {
+export function baseConfig(): Linter.Config[] {
     return [
         js.configs.recommended,
         {
@@ -59,17 +59,11 @@ export function baseConfig() {
 /**
  * Convert an ignore file (`.gitignore`, `.prettierignore`, ...) into an ESLint ignores block,
  * resolved next to the consumer's config file.
- *
- * @param {string} importMetaUrl `import.meta.url` of the consumer's `eslint.config.mjs`
- * @param {string} ignoreFile
- * @returns {import('eslint').Linter.Config}
  */
-export function includeIgnoreFile(importMetaUrl, ignoreFile) {
+export function includeIgnoreFile(importMetaUrl: string, ignoreFile: string): Linter.Config {
     // @see https://blog.linotte.dev/eslint-9-next-js-935c2b6d0371
-    return includeIgnoreFileCompat(resolve(dirname(fileURLToPath(importMetaUrl)), ignoreFile));
+    return includeIgnoreFileConfig(resolve(dirname(fileURLToPath(importMetaUrl)), ignoreFile));
 }
-
-/** @typedef {import('../index.js').DefaultIgnoreOptions} DefaultIgnoreOptions Defined in index.d.ts. */
 
 /**
  * The conventional ignore setup of this toolkit: `.gitignore` + `.prettierignore` next to the
@@ -78,11 +72,8 @@ export function includeIgnoreFile(importMetaUrl, ignoreFile) {
  *
  * There is nothing to auto-detect here - the consumer's config file location can't be known - so
  * the flag is off by default and enabling it without `importMetaUrl` is a hard error.
- *
- * @param {boolean | DefaultIgnoreOptions} [option] the defineLintConfig `defaultIgnore` flag
- * @returns {import('eslint').Linter.Config[]}
  */
-export function defaultIgnoreConfig(option) {
+export function defaultIgnoreConfig(option?: boolean | DefaultIgnoreOptions): Linter.Config[] {
     const { enabled = false, importMetaUrl } = asOptions(option);
     if (!enabled) return [];
 

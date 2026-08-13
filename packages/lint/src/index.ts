@@ -1,20 +1,9 @@
-/*
- * Raw ESM JS on purpose (no TS build): loaded by `eslint.config.mjs` and pre-commit `lint:staged`
- * before anything is built, so a `dist/` main would need building before it could lint. See
- * README ("Why raw JS"). Types live in the hand-written `index.d.ts` next to this file, which
- * pulls real types from the underlying packages; the option types (LintOptions, NextOptions,
- * TailwindOptions) are defined ONLY there and referenced from JSDoc via import() aliases - keep
- * the function signatures in sync with the JSDoc here.
- *
- * The config is built by `defineLintConfig(options)`, which is pure ordering: every block lives in a
- * themed `configs/*.js` file as an exported `*Config()` function, and the tool-gated ones take
- * their own defineLintConfig flag (`undefined` auto-detect / `true` or options force on / `false` off)
- * and gate themselves - see the detection block in lib.js for why forcing exists. Tool-gated
- * plugins are imported
- * lazily inside their block functions so consumers without the tool don't pay their load cost;
- * the plugin re-exports below follow module-load DETECTION (not defineLintConfig options, which they
- * cannot see) and are null when the tool wasn't detected.
- */
+import type { ParserOptions as TsParserOptions } from '@typescript-eslint/parser';
+import type { Linter } from 'eslint';
+import type { PluginSettings as TailwindPluginSettings } from 'eslint-plugin-tailwindcss';
+import type { Configuration as LintStagedConfiguration } from 'lint-staged';
+import type { Config as PrettierConfig } from 'prettier';
+
 import { baseConfig, defaultIgnoreConfig } from './configs/base.js';
 import { importSortConfig, importXConfig, unusedImportsConfig } from './configs/imports.js';
 import { nxConfig } from './configs/nx.js';
@@ -42,29 +31,50 @@ export * from './configs/turbo.js';
 export * from './configs/typescriptTypeAware.js';
 export * from './configs/unicorn.js';
 
-// deliberately NOT the whole lib.js - asOptions/GLOBAL_IGNORES and the fs helpers stay internal
-export {
-    // extensions
-    tsExts,
-    tsExtsRaw,
-    eslintExts,
-    eslintExtsRaw,
-    prettierExts,
-    prettierExtsRaw,
-    // detection
-    findWorkspaceRoot,
-    scanWorkspace,
-    hasJest,
-    hasNext,
-    hasNx,
-    hasStorybook,
-    hasTailwind,
-    hasTurbo,
-    hasVite,
-    hasVitest,
-} from './lib.js';
+export * from './lib.js';
 
-/** @typedef {import('./index.js').LintOptions} LintOptions Per-tool toggles - defined once in index.d.ts (resolved via the sibling declaration file), backed by real upstream types. */
+type ProjectServiceOptions = Exclude<NonNullable<TsParserOptions['projectService']>, boolean>;
+
+export type ToggleOptions = {
+    enabled?: boolean;
+};
+
+export type DetectionOptions = ToggleOptions & {
+    strict?: boolean;
+};
+
+export type NextOptions = ToggleOptions & {
+    rootDir?: string | string[];
+};
+
+export type TailwindOptions = ToggleOptions & {
+    cssConfigPath?: TailwindPluginSettings['cssConfigPath'];
+    scoped?: boolean;
+};
+
+export type TypeAwareOptions = ToggleOptions &
+    Pick<
+        ProjectServiceOptions,
+        'allowDefaultProject' | 'maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING'
+    > & {
+        tsconfigRootDir?: TsParserOptions['tsconfigRootDir'];
+    };
+
+export type DefaultIgnoreOptions =
+    { enabled: false; importMetaUrl?: string } | { enabled?: true; importMetaUrl: string };
+
+export type LintOptions = {
+    detection?: boolean | DetectionOptions;
+    next?: boolean | NextOptions;
+    storybook?: boolean | ToggleOptions;
+    turbo?: boolean | ToggleOptions;
+    nx?: boolean | ToggleOptions;
+    jest?: boolean | ToggleOptions;
+    vitest?: boolean | ToggleOptions;
+    tailwind?: boolean | TailwindOptions;
+    typeAware?: boolean | TypeAwareOptions;
+    defaultIgnore?: boolean | DefaultIgnoreOptions;
+};
 
 /**
  * Build the shared flat ESLint config.
@@ -75,10 +85,10 @@ export {
  * Returns a Promise - ESLint natively awaits a Promise default export, so a plain
  * `export default defineLintConfig({...})` works; `await` it only when composing with extra blocks.
  *
- * @param {LintOptions | Promise<LintOptions> | (() => LintOptions | Promise<LintOptions>)} [options]
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function defineLintConfig(options = {}) {
+export async function defineLintConfig(
+    options: LintOptions | Promise<LintOptions> | (() => LintOptions | Promise<LintOptions>) = {},
+): Promise<Linter.Config[]> {
     if (typeof options === 'function') options = options();
     options = (await options) ?? {};
 
@@ -90,7 +100,8 @@ export async function defineLintConfig(options = {}) {
      */
     const { enabled: defaultOn = true, strict = false } = asOptions(options.detection);
     // with detection off, tools not mentioned explicitly are OFF instead of auto-detected
-    const flag = (option) => (option === undefined && !defaultOn ? false : option);
+    const flag = <T>(option: T | undefined): T | false | undefined =>
+        option === undefined && !defaultOn ? false : option;
 
     // blocks from the same configs/* file stay consecutive - ordering inside a family matters
     // (e.g. next: base config, then the TS wiring stemming from it, then overrides, then settings)
@@ -127,8 +138,7 @@ export async function defineLintConfig(options = {}) {
     ];
 }
 
-/** @type {import('prettier').Config} */
-export const prettier = {
+export const prettier: PrettierConfig = {
     printWidth: 120,
     tabWidth: 2,
     singleQuote: true,
@@ -154,10 +164,8 @@ export const prettier = {
  * You don't need git add since lint-staged 10
  *
  * TODO Screw yarn, just use eslint directly? Yarn gives greater control over what is in the console...
- *
- * @type {import('lint-staged').Configuration}
  */
-export const listStaged = {
+export const listStaged: LintStagedConfiguration = {
     [prettierExts]: ['yarn prettier'],
     [eslintExts]: ['yarn eslint', 'yarn prettier'],
 };

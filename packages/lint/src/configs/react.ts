@@ -1,26 +1,23 @@
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
+import type { Linter } from 'eslint';
 import nextTs from 'eslint-config-next/typescript';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import { globSync } from 'glob';
 
+import type { NextOptions } from '../index.js';
 import { findWorkspaceRoot, GLOBAL_IGNORES, hasNext, scanWorkspace, toolGate, tsExts } from '../lib.js';
 
 // lazy so consumers without Next don't pay the load cost - re-exported from index.js
 export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
 
-/** @typedef {import('../index.js').NextOptions} NextOptions Defined in index.d.ts. */
-
 /**
  * Does this `package.json` declare `next` as a dependency? Peer/optional declarations are
  * deliberately ignored - they mark component libraries, not apps.
- *
- * @param {string} file absolute path of a `package.json`
- * @returns {boolean}
  */
-function dependsOnNext(file) {
+function dependsOnNext(file: string): boolean {
     try {
         const { dependencies, devDependencies } = JSON.parse(readFileSync(file, 'utf-8'));
         return Boolean(dependencies?.next ?? devDependencies?.next);
@@ -40,11 +37,10 @@ function dependsOnNext(file) {
  *   package root itself; the bare root-level dir names are too generic to scan for, but such apps
  *   are caught by the other two signals
  *
- * @param {string[]} ignores glob patterns to skip
- * @returns {string[]} absolute directories, deduplicated (one app usually shows several signals) and
- *   sorted so the emitted settings block is deterministic across filesystems
+ * Returns absolute directories, deduplicated (one app usually shows several signals) and sorted
+ * so the emitted settings block is deterministic across filesystems.
  */
-export function findNextRoots(ignores) {
+export function findNextRoots(ignores: string[]): string[] {
     return [
         ...new Set([
             ...scanWorkspace('next.config.*', ignores).map((file) => dirname(file)),
@@ -71,10 +67,10 @@ export function findNextRoots(ignores) {
  * 'next/dist/compiled/babel/eslint-parser'" the instant the module loads). Hence the lazy import
  * here; when the block is forced on without `next` around, that error IS the failure mode.
  *
- * @param {NextOptions} [options]
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function nextBaseConfig({ rootDir = findNextRoots(GLOBAL_IGNORES) } = {}) {
+export async function nextBaseConfig({ rootDir = findNextRoots(GLOBAL_IGNORES) }: NextOptions = {}): Promise<
+    Linter.Config[]
+> {
     const next = (await import('eslint-config-next')).default;
     return [
         ...next,
@@ -89,9 +85,8 @@ export async function nextBaseConfig({ rootDir = findNextRoots(GLOBAL_IGNORES) }
  * parser. Cover the same ground directly instead, with whatever parser is already active
  * (typescript-eslint for .ts/.tsx via typescriptConfig, the default parser otherwise).
  *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function reactBaseConfig() {
+export function reactBaseConfig(): Linter.Config[] {
     return [
         reactPlugin.configs.flat.recommended,
         reactPlugin.configs.flat['jsx-runtime'],
@@ -109,11 +104,8 @@ export function reactBaseConfig() {
  * the `next` package, `next` must be resolvable from the workspace root (hoisted); a leaf-only
  * install is a hard error with hoisting guidance (see `toolGate` in lib.js).
  *
- * @param {boolean | NextOptions} [option] the defineLintConfig `next` flag
- * @param {boolean} [strict] same-scope detection only - no `next.config.*` scan (defineLintConfig `detection.strict`)
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function nextConfig(option, strict = false) {
+export async function nextConfig(option?: boolean | NextOptions, strict = false): Promise<Linter.Config[]> {
     const { enabled, options, files } = toolGate(option, strict, {
         tool: 'next',
         has: hasNext,
@@ -127,12 +119,14 @@ export async function nextConfig(option, strict = false) {
          * app's package.json.
          */
         absolutizeOptions: ({ rootDir }) =>
-            (Array.isArray(rootDir) ? rootDir : [rootDir]).filter(Boolean).flatMap((dir) => {
-                const pattern = isAbsolute(dir) ? dir : resolve(findWorkspaceRoot(), dir);
-                // trailing slash = directories only; backslash normalization mirrors the plugin
-                const dirs = globSync(`${pattern.replace(/\\/g, '/').replace(/\/+$/, '')}/`, { absolute: true });
-                return (dirs.length > 0 ? dirs : [pattern]).map((appDir) => join(appDir, 'package.json'));
-            }),
+            (Array.isArray(rootDir) ? rootDir : [rootDir])
+                .filter((dir): dir is string => Boolean(dir))
+                .flatMap((dir) => {
+                    const pattern = isAbsolute(dir) ? dir : resolve(findWorkspaceRoot(), dir);
+                    // trailing slash = directories only; backslash normalization mirrors the plugin
+                    const dirs = globSync(`${pattern.replace(/\\/g, '/').replace(/\/+$/, '')}/`, { absolute: true });
+                    return (dirs.length > 0 ? dirs : [pattern]).map((appDir) => join(appDir, 'package.json'));
+                }),
         scan: () => findNextRoots(GLOBAL_IGNORES).map((dir) => join(dir, 'package.json')),
     });
     if (!enabled) return reactBaseConfig();
@@ -147,9 +141,8 @@ export async function nextConfig(option, strict = false) {
  * (typescript-eslint recommended setup, useful with or without Next itself) + deliberate overrides
  * of its rule set.
  *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function typescriptOverridesConfig() {
+export function typescriptOverridesConfig(): Linter.Config[] {
     return [
         ...nextTs,
         {
@@ -207,9 +200,8 @@ export function typescriptOverridesConfig() {
  * jsx-a11y/react entries matter for {@link reactBaseConfig} consumers too, and turning off rules of an
  * unregistered plugin is harmless.
  *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function nextOverridesConfig() {
+export function nextOverridesConfig(): Linter.Config[] {
     return [
         {
             name: 'eslint-config-next overrides',
@@ -229,9 +221,8 @@ export function nextOverridesConfig() {
  *  https://github.com/vercel/next.js/issues/89764
  *  https://gist.github.com/OscarGauss/1f305edf5b7c103bb2ee32ba479f4261
  *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function reactSettingsConfig() {
+export function reactSettingsConfig(): Linter.Config[] {
     return [
         {
             settings: {
@@ -248,11 +239,8 @@ export function reactSettingsConfig() {
  * which apply NO MATTER whether Next or plain React won, so composing them individually risks
  * ordering mistakes; defineLintConfig uses this composite.
  *
- * @param {boolean | NextOptions} [option] the defineLintConfig `next` flag
- * @param {boolean} [strict] same-scope detection only (defineLintConfig `detection.strict`)
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function reactConfig(option, strict = false) {
+export async function reactConfig(option?: boolean | NextOptions, strict = false): Promise<Linter.Config[]> {
     return [
         ...(await nextConfig(option, strict)),
         ...typescriptOverridesConfig(),

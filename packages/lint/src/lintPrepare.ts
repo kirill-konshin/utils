@@ -25,12 +25,16 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+type Rule = { file: string; name: string; content: string };
+type Skill = { file: string; name: string };
+type ExistingFile = { exists: boolean; generated: boolean; customSection: string | null };
+
 const AGENTS_FILE = 'AGENTS.md';
 const CLAUDE_FILE = 'CLAUDE.md';
 const CLAUDE_RULES_DIR = '.claude/rules';
-const RULES_DIR = path.join(__dirname, 'rules');
-const SKILLS_DIR = path.join(__dirname, 'skills');
-const README_FILE = path.join(__dirname, 'README.md');
+const RULES_DIR = path.join(__dirname, '../rules');
+const SKILLS_DIR = path.join(__dirname, '../skills');
+const README_FILE = path.join(__dirname, '../README.md');
 const SKILLS_TARGET_DIRS = ['.claude/skills', '.codex/skills'];
 const HEADER = `# AI Agent Rules
 
@@ -49,8 +53,8 @@ const GENERATED_MARKER = '<!-- @kirill.konshin/lint:generated -->';
 /**
  * Read all markdown files from the package rules directory.
  */
-export function readRules() {
-    const rules = [];
+export function readRules(): Rule[] {
+    const rules: Rule[] = [];
 
     if (!fs.existsSync(RULES_DIR)) {
         console.error(`Rules directory not found: ${RULES_DIR}`);
@@ -79,7 +83,7 @@ export function readRules() {
  * Read all markdown files from the package skills directory. Each file becomes its own skill, named after the file
  * (without extension) - e.g. `lint-repo.md` becomes the `lint-repo` skill.
  */
-export function readSkills() {
+export function readSkills(): Skill[] {
     if (!fs.existsSync(SKILLS_DIR)) return [];
 
     return fs
@@ -93,7 +97,7 @@ export function readSkills() {
  * Fail if `.claude/rules` contains anything that isn't a symlink - we don't want to
  * silently blow away a real file/directory a user placed there by hand.
  */
-export function checkRulesDirSafety(rulesTargetDir) {
+export function checkRulesDirSafety(rulesTargetDir: string): void {
     if (!fs.existsSync(rulesTargetDir)) return;
 
     for (const entry of fs.readdirSync(rulesTargetDir)) {
@@ -110,7 +114,7 @@ export function checkRulesDirSafety(rulesTargetDir) {
 /**
  * Fail if `CLAUDE.md` exists and isn't a symlink - same reasoning as checkRulesDirSafety.
  */
-export function checkClaudeMdSafety(claudeMdPath) {
+export function checkClaudeMdSafety(claudeMdPath: string): void {
     let stat;
 
     try {
@@ -140,7 +144,7 @@ export function checkClaudeMdSafety(claudeMdPath) {
  *   (Claude Code itself doesn't need it - it auto-loads every file under `.claude/rules` regardless of whether it's
  *   indexed anywhere).
  */
-export function symlinkRules(cwd, rules) {
+export function symlinkRules(cwd: string, rules: Rule[]): string {
     const targetDir = path.join(cwd, CLAUDE_RULES_DIR);
 
     fs.rmSync(targetDir, { recursive: true, force: true });
@@ -161,7 +165,7 @@ export function symlinkRules(cwd, rules) {
  * own subdirectory is checked/wiped, not the whole `.claude/skills` or `.codex/skills`
  * parent, since other packages (or the user) may keep unrelated skills there.
  */
-export function checkSkillDirSafety(skillDir) {
+export function checkSkillDirSafety(skillDir: string): void {
     if (!fs.existsSync(skillDir)) return;
 
     for (const entry of fs.readdirSync(skillDir)) {
@@ -181,8 +185,8 @@ export function checkSkillDirSafety(skillDir) {
  * them. The package README.md is symlinked alongside SKILL.md so a skill can reference it
  * via `@README.md` regardless of how the tool resolves relative mentions.
  */
-export function symlinkSkills(cwd, skills) {
-    const targetDirs = [];
+export function symlinkSkills(cwd: string, skills: Skill[]): string[] {
+    const targetDirs: string[] = [];
     const hasReadme = fs.existsSync(README_FILE);
 
     for (const skill of skills) {
@@ -213,7 +217,7 @@ export function symlinkSkills(cwd, skills) {
 /**
  * Symlink CLAUDE.md -> AGENTS.md so both point at the same generated content.
  */
-export function symlinkClaudeMd(cwd) {
+export function symlinkClaudeMd(cwd: string): void {
     const claudeMdPath = path.join(cwd, CLAUDE_FILE);
 
     fs.rmSync(claudeMdPath, { force: true });
@@ -228,7 +232,7 @@ export function symlinkClaudeMd(cwd) {
  * under `.claude/rules`, symlinks included) - no reference to them is needed here.
  * The sections below are for other tools that only read AGENTS.md.
  */
-export function generateAgentsFile(rules, cwd, customSection) {
+export function generateAgentsFile(rules: Rule[], cwd: string, customSection: string | null): string {
     const relativeRulesDir = path.relative(cwd, RULES_DIR).split(path.sep).join('/');
 
     const includes = rules.map((rule) => `@include ${relativeRulesDir}/${rule.file}`).join('\n');
@@ -246,7 +250,7 @@ export function generateAgentsFile(rules, cwd, customSection) {
  * generateAgentsFile() always rebuilds the part above the marker from scratch, but must
  * never touch what a user wrote below it.
  */
-export function checkExisting(targetPath) {
+export function checkExisting(targetPath: string): ExistingFile {
     if (!fs.existsSync(targetPath)) {
         return { exists: false, generated: false, customSection: null };
     }
@@ -262,7 +266,7 @@ export function checkExisting(targetPath) {
 /**
  * Main function
  */
-export function main() {
+export function main(): void {
     const args = process.argv.slice(2);
     const command = args[0] || 'init';
     const cwd = process.env.INIT_CWD || process.cwd();

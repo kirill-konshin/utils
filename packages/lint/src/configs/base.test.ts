@@ -14,6 +14,7 @@ test('defaultIgnoreConfig: off by default, with false, and with enabled: false',
 
 test('defaultIgnoreConfig: enabled without importMetaUrl fails loudly', () => {
     assert.throws(() => defaultIgnoreConfig(true), /importMetaUrl/);
+    // @ts-expect-error Intentionally verify runtime validation for an invalid options object.
     assert.throws(() => defaultIgnoreConfig({}), /importMetaUrl/);
 });
 
@@ -23,7 +24,7 @@ test('defaultIgnoreConfig: converts .gitignore and .prettierignore next to the c
             importMetaUrl: pathToFileURL(join(dir, 'eslint.config.mjs')).href,
         });
         assert.equal(configs.length, 2);
-        assert.ok(configs[0].ignores.some((pattern) => pattern.includes('dist')));
-        assert.ok(configs[1].ignores.some((pattern) => pattern.includes('coverage')));
+        assert.ok(configs[0].ignores!.some((pattern) => pattern.includes('dist')));
+        assert.ok(configs[1].ignores!.some((pattern) => pattern.includes('coverage')));
     });
 });

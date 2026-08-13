@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { Linter } from 'eslint';
 import * as jsoncParser from 'jsonc-eslint-parser';
 
+import type { ToggleOptions } from '../index.js';
 import { hasNx, toolGate } from '../lib.js';
 
 // lazy so consumers without Nx don't pay the load cost (it drags in a large part of nx itself) -
@@ -18,11 +20,8 @@ export const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : nu
  * semi, comma-dangle, ...) which would directly fight Prettier, plus a second full copy of
  * @typescript-eslint/recommended that would relitigate rules already configured deliberately here.
  *
- * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `nx` flag; auto-detected (workspace `nx.json`) when omitted
- * @param {boolean} [strict] same-scope detection only: `nx.json` at cwd instead of the workspace root (defineLintConfig `detection.strict`)
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function nxConfig(option, strict = false) {
+export async function nxConfig(option?: boolean | ToggleOptions, strict = false): Promise<Linter.Config[]> {
     const { enabled } = toolGate(option, strict, {
         tool: 'nx',
         has: hasNx,

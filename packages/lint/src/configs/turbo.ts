@@ -1,3 +1,6 @@
+import type { Linter } from 'eslint';
+
+import type { ToggleOptions } from '../index.js';
 import { hasTurbo, toolGate } from '../lib.js';
 
 // lazy so consumers without Turbo don't pay the load cost - re-exported from index.js
@@ -6,15 +9,16 @@ export const turboPlugin = hasTurbo ? (await import('eslint-plugin-turbo')).defa
 /**
  * Turborepo rules. Probe-only gate (see `toolGate` in lib.js) - no evidence scan, no bridge.
  *
- * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `turbo` flag; auto-detected when omitted
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function turboConfig(option) {
+export async function turboConfig(option?: boolean | ToggleOptions): Promise<Linter.Config[]> {
     const { enabled } = toolGate(option, false, { tool: 'turbo', has: hasTurbo });
     if (!enabled) return [];
     const turbo = (await import('eslint-plugin-turbo')).default;
+    const recommended = turbo.configs?.['flat/recommended'];
+    // Turbo's declaration permits both legacy and flat shapes; this entry is flat at runtime.
+    const base = (Array.isArray(recommended) ? recommended : [recommended ?? {}]) as unknown as Linter.Config[];
     return [
-        turbo.configs['flat/recommended'],
+        ...base,
         {
             name: 'eslint-plugin-turbo overrides',
             rules: {

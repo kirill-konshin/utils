@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
+import type { Linter } from 'eslint';
 
+import type { TailwindOptions } from '../index.js';
 import { findWorkspaceRoot, GLOBAL_IGNORES, hasTailwind, packageDirOf, scanWorkspace, toolGate } from '../lib.js';
 
 /**
@@ -8,10 +10,8 @@ import { findWorkspaceRoot, GLOBAL_IGNORES, hasTailwind, packageDirOf, scanWorks
  * the root plus every workspace package, `.gitignore`- and build-output-aware) containing the
  * Tailwind v4 marker `@import "tailwindcss"`.
  *
- * @param {string[]} ignores glob patterns to skip
- * @returns {string[]} absolute paths
  */
-function findTailwindEntries(ignores) {
+function findTailwindEntries(ignores: string[]): string[] {
     return scanWorkspace('*.css', ignores).filter((file) => {
         try {
             return /@import\s+['"]tailwindcss['"]/.test(readFileSync(file, 'utf-8'));
@@ -30,15 +30,11 @@ function findTailwindEntries(ignores) {
  * consumer must configure `cssConfigPath` manually (MANDATORY for the plugin; several candidates
  * are a hard error) - see README "Detection".
  *
- * @param {string[]} ignores glob patterns to skip
- * @returns {string | null} absolute path of the single entry, or null when zero or several were found
  */
-export function findTailwindEntry(ignores) {
+export function findTailwindEntry(ignores: string[]): string | null {
     const entries = findTailwindEntries(ignores);
     return entries.length === 1 ? entries[0] : null;
 }
-
-/** @typedef {import('../index.js').TailwindOptions} TailwindOptions Defined in index.d.ts. */
 
 /**
  * Tailwind recommended rules (warnings + `no-contradicting-classname` as error) as a standalone
@@ -53,11 +49,8 @@ export function findTailwindEntry(ignores) {
  * the plugin's theme-loading workers resolve it); a leaf-only install is a hard error with
  * hoisting guidance (see `toolGate` in lib.js).
  *
- * @param {boolean | TailwindOptions} [option] the defineLintConfig `tailwind` flag; auto-detected when omitted
- * @param {boolean} [strict] same-scope detection only - no entry scan, no bridge (defineLintConfig `detection.strict`)
- * @returns {Promise<import('eslint').Linter.Config[]>}
  */
-export async function tailwindConfig(option, strict = false) {
+export async function tailwindConfig(option?: boolean | TailwindOptions, strict = false): Promise<Linter.Config[]> {
     /*
      * Detection is evidence-based: the entry CSS marker, NOT the package probe (`needs` makes the
      * evidence mandatory in the gate) - in a monorepo `tailwindcss` is often installed only in a
@@ -105,7 +98,8 @@ export async function tailwindConfig(option, strict = false) {
     const tailwindPlugin = (await import('eslint-plugin-tailwindcss')).default;
     return [
         {
-            ...tailwindPlugin.configs.recommended,
+            // The plugin still publishes @typescript-eslint's ESLint 9 config types.
+            ...(tailwindPlugin.configs.recommended as unknown as Linter.Config),
             ...basePath,
             settings: { tailwindcss: { cssConfigPath } },
         },

@@ -1,3 +1,9 @@
+import type { Yarn } from '@yarnpkg/types';
+
+type Dependency = Yarn.Constraints.Dependency;
+type Workspace = Yarn.Constraints.Workspace;
+type YarnApi = Yarn.Constraints.Yarn;
+
 const DEFAULT_CONSISTENT_DEPENDENCIES = [
     '@types/node',
     '@types/react',
@@ -11,21 +17,12 @@ const DEFAULT_CONSISTENT_DEPENDENCIES = [
 const ROOT_CWD = '.';
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 
-/** @typedef {import('@yarnpkg/types').Yarn.Constraints.Dependency} Dependency */
-/** @typedef {import('@yarnpkg/types').Yarn.Constraints.Workspace} Workspace */
-/** @typedef {import('@yarnpkg/types').Yarn.Constraints.Yarn} YarnApi */
-
-/** @param {string} selector */
-function dependencyIdent(selector) {
+function dependencyIdent(selector: string): string | null {
     const match = selector.match(/(?:^|\/)((?:@[^/]+\/)?[^/@]+)(?:@.+)?$/);
     return match?.[1] ?? null;
 }
 
-/**
- * @param {Workspace} root
- * @param {string} ident
- */
-function rootDependencyRange(root, ident) {
+function rootDependencyRange(root: Workspace, ident: string): string | null {
     for (const field of DEPENDENCY_FIELDS) {
         const range = root.manifest[field]?.[ident];
         if (typeof range === 'string') return range;
@@ -33,11 +30,7 @@ function rootDependencyRange(root, ident) {
     return null;
 }
 
-/**
- * @param {Workspace} root
- * @param {string} value
- */
-function overrideRange(root, value) {
+function overrideRange(root: Workspace, value: string): string | null {
     if (!value.startsWith('$')) return value;
 
     const ident = value.slice(1);
@@ -46,12 +39,7 @@ function overrideRange(root, value) {
     return range;
 }
 
-/**
- * @param {Workspace} root
- * @param {Record<string, unknown>} overrides
- * @param {Map<string, string>} ranges
- */
-function collectOverrides(root, overrides, ranges) {
+function collectOverrides(root: Workspace, overrides: Record<string, unknown>, ranges: Map<string, string>): void {
     for (const [selector, value] of Object.entries(overrides)) {
         if (typeof value === 'string') {
             const ident = dependencyIdent(selector);
@@ -65,7 +53,7 @@ function collectOverrides(root, overrides, ranges) {
             continue;
         }
 
-        const nestedOverrides = /** @type {Record<string, unknown>} */ (value);
+        const nestedOverrides = value as Record<string, unknown>;
         if (typeof nestedOverrides['.'] === 'string') {
             const ident = dependencyIdent(selector);
             const range = overrideRange(root, nestedOverrides['.']);
@@ -80,11 +68,7 @@ function collectOverrides(root, overrides, ranges) {
     }
 }
 
-/**
- * @param {Workspace} root
- * @param {Map<string, string>} ranges
- */
-function collectResolutions(root, ranges) {
+function collectResolutions(root: Workspace, ranges: Map<string, string>): void {
     for (const [selector, range] of Object.entries(root.manifest.resolutions ?? {})) {
         const ident = dependencyIdent(selector);
         if (ident === null || typeof range !== 'string') {
@@ -95,19 +79,11 @@ function collectResolutions(root, ranges) {
     }
 }
 
-/**
- * @param {YarnApi} Yarn
- * @param {string} ident
- */
-function comparableDependencies(Yarn, ident) {
-    return Yarn.dependencies({ ident }).filter((dependency) => dependency.type !== 'peerDependencies');
+function comparableDependencies(yarn: YarnApi, ident: string): Dependency[] {
+    return yarn.dependencies({ ident }).filter((dependency) => dependency.type !== 'peerDependencies');
 }
 
-/**
- * @param {Workspace} root
- * @param {Dependency[]} dependencies
- */
-function fallbackRange(root, dependencies) {
+function fallbackRange(root: Workspace, dependencies: Dependency[]): string | undefined {
     const rootRange = dependencies.find((dependency) => dependency.workspace.cwd === ROOT_CWD)?.range;
     if (rootRange !== undefined) return rootRange;
 
@@ -120,10 +96,8 @@ function fallbackRange(root, dependencies) {
  * Build a Yarn JavaScript constraints config that mirrors root overrides and resolutions in leaf
  * dependency declarations. Without an overrides field, the default dependency set is kept on one
  * consistent range instead.
- *
- * @returns {import('@yarnpkg/types').Yarn.Config}
  */
-function defineYarnConfig() {
+export function defineYarnConfig(): Yarn.Config {
     return {
         async constraints({ Yarn }) {
             const root = Yarn.workspace({ cwd: ROOT_CWD });
@@ -155,5 +129,3 @@ function defineYarnConfig() {
         },
     };
 }
-
-module.exports = { defineYarnConfig };

@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { test } from 'vitest';
 
-const require = createRequire(import.meta.url);
-const { defineYarnConfig } = require('@kirill.konshin/lint/yarn');
+import { defineYarnConfig } from '../dist/yarn.cjs';
 
 function makeWorkspace(cwd, manifest = {}) {
     return {
@@ -46,7 +44,7 @@ function makeContext(root, dependencies) {
     };
 }
 
-test('defineYarnConfig is available from the dedicated Yarn entry point', () => {
+test('defineYarnConfig is available from the dedicated Yarn module', () => {
     assert.equal(typeof defineYarnConfig, 'function');
     assert.equal(typeof defineYarnConfig().constraints, 'function');
 });

@@ -11,8 +11,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vitestPlugin from '@vitest/eslint-plugin';
+import type { Linter, Rule } from 'eslint';
 import jestPlugin from 'eslint-plugin-jest';
 
+import type { ToggleOptions } from '../index.js';
 import { GLOBAL_IGNORES, hasJest, hasVitest, scanWorkspace, toolGate, tsExts, tsExtsRaw } from '../lib.js';
 
 export { jestPlugin, vitestPlugin };
@@ -35,7 +37,7 @@ const TEST_SUFFIX = new RegExp(`\\.test\\.(${tsExtsRaw.replaceAll(',', '|')})$`)
  * checked, not `*.spec.*` - per testing.md, spec files cover e2e/integration flows that don't map
  * 1:1 to a single sibling source file, so co-location isn't meaningful there.
  */
-const testColocation = {
+const testColocation: Rule.RuleModule = {
     meta: {
         type: 'problem',
         docs: {
@@ -79,10 +81,8 @@ const testColocation = {
 /**
  * Jest recommended rules, scoped to test files.
  *
- * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `jest` flag; auto-detected when omitted
- * @returns {import('eslint').Linter.Config[]}
  */
-export function jestConfig(option, strict = false) {
+export function jestConfig(option?: boolean | ToggleOptions, strict = false): Linter.Config[] {
     const { enabled } = toolGate(option, strict, {
         tool: 'jest',
         has: hasJest,
@@ -103,10 +103,8 @@ export function jestConfig(option, strict = false) {
 /**
  * Vitest recommended rules + globals, scoped to test files.
  *
- * @param {boolean | import('../index.js').ToggleOptions} [option] the defineLintConfig `vitest` flag; auto-detected when omitted
- * @returns {import('eslint').Linter.Config[]}
  */
-export function vitestConfig(option, strict = false) {
+export function vitestConfig(option?: boolean | ToggleOptions, strict = false): Linter.Config[] {
     const { enabled } = toolGate(option, strict, {
         tool: 'vitest',
         has: hasVitest,
@@ -134,9 +132,8 @@ export function vitestConfig(option, strict = false) {
  * Runner-agnostic test rules: pure AST/call-name checking, needs neither jest nor vitest installed
  * to work correctly, so it applies regardless of which one (if either) is present.
  *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function testConfig() {
+export function testConfig(): Linter.Config[] {
     return [
         {
             name: 'Test rules',

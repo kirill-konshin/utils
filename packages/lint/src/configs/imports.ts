@@ -1,3 +1,4 @@
+import type { Linter } from 'eslint';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import importXPlugin, { createNodeResolver } from 'eslint-plugin-import-x';
 import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
@@ -14,10 +15,8 @@ import { tsExts } from '../lib.js';
  * hard-errors ("Cannot redefine plugin") if a later config tries to reuse that same key with a
  * different plugin instance. eslint-plugin-import-x is a drop-in replacement, registered under its
  * own 'import-x' key instead (its own recommended config does this registration for us).
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function importXConfig() {
+export function importXConfig(): Linter.Config[] {
     return [
         importXPlugin.configs['flat/recommended'],
         {
@@ -99,10 +98,8 @@ export function importXConfig() {
 
 /**
  * Deterministic import ordering.
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function importSortConfig() {
+export function importSortConfig(): Linter.Config[] {
     return [
         {
             name: 'eslint-plugin-simple-import-sort',
@@ -141,10 +138,8 @@ export function importSortConfig() {
 
 /**
  * Autofixable removal of unused imports.
- *
- * @returns {import('eslint').Linter.Config[]}
  */
-export function unusedImportsConfig() {
+export function unusedImportsConfig(): Linter.Config[] {
     return [
         {
             name: 'eslint-plugin-unused-imports',
