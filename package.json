@@ -4,8 +4,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "postinstall": "yarn postinstall:lint && yarn postinstall:nx && yarn postinstall:husky",
-    "postinstall:lint": "node packages/lint/lintPrepare.js init",
+    "postinstall": "yarn postinstall:lint:build && yarn postinstall:lint && yarn postinstall:nx && yarn postinstall:husky",
+    "postinstall:lint:build": "yarn nx run @kirill.konshin/lint:build",
+    "postinstall:lint": "lint-prepare init",
     "postinstall:nx": "nx show projects > /dev/null",
     "postinstall:husky": "husky",
     "----- LINT -----": "",
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
+    "@kirill.konshin/lint": "workspace:*",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
