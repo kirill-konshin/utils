@@ -28,7 +28,7 @@
   },
   "peerDependencies": {
     "builder-util-runtime": "^9",
-    "electron": "^37",
+    "electron": "^43",
     "electron-builder": "^26"
   },
   "publishConfig": {
@@ -38,10 +38,9 @@
   "license": "MIT",
   "exports": {
     ".": {
-      "import": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "main": "./dist/index.js",

@@ -5271,7 +5271,7 @@ __metadata:
     sharp: "npm:^0.35.3"
   peerDependencies:
     builder-util-runtime: ^9
-    electron: ^37
+    electron: ^43
     electron-builder: ^26
   peerDependenciesMeta:
     builder-util-runtime:
@@ -5293,7 +5293,7 @@ __metadata:
     electron-store: "npm:^10.1.0"
     electron-updater: "npm:^6.8.9"
   peerDependencies:
-    electron: ^37
+    electron: ^43
   peerDependenciesMeta:
     electron:
       optional: true
@@ -5392,7 +5392,7 @@ __metadata:
     react: "npm:^19.2.8"
   peerDependencies:
     "@kirill.konshin/auth": "*"
-    "@mui/material": ^7
+    "@mui/material": ^9
     "@toolpad/core": ^0.16
     next: ^16
     react: ^19
@@ -5451,7 +5451,7 @@ __metadata:
     react-native: "npm:^0.87.0"
   peerDependencies:
     react: ^19
-    react-native: ^0.80
+    react-native: ^0.87
   peerDependenciesMeta:
     react:
       optional: true
@@ -5537,6 +5537,7 @@ __metadata:
     "@storybook/react": "npm:^10.5.7"
     "@storybook/react-vite": "npm:^10.5.7"
     "@storybook/test": "npm:^8.6.18"
+    "@types/node": "npm:^26.2.0"
     "@vitejs/plugin-react": "npm:^6.0.5"
     "@vitest/coverage-v8": "npm:^4.1.10"
     "@vitest/web-worker": "npm:^4.1.10"

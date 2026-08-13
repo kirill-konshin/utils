@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "allowJs": false,
     "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
@@ -18,5 +19,6 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
-  "exclude": []
+  "exclude": [],
+  "references": [{ "path": "./tsconfig.tools.json" }]
 }

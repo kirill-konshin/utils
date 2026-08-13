@@ -50,6 +50,9 @@ jobs:
       - name: Test
         run: yarn test
 
+      - name: Build packages
+        run: yarn build:packages
+
       - name: Coverage Summary
         uses: ./.github/actions/coverage-summary
 
@@ -108,7 +111,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # preVersionCommand is build, physically not possible to release unbuilt.
+      # Build again since this job runs on different runner, but shared NX cache should speed it up
+      - name: Build packages
+        run: yarn build:packages
+
+      # preVersionCommand verifies every package build output before versioning and publishing.
       - name: Release
         run: |
           set -o pipefail

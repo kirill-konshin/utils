@@ -33,9 +33,9 @@ export default defineConfig({
         // target: 'esnext',
         lib: {
             entry,
-            formats: Object.keys(formats) as any,
+            formats: [...formats],
         },
-        rollupOptions: {
+        rolldownOptions: {
             external,
             output: {
                 preserveModules: true,

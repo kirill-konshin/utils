@@ -43,17 +43,15 @@
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
   "license": "MIT",
   "exports": {
-    "./form": {
-      "import": {
-        "import": "./dist/form/index.js",
-        "types": "./dist/form/index.d.ts"
-      }
-    },
     ".": {
-      "import": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./form": {
+      "types": "./dist/form/index.d.ts",
+      "import": "./dist/form/index.js",
+      "default": "./dist/form/index.js"
     }
   },
   "main": "./dist/index.js",

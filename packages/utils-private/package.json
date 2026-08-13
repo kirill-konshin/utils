@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "node copy.mjs"
+    "build": "tsc --project tsconfig.tools.json && node copy.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.5",
@@ -17,6 +17,7 @@
     "@storybook/react": "^10.5.7",
     "@storybook/react-vite": "^10.5.7",
     "@storybook/test": "^8.6.18",
+    "@types/node": "^26.2.0",
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/web-worker": "^4.1.10",

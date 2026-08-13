@@ -55,7 +55,7 @@
       "conventionalCommits": true,
       "adjustSemverBumpsForZeroMajorVersion": false,
       "fallbackCurrentVersionResolver": "disk",
-      "preVersionCommand": "yarn build:packages",
+      "preVersionCommand": "yarn release:check",
       "versionActionsOptions": {
         "skipLockFileUpdate": true
       }
