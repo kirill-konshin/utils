@@ -48,10 +48,12 @@ build
 coverage
 dist
 dist-*
+next-env.d.ts
 node_modules
 npm-debug*
 out
 *storybook.log
+vite-env.d.ts
 yarn-error*
 .yarnrc.local.yml
 
