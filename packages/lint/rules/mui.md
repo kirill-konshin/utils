@@ -5,8 +5,16 @@ paths:
     - '**/*.tsx'
 ---
 
-- To use MUI default classes always use following notation because it's the only one that works with minification:
-    - Import: `import Input, { inputClasses } from '@mui/material/Input';`
+- Full adherence to MUI best practices, which preserve semantics and accessibility
+    - If contradicts or not sure, as user what to do
+    - No negative margins hacks or similar
+    - Use bare minimum of JSX to code needed behavior
+    - Good example: `Toolbar → ButtonGroup → anchored Menu`
+- Always import components or icons this way: `import { Paper, Button } from '@mui/material';` and `import { Xxx } from '@mui/icons-material';`
+    - See barrel handling section
+    - Exception: if developing a library use direct imports with minimal bundle footprint (libraries may not be used with barrel handling)
+- To use MUI default classes always use stable minifiable class names:
+    - Import: `import { inputClasses } from '@mui/material';` or `import { inputClasses } from '@mui/material/Input';` (see rule about imports)
     - Usage: `<Box sx={{ [``& .${inputClasses.root}``]: { /* styles */ } }}><Input /></Box>`
 
 # Admin Pages & Login
