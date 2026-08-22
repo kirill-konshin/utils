@@ -7,6 +7,34 @@ description: Set of rules for projects which use Tailwind
 - Always use latest version of Tailwind
 - Default UI library for use with Tailwind is Hero UI v3+
 - Use the smallest possible configuration of Tailwind and Hero UI, adhere to their best practices (for Vite, Next.js integration, etc.)
+- Define safe-area insets as named Tailwind utilities; never repeat arbitrary `env(...)` or safe-area calculations in components
+- Safe-area positioning utilities must use the maximum of a design-system gutter and the device-reported inset on every edge; insets can be zero on real devices, and adding both values creates excessive spacing when an inset is present
+
+```css
+:root {
+    --safe-area-offset: 1rem;
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+@utility top-safe {
+    top: max(var(--safe-area-offset), var(--safe-area-inset-top));
+}
+
+@utility right-safe {
+    right: max(var(--safe-area-offset), var(--safe-area-inset-right));
+}
+
+@utility bottom-safe {
+    bottom: max(var(--safe-area-offset), var(--safe-area-inset-bottom));
+}
+
+@utility left-safe {
+    left: max(var(--safe-area-offset), var(--safe-area-inset-left));
+}
+```
 
 # ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
 
