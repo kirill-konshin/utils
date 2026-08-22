@@ -8,31 +8,27 @@ description: Set of rules for projects which use Tailwind
 - Default UI library for use with Tailwind is Hero UI v3+
 - Use the smallest possible configuration of Tailwind and Hero UI, adhere to their best practices (for Vite, Next.js integration, etc.)
 - Define safe-area insets as named Tailwind utilities; never repeat arbitrary `env(...)` or safe-area calculations in components
-- Safe-area positioning utilities must use the maximum of a design-system gutter and the device-reported inset on every edge; insets can be zero on real devices, and adding both values creates excessive spacing when an inset is present
+- Safe-area positioning utilities must declare an unconditional design-system gutter first, then enhance it with the maximum of that gutter and the device-reported inset on every edge; use at least `1.5rem` for floating controls because insets can be zero and custom-property resolution can fail on real devices
 
 ```css
-:root {
-    --safe-area-offset: 1rem;
-    --safe-area-inset-top: env(safe-area-inset-top, 0px);
-    --safe-area-inset-right: env(safe-area-inset-right, 0px);
-    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-area-inset-left: env(safe-area-inset-left, 0px);
-}
-
 @utility top-safe {
-    top: max(var(--safe-area-offset), var(--safe-area-inset-top));
+    top: 1.5rem;
+    top: max(1.5rem, env(safe-area-inset-top, 0px));
 }
 
 @utility right-safe {
-    right: max(var(--safe-area-offset), var(--safe-area-inset-right));
+    right: 1.5rem;
+    right: max(1.5rem, env(safe-area-inset-right, 0px));
 }
 
 @utility bottom-safe {
-    bottom: max(var(--safe-area-offset), var(--safe-area-inset-bottom));
+    bottom: 1.5rem;
+    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
 }
 
 @utility left-safe {
-    left: max(var(--safe-area-offset), var(--safe-area-inset-left));
+    left: 1.5rem;
+    left: max(1.5rem, env(safe-area-inset-left, 0px));
 }
 ```
 
