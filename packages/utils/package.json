@@ -90,6 +90,11 @@
       "import": "./dist/electron/index.js",
       "default": "./dist/electron/index.js"
     },
+    "./db": {
+      "types": "./dist/db/index.d.ts",
+      "import": "./dist/db/index.js",
+      "default": "./dist/db/index.js"
+    },
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js",

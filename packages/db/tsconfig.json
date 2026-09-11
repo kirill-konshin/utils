@@ -1,0 +1,10 @@
+{
+  "extends": "../utils-private/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declarationDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": []
+}

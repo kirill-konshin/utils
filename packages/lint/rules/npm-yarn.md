@@ -123,3 +123,11 @@ Rules:
 - Unlinking: `yalc remove --all` cleans `.yalc/` and `yalc.lock` but leaves dangling symlinks in `node_modules` — delete them before `yarn install`
 - Yarn 4.17+ quarantines packages published <24h ago (`npmMinimalAgeGate`) — consumers need `npmPreapprovedPackages: ["@kirill.konshin/*"]` in `.yarnrc.yml` to install own packages right after release (older Yarn errors on that key — upgrade the consumer via `packageManager` first)
 - `.yarnrc.local.yml` is NOT a thing (open Yarn feature request, local overrides only via `YARN_*` env vars) and yalc runs NO registry (it is a file store in `~/.yalc`), so a registry override cannot replace linking — `yalc link` is the only mode that leaves all manifests untouched
+
+# First Publish with OIDC
+
+- Never bootstrap, publish, or push a release without explicit approval.
+- Bootstrap a new npm package once from a locally authenticated session with `npm publish --access public --tag bootstrap`; complete npm's interactive 2FA challenge, or use `--otp=<code>` for TOTP.
+- Configure its GitHub trusted publisher for organization/user `kirill-konshin`, repository `utils`, workflow `release.yml`, optional environment `npm-publish`, and check **Allow npm publish**.
+- Under Publishing access, check **Require two-factor authentication and disallow bypass 2FA tokens (recommended)**; OIDC publishes remain allowed and should be used for every normal release.
+- The first conventional `feat` release establishes the normal `latest` version.

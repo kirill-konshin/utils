@@ -1,0 +1,83 @@
+{
+  "name": "@kirill.konshin/db",
+  "description": "Typed Neon Postgres and Drizzle connection, transaction, and migration helpers",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vite build",
+    "build:index": "cti create ./src",
+    "build:check-types": "attw --pack .",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
+    "----- TEST -----": "",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@electric-sql/pglite": "^0.5.5",
+    "@kirill.konshin/utils-private": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-konshin/utils.git",
+    "directory": "packages/db"
+  },
+  "nx": {
+    "tags": [
+      "platform:node"
+    ]
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./url": {
+      "types": "./dist/url/index.d.ts",
+      "import": "./dist/url/index.js",
+      "default": "./dist/url/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
+    },
+    "./neon-serverless": {
+      "types": "./dist/neon-serverless/index.d.ts",
+      "import": "./dist/neon-serverless/index.js",
+      "default": "./dist/neon-serverless/index.js"
+    },
+    "./neon-http": {
+      "types": "./dist/neon-http/index.d.ts",
+      "import": "./dist/neon-http/index.js",
+      "default": "./dist/neon-http/index.js"
+    },
+    "./migrate": {
+      "types": "./dist/migrate/index.d.ts",
+      "import": "./dist/migrate/index.js",
+      "default": "./dist/migrate/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT"
+}
