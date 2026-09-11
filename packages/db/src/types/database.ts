@@ -14,3 +14,9 @@ export type DatabaseTransactionFor<
 
 export type DatabaseExecutorFor<TSchema extends Record<string, unknown>, TQueryResult extends PgQueryResultHKT> =
     DatabaseFor<TSchema, TQueryResult> | DatabaseTransactionFor<TSchema, TQueryResult>;
+
+export type TypesFor<TSchema extends Record<string, unknown>> = {
+    Database: DatabaseFor<TSchema, PgQueryResultHKT>;
+    Transaction: DatabaseTransactionFor<TSchema, PgQueryResultHKT>;
+    DatabaseExecutor: DatabaseExecutorFor<TSchema, PgQueryResultHKT>;
+};
