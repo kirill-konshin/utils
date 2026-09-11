@@ -13,20 +13,26 @@ A package is released when a `feat`/`fix` commit touches its files — the scope
 
 Commit messages are validated locally by a `commit-msg` hook (commitlint) and on CI. PRs are squash-merged with the PR title as the commit message, so the title must also be a valid conventional commit (validated by the PR workflow).
 
-### First publish & backfill (manual)
+### First publish (manual bootstrap)
 
-CI publishes via npm [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC), which cannot publish a package that does not exist on npm yet ([npm/cli#8544](https://github.com/npm/cli/issues/8544)). A new package's first release run will tag and create the GitHub Release, then fail the publish. Fix by publishing the tagged version manually — same procedure backfills any version where a tag exists but the npm publish failed (tags/releases stay intact).
-
-Requires `npm login` (not Yarn). Per package, with `<pkg>`/`<version>` from the failed tag `@kirill.konshin/<pkg>@<version>`:
+OIDC cannot create a package that does not exist on npm. Keep its source version at `0.0.0`, run its build and tests, then bootstrap it once from an `npm login` session:
 
 ```bash
-git pull --tags
-yarn install
-yarn run build:packages
-cd /Users/dis/Sites/Libs/utils/packages/<pkg> && npm pkg set version=0.0.1 && npm publish --otp=
+cd /Users/dis/Sites/Libs/utils/packages/<pkg>
+npm publish --access public --tag bootstrap --otp=<code>
 ```
 
-After the first publish, add a Trusted Publisher on npmjs.com (package → Settings → Trusted Publisher → GitHub Actions): organization `kirill-konshin`, repository `utils`, workflow `release.yml`, environment `npm-publish`. Without it every CI publish of that package fails.
+Omit `--otp` when npm provides another interactive 2FA challenge. Then open the package settings on npm:
+
+1. Under **Trusted publishing**, choose **GitHub Actions** and set:
+    - **Organization or user:** `kirill-konshin`
+    - **Repository:** `utils`
+    - **Workflow filename:** `release.yml`
+    - **Environment name (optional):** `npm-publish`
+    - **Allow npm publish:** checked
+2. Under **Publishing access**, check **Require two-factor authentication and disallow bypass 2FA tokens (recommended)**.
+
+The first `feat` commit publishes `0.1.0` as `latest`; normal releases use OIDC only.
 
 ## Commands
 
@@ -40,5 +46,4 @@ After the first publish, add a Trusted Publisher on npmjs.com (package → Setti
 
 ## AI Commands
 
-`/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency
-`/lint-repo` — sets up/updates the ESLint·Prettier·Husky tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`)
+`/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency `/lint-repo` — sets up/updates the ESLint·Prettier·Husky tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`)
