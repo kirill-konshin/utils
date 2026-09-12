@@ -3,10 +3,14 @@ type: always_apply
 description: Set of rules for projects which use Gitlab
 paths:
     - '**/.gitlab-ci.yml'
+    - '**/.gitlab/**/*.yml'
+    - '**/.gitlab/**/*.yaml'
 ---
 
 - Always collect coverage from tests
 - Always publish important build stats as artifacts
+- Agentic review MUST verify this effective CI order: checkout and cache restore -> enable Corepack -> immutable install -> prepare -> verification (lint/test/build) -> publish; publishing MUST depend on successful verification.
+- Keep local build-cache keys job-specific in parallel pipelines; use a remote Nx or Turbo cache when results must be shared across jobs.
 
 # Example
 
@@ -18,21 +22,23 @@ variables:
 
 cache:
     - key:
+          prefix: yarn
           files:
               - yarn.lock # dependencies cached based on lockfile
       paths:
-          - .yarn
-          - .pnp.js
-          - yarn.lock
-          - node_modules
-          - '**/node_modules'
-    - key: $CI_COMMIT_REF_NAME # build-related files cached per-branch
+          - .yarn/cache
+      policy: pull-push
+    # Job-specific keys prevent parallel jobs from replacing each other's local build cache.
+    - key: build-$CI_JOB_NAME_SLUG-$CI_COMMIT_REF_SLUG
+      fallback_keys:
+          - build-$CI_JOB_NAME_SLUG-$CI_DEFAULT_BRANCH
       paths:
-          - '**/.turbo'
-          - '**/.nx'
+          - .turbo
+          - .nx/cache
           - '**/.tscache'
           - '**/.tsbuildinfo'
           - '**/.next/cache'
+      policy: pull-push
 
 stages:
     - install
@@ -80,11 +86,4 @@ build:
             - web/build
 ```
 
-Cache `.yarn` individually is possible but not needed:
-
-```yaml
-- .yarn/cache
-- .yarn/unplugged
-- .yarn/build-state.yml
-- .yarn/install-state.gz
-```
+- Use Nx Cloud or Turbo Remote Cache when build results must be shared safely across parallel jobs.

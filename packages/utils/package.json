@@ -15,6 +15,7 @@
     "@kirill.konshin/bootstrap": "*",
     "@kirill.konshin/browser": "*",
     "@kirill.konshin/core": "*",
+    "@kirill.konshin/db": "*",
     "@kirill.konshin/electron": "*",
     "@kirill.konshin/electron-builder": "*",
     "@kirill.konshin/icons": "*",

@@ -3,7 +3,12 @@ type: always_apply
 description: Set of rules for projects which use Github
 paths:
     - '**/.github/*.yml'
+    - '**/.github/**/*.yml'
+    - '**/.github/**/*.yaml'
 ---
+
+- Agentic review MUST verify this effective CI order: checkout -> enable Corepack -> setup Node with Yarn cache -> restore build caches -> immutable install -> prepare -> verification (lint/test/build) -> publish; publishing MUST depend on successful verification.
+- In multi-job workflows, use job-specific build-cache keys with a same-run fallback so downstream jobs reuse upstream results without immutable-key collisions.
 
 # Example Workflow
 
@@ -42,28 +47,16 @@ jobs:
             - name: Checkout Repo
               uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v6
-              with:
-                  node-version: 26
-                  registry-url: 'https://registry.npmjs.org'
-                  cache: yarn
-                  cache-dependency-path: yarn.lock
-
             - name: Enable Corepack
               run: corepack enable
 
-            - name: Get yarn cache directory path
-              id: yarn-cache-dir-path
-              run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
-
-            - uses: actions/cache@v6
-              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
               with:
-                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-                  restore-keys: |
-                      ${{ runner.os }}-yarn-
+                  node-version: 24
+                  registry-url: 'https://registry.npmjs.org'
+                  cache: yarn
+                  cache-dependency-path: yarn.lock
 
             #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
             #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
@@ -71,17 +64,19 @@ jobs:
               uses: actions/cache@v6
               with:
                   path: .turbo
-                  key: ${{ runner.os }}-turbo-${{ github.sha }}
+                  key: ${{ runner.os }}-turbo-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
                   restore-keys: |
+                      ${{ runner.os }}-turbo-${{ github.run_id }}-${{ github.run_attempt }}-
                       ${{ runner.os }}-turbo-
 
-            - name: Cache NX
+            - name: Cache Nx
               uses: actions/cache@v6
               with:
-                  path: .nx
-                  key: ${{ runner.os }}-turbo-${{ github.sha }}
+                  path: .nx/cache
+                  key: ${{ runner.os }}-nx-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
                   restore-keys: |
-                      ${{ runner.os }}-turbo-
+                      ${{ runner.os }}-nx-${{ github.run_id }}-${{ github.run_attempt }}-
+                      ${{ runner.os }}-nx-
 
             - name: Install dependencies
               run: yarn install --immutable
