@@ -22,7 +22,7 @@ export const formats = ['es'] as const;
 
 export const entryGlob = 'src/index.ts';
 export const excludeGlob = 'src/**/*.{stories,test,fixture}.{ts,tsx}';
-export const includeGlob = 'src/**/!(*.stories|*.test,fixture).{ts,tsx}';
+export const includeGlob = 'src/**/*.{ts,tsx}';
 export const foldersGlob = 'src/*/';
 
 const packageDependencies = [...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {})];

@@ -5290,7 +5290,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@kirill.konshin/db@workspace:packages/db":
+"@kirill.konshin/db@npm:*, @kirill.konshin/db@workspace:packages/db":
   version: 0.0.0-use.local
   resolution: "@kirill.konshin/db@workspace:packages/db"
   dependencies:
@@ -5600,6 +5600,7 @@ __metadata:
     "@kirill.konshin/bootstrap": "npm:*"
     "@kirill.konshin/browser": "npm:*"
     "@kirill.konshin/core": "npm:*"
+    "@kirill.konshin/db": "npm:*"
     "@kirill.konshin/electron": "npm:*"
     "@kirill.konshin/electron-builder": "npm:*"
     "@kirill.konshin/icons": "npm:*"

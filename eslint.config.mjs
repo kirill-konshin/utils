@@ -75,6 +75,9 @@ export default defineConfig([
             '@nx/dependency-checks': [
                 'error',
                 {
+                    // Inferred nx:run-script build targets expose no npm dependency graph to this rule;
+                    // its fixer would otherwise delete every declared dependency as "obsolete".
+                    checkObsoleteDependencies: false,
                     ignoredDependencies: [
                         '@kirill.konshin/utils-private',
                         '@storybook/react-vite',

@@ -8,11 +8,13 @@ import {
     checkTypes,
     distDir,
     entry,
+    excludeGlob,
     external,
     fixDtsExtensions,
     fixExports,
     formats,
     generateIndex,
+    includeGlob,
     pkg,
 } from './vite.exports';
 
@@ -60,7 +62,13 @@ export default defineConfig({
         preserveDirectives(), // https://github.com/vitejs/vite/discussions/15721#discussioncomment-10572828
         //TODO Check https://github.com/alloc/vite-dts
         dts({
+            include: [includeGlob],
+            exclude: [excludeGlob],
             beforeWriteFile: (filePath, content) => ({ filePath, content: fixDtsExtensions(filePath, content) }),
+            afterDiagnostic: (diagnostics) => {
+                if (diagnostics.length > 0)
+                    throw new Error(`TypeScript found ${diagnostics.length} error(s) in ${pkg.name}`);
+            },
         }),
         {
             name: 'Generate Index & Exports',
