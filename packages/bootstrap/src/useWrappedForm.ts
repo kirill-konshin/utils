@@ -9,9 +9,9 @@ export const useWrappedForm: typeof useForm = (options) => {
 
     const handleSubmit: typeof form.handleSubmit = useCallback(
         (onSubmit, onError) => {
-            const wrappedSubmit: typeof onSubmit = async (data) => {
+            const wrappedSubmit = async (data: Parameters<typeof onSubmit>[0]) => {
                 try {
-                    await onSubmit(data);
+                    return await onSubmit(data);
                 } catch (e) {
                     form.setError('root', { type: 'server', message: (e as Error).message });
                     console.error('Error submitting form', e);

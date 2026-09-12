@@ -6,6 +6,8 @@ import { type z } from 'zod';
 
 import { create, type MaybeTypeOf, type Validation } from './validation';
 
+declare const process: { env: { NEXT_PUBLIC_FORM_DEBUG?: string } };
+
 const FORM_DEBUG = process.env.NEXT_PUBLIC_FORM_DEBUG === 'true';
 
 export function createClient<S extends z.ZodObject<any>>(

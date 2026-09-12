@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { EncodingType, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 /**
@@ -9,7 +9,7 @@ import * as Sharing from 'expo-sharing';
  * @returns {Promise<void>}
  */
 export const shareDialog = async (base64: string, fileName: string): Promise<void> => {
-    const path = `${FileSystem.documentDirectory}/${fileName}`;
+    const file = new File(Paths.document, fileName);
 
     try {
         if (!(await Sharing.isAvailableAsync())) throw new Error('Sharing is not available');
@@ -18,14 +18,14 @@ export const shareDialog = async (base64: string, fileName: string): Promise<voi
         const [, mimeTypeStr] = header.split(':');
         const [mimeType] = mimeTypeStr.split(';');
 
-        await FileSystem.writeAsStringAsync(`${path}`, buffer, {
-            encoding: FileSystem.EncodingType.Base64,
+        file.write(buffer, {
+            encoding: EncodingType.Base64,
         });
 
-        await Sharing.shareAsync(path, { mimeType, UTI: fileName, dialogTitle: 'Save or share document' });
+        await Sharing.shareAsync(file.uri, { mimeType, UTI: fileName, dialogTitle: 'Save or share document' });
     } catch (error) {
         alert('Sharing failed: ' + error.message);
     } finally {
-        await FileSystem.deleteAsync(path);
+        if (file.exists) file.delete();
     }
 };

@@ -1,6 +1,6 @@
 export const downloadFile = async (file: File): Promise<void> => {
     //FIXME https://github.com/eligrey/FileSaver.js/issues/471
-    const { saveAs } = require('file-saver');
+    const { saveAs } = await import('file-saver');
 
     //FIXME https://github.com/eligrey/FileSaver.js/issues/731
     return saveAs(file, file.name);
