@@ -235,11 +235,16 @@ export function symlinkClaudeMd(cwd: string): void {
 export function generateAgentsFile(rules: Rule[], cwd: string, customSection: string | null): string {
     const relativeRulesDir = path.relative(cwd, RULES_DIR).split(path.sep).join('/');
 
-    const includes = rules.map((rule) => `@include ${relativeRulesDir}/${rule.file}`).join('\n');
+    /**
+     * @see https://code.claude.com/docs/en/memory#import-additional-files
+     * @see https://github.com/anthropics/claude-code/issues/13614 @import -> @path/file.md in Claude
+     * @see https://github.com/openai/codex/issues/17401 - no @path/file.md in Codex yet
+     */
+    const links = rules
+        .map((rule) => `- @${relativeRulesDir}/${rule.file} [${rule.file}](${relativeRulesDir}/${rule.file})`)
+        .join('\n');
 
-    const links = rules.map((rule) => `- [${rule.file}](${relativeRulesDir}/${rule.file})`).join('\n');
-
-    const generated = `${HEADER}\n\n${includes}\n\n${links}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
+    const generated = `${HEADER}\n\n${links}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
 
     return customSection ? `${generated}\n\n${customSection}\n` : `${generated}\n`;
 }
