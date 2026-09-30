@@ -197,3 +197,19 @@ Ban build directories from search using examples:
   </component>
 </project>
 ```
+
+# Git Worktrees
+
+`.idea/%projectName%.iml`, `.idea/modules.xml` and `.idea/.name` are usually tracked. Every git worktree therefore checks out a module with the same name as the main checkout's, and WebStorm refuses to attach it: `Cannot attach project: Module name '%projectName%' already exists`.
+
+- When creating a worktree, ALWAYS give it a distinct module and project name derived from the branch, e.g. `Packing Travel App` for `travel-app`:
+    1. Copy `.idea/%projectName%.iml` to `.idea/%projectName% %Branch Title%.iml`. The module name is the file name.
+    2. Point `.idea/modules.xml` at the copy.
+    3. Write the same name into `.idea/.name`.
+- Keep the rename local, and NEVER commit it or merge it back:
+    - Run `git update-index --skip-worktree .idea/modules.xml .idea/.name`.
+    - Ignore the copy in the shared `.git/info/exclude` with the pattern `.idea/%projectName% *.iml`.
+- Before a rebase, merge or checkout that updates those files:
+    1. Run `git update-index --no-skip-worktree .idea/modules.xml .idea/.name`.
+    2. Restore the files with `git checkout -- .idea/modules.xml .idea/.name`.
+    3. Redo the rename afterwards.
