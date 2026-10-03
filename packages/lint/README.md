@@ -206,20 +206,22 @@ The Tailwind block auto-scopes to the **workspace package** owning the entry CSS
 ## Prettier `.prettierrc.mjs`:
 
 ```js
-import { prettier } from '@kirill.konshin/lint';
+import { prettier } from '@kirill.konshin/lint/prettier';
 export default prettier;
 ```
 
 or
 
 ```js
-import { prettier } from '@kirill.konshin/lint';
+import { prettier } from '@kirill.konshin/lint/prettier';
 
 export default {
     ...prettier,
     // overrides
 };
 ```
+
+Import from `/prettier`, not the package root: the root loads every ESLint plugin, which would slow down each Prettier run.
 
 ## Editor Config `.editorconfig`
 
@@ -270,9 +272,11 @@ indent_style = tab
 `.lintstagedrc.mjs`
 
 ```js
-import { listStaged } from '@kirill.konshin/lint';
+import { listStaged } from '@kirill.konshin/lint/lint-staged';
 export default listStaged;
 ```
+
+Import from `/lint-staged`, not the package root, for the same reason as `/prettier`. Tasks run the `eslint` / `prettier` scripts above through `node --run` (Node ≥ 22, `node_modules` linker), not `yarn`, which loads the whole project state before every script.
 
 ### Husky
 
@@ -296,8 +300,10 @@ By default, always use the `prepare` script, as [Husky recommends](https://typic
 
 ```bash
 #!/bin/zsh
-yarn lint:staged
+node --run lint:staged
 ```
+
+Run scripts with `node --run` and tools directly (Husky puts `node_modules/.bin` on `PATH`): a `yarn` hop costs seconds.
 
 Note `source ~/.zshrc # for VSCode terminal` may be added for VSCode terminal that is not aware of ZSH. Do not add unless specifically asked, and remove if present.
 
@@ -404,7 +410,7 @@ Tool-gated functions take the same value as their `defineLintConfig` flag and ga
 Due to limitations package visibility between leaf and root this package has to be creative to support config-free detection.
 
 1. **Package probe** — `local-pkg`'s `isPackageExists` anchored at the **workspace root**, the same scope the plugins resolve from at lint time (`has<Pkg>` exported for debugging).
-2. **Evidence scan** — tool config files across the workspace: the root directory plus every **workspace package** (the real `workspaces`/`pnpm-workspace.yaml` globs via `@manypkg/get-packages`, not a depth heuristic), skipping dot dirs, build outputs, and `.gitignore`d files; exported as `scanWorkspace`. Catches tools installed only in **leaf** packages, invisible to the probe (1). The workspace root itself comes from env (`PROJECT_CWD`/`npm_config_local_prefix`) with `@manypkg/find-root` as the fallback (workspace manifest walk, nearest `package.json` for single-package repos; exported as `findWorkspaceRoot`), so linting from inside a package still sees the whole repo.
+2. **Evidence scan** — tool config files across the workspace: the root directory plus every **workspace package** (the real `workspaces`/`pnpm-workspace.yaml` globs via `@manypkg/get-packages`, not a depth heuristic), skipping dot dirs, build outputs, and `.gitignore`d files; exported as `scanWorkspace`. All scans of a process share one filesystem cache, so each directory is read once. Catches tools installed only in **leaf** packages, invisible to the probe (1). The workspace root itself comes from env (`PROJECT_CWD`/`npm_config_local_prefix`) with `@manypkg/find-root` as the fallback (workspace manifest walk, nearest `package.json` for single-package repos; exported as `findWorkspaceRoot`), so linting from inside a package still sees the whole repo.
 3. **Hoisting, not bridging** — the plugins need the tool's package resolvable from the workspace root; a tool that is evidently in use (2) but not resolvable there (1) is a **hard error** with hoisting guidance (keep default hoisting, pnpm `public-hoist-pattern`, or a root devDependency — see the error text) instead of a silent skip or a cryptic plugin crash. Fix it once in the package manager config; nothing is symlinked at lint time.
 4. **Yarn Berry PnP** — there is no hoisting to configure; declare the tools at the workspace root as well, keeping versions in sync with the leaves (e.g. the `"vitest": "$vitest"` version-alias hack); `next` documents its own monorepo ESLint setup.
 

@@ -7,8 +7,9 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import { globSync } from 'glob';
 
+import { tsExts } from '../exts.js';
 import type { NextOptions } from '../index.js';
-import { findWorkspaceRoot, GLOBAL_IGNORES, hasNext, scanWorkspace, toolGate, tsExts } from '../lib.js';
+import { findWorkspaceRoot, GLOBAL_IGNORES, hasNext, scanWorkspace, toolGate } from '../lib.js';
 
 // lazy so consumers without Next don't pay the load cost - re-exported from index.js
 export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;

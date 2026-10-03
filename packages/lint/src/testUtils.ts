@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -32,6 +33,23 @@ export async function inTempDir<T>(files: Record<string, string>, fn: (dir: stri
         else process.env.PROJECT_CWD = previousProjectCwd;
         rmSync(dir, { recursive: true, force: true });
     }
+}
+
+/**
+ * Third-party modules a fresh Node process loads to import the built `dist/<entry>` - a load hook records every URL.
+ */
+export function packagesLoadedBy(entry: string): string[] {
+    const script = [
+        "import { registerHooks } from 'node:module';",
+        'const loaded = [];',
+        'registerHooks({ load: (url, context, nextLoad) => (loaded.push(url), nextLoad(url, context)) });',
+        `await import(${JSON.stringify(new URL(`../dist/${entry}`, import.meta.url).href)});`,
+        'console.log(JSON.stringify(loaded));',
+    ].join('\n');
+    const loaded: string[] = JSON.parse(
+        execFileSync(process.execPath, ['--input-type=module', '--eval', script], { encoding: 'utf8' }),
+    );
+    return loaded.filter((url) => url.includes('/node_modules/'));
 }
 
 export const tailwindBlockOf = (config: Linter.Config[]): Linter.Config | undefined =>

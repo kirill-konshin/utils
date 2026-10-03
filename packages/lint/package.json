@@ -15,6 +15,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./lint-staged": {
+      "types": "./dist/lintStaged.d.ts",
+      "import": "./dist/lintStaged.js",
+      "default": "./dist/lintStaged.js"
+    },
+    "./prettier": {
+      "types": "./dist/prettier.d.ts",
+      "import": "./dist/prettier.js",
+      "default": "./dist/prettier.js"
+    },
     "./yarn": {
       "types": "./dist/yarn.d.cts",
       "require": "./dist/yarn.cjs"
@@ -62,7 +72,8 @@
     "glob": "^13.0.6",
     "globals": "^17.11.0",
     "jsonc-eslint-parser": "^3.3.0",
-    "local-pkg": "^1.2.1"
+    "local-pkg": "^1.2.1",
+    "path-scurry": "^2.0.2"
   },
   "devDependencies": {
     "@types/eslint-plugin-jsx-a11y": "^6.10.1",

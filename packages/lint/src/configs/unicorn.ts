@@ -1,7 +1,7 @@
 import type { Linter } from 'eslint';
 import unicornPlugin from 'eslint-plugin-unicorn';
 
-import { tsExts } from '../lib.js';
+import { tsExts } from '../exts.js';
 
 /**
  * Filename casing + node: protocol.

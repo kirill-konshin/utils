@@ -4,7 +4,7 @@ import importXPlugin, { createNodeResolver } from 'eslint-plugin-import-x';
 import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 
-import { tsExts } from '../lib.js';
+import { tsExts } from '../exts.js';
 
 /**
  * Import linting via eslint-plugin-import-x: recommended rules + overrides + the default-export

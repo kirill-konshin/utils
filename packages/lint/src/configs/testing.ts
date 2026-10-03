@@ -14,8 +14,9 @@ import vitestPlugin from '@vitest/eslint-plugin';
 import type { Linter, Rule } from 'eslint';
 import jestPlugin from 'eslint-plugin-jest';
 
+import { tsExts, tsExtsRaw } from '../exts.js';
 import type { ToggleOptions } from '../index.js';
-import { GLOBAL_IGNORES, hasJest, hasVitest, scanWorkspace, toolGate, tsExts, tsExtsRaw } from '../lib.js';
+import { GLOBAL_IGNORES, hasJest, hasVitest, scanWorkspace, toolGate } from '../lib.js';
 
 export { jestPlugin, vitestPlugin };
 

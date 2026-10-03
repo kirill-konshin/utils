@@ -5,6 +5,7 @@ import { findRootSync } from '@manypkg/find-root';
 import { getPackagesSync } from '@manypkg/get-packages';
 import { globSync } from 'glob';
 import { isPackageExists } from 'local-pkg';
+import { PathScurry } from 'path-scurry';
 
 import type { ToggleOptions } from './index.js';
 
@@ -27,14 +28,6 @@ type ToolGateResult<T extends ToggleOptions> = {
     options: NormalizedOptions<T>;
     files: string[];
 };
-
-export const tsExtsRaw = 'js,jsx,ts,tsx,cjs,cts,mjs,mts'; // TODO mdx, needs loader
-export const eslintExtsRaw = `${tsExtsRaw},md,mdx,htm,html,vue`;
-export const prettierExtsRaw = 'css,scss,sass,less,yml,yaml,json,json5,jsonc,graphql,graphqls,xml';
-
-export const tsExts = `{${tsExtsRaw}}`;
-export const eslintExts = `*.{${eslintExtsRaw}}`;
-export const prettierExts = `*.{${prettierExtsRaw}}`;
 
 //TODO coverage, dist, out, build?
 export const GLOBAL_IGNORES = [
@@ -175,6 +168,22 @@ const SCAN_IGNORES = [
     '**/.git',
 ];
 
+const scurries = new Map<string, PathScurry>();
+
+/**
+ * Filesystem cache of a scanned directory, shared by every {@link scanWorkspace} call: the detection scans all walk
+ * the same trees, so each directory is read once instead of once per scan. Cached per process, like the workspace
+ * root and packages.
+ */
+function scurryOf(dir: string): PathScurry {
+    const cached = scurries.get(dir);
+    if (cached) return cached;
+
+    const scurry = new PathScurry(dir);
+    scurries.set(dir, scurry);
+    return scurry;
+}
+
 /**
  * Glob for config-file candidates across the workspace: the root directory plus every workspace
  * package (the real `workspaces` globs via {@link findWorkspacePackages}, not a depth heuristic),
@@ -220,8 +229,10 @@ export function scanWorkspace(
     ];
 
     const files = [
-        ...globSync(`**/${fileGlob}`, { cwd: root, ignore: rootIgnore, absolute: true, dot }),
-        ...packages.flatMap((dir) => globSync(`**/${fileGlob}`, { cwd: dir, ignore, absolute: true, dot })),
+        ...globSync(`**/${fileGlob}`, { cwd: root, scurry: scurryOf(root), ignore: rootIgnore, absolute: true, dot }),
+        ...packages.flatMap((dir) =>
+            globSync(`**/${fileGlob}`, { cwd: dir, scurry: scurryOf(dir), ignore, absolute: true, dot }),
+        ),
     ];
 
     // debug('scanWorkspace', { fileGlob, root, packages, dot, ignores, files });
