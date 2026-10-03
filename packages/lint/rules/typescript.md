@@ -1,6 +1,6 @@
 ---
 type: always_apply
-description: Set of rules for projects with tests
+description: Set of rules for projects with TypeScript, and partially applicable to plain JavaScript
 paths:
     - '**/*.js'
     - '**/*.mjs'

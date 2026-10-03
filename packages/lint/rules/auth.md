@@ -1,6 +1,6 @@
 ---
 type: always_apply
-description: Set of rules for projects with Auth & Next.js
+description: Set of rules for user auth (only for Next.js)
 paths:
     - '**/*.tsx'
     - '**/*.ts'

@@ -1,6 +1,6 @@
 ---
 type: always_apply
-description: Set of rules for projects which use Expo
+description: Set of rules for projects which use Electron
 ---
 
 # CI Builds

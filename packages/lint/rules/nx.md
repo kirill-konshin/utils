@@ -1,6 +1,6 @@
 ---
 type: always_apply
-description: Set of rules for MONOREPO projects which use Turbo or NX
+description: Set of rules for MONOREPO projects which NX
 paths:
     - '**/nx.json'
     - '**/package.json'

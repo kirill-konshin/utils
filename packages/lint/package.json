@@ -73,7 +73,8 @@
     "globals": "^17.11.0",
     "jsonc-eslint-parser": "^3.3.0",
     "local-pkg": "^1.2.1",
-    "path-scurry": "^2.0.2"
+    "path-scurry": "^2.0.2",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/eslint-plugin-jsx-a11y": "^6.10.1",
