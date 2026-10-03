@@ -1,0 +1,1 @@
+- Files in `rules` dir must adhere to rules as defined for `.claude/rules` in `rules/agent.md`, since after installation this is how they will be consumed
