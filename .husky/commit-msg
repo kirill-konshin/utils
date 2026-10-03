@@ -1,2 +1,2 @@
 #!/bin/zsh
-yarn commitlint --edit "$1"
+commitlint --edit "$1"

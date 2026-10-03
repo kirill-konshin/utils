@@ -5390,6 +5390,7 @@ __metadata:
     globals: "npm:^17.11.0"
     jsonc-eslint-parser: "npm:^3.3.0"
     local-pkg: "npm:^1.2.1"
+    path-scurry: "npm:^2.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
     eslint: ^10

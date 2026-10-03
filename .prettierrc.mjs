@@ -1,2 +1,2 @@
-import { prettier } from '@kirill.konshin/lint';
+import { prettier } from '@kirill.konshin/lint/prettier';
 export default prettier;
