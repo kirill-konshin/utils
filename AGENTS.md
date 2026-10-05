@@ -96,6 +96,12 @@ Set of rules for MONOREPO projects which NX
 
 See instructions in @.agents/rules/nx.md [.agents/rules/nx.md](.agents/rules/nx.md).
 
+## Openspec
+
+Hard constraints while editing an OpenSpec corpus
+
+See instructions in @.agents/rules/openspec.md [.agents/rules/openspec.md](.agents/rules/openspec.md).
+
 ## React
 
 Set of rules for projects which use React

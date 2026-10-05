@@ -5420,6 +5420,7 @@ __metadata:
       optional: true
   bin:
     lint-prepare: ./dist/lintPrepare.js
+    spec-steward: ./skills/spec-steward/scripts/steward.mjs
   languageName: unknown
   linkType: soft
 

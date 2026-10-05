@@ -6,6 +6,7 @@
 .tscache
 .turbo
 .nx
+.next
 .vscode
 build
 coverage
