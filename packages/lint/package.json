@@ -5,7 +5,8 @@
   "type": "module",
   "skipGenerate": true,
   "bin": {
-    "lint-prepare": "./dist/lintPrepare.js"
+    "lint-prepare": "./dist/lintPrepare.js",
+    "spec-steward": "./skills/spec-steward/scripts/steward.mjs"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -41,7 +42,8 @@
   "files": [
     "dist",
     "rules",
-    "skills"
+    "skills",
+    "!skills/**/*.test.mjs"
   ],
   "dependencies": {
     "@eslint/config-helpers": "^0.7.0",

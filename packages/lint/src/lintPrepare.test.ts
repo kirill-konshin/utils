@@ -18,6 +18,7 @@ import {
     installedRules,
     packageFiles,
     readRules,
+    readSkills,
     readUserFiles,
     syncAgentDirs,
 } from './lintPrepare.js';
@@ -92,6 +93,26 @@ test('syncAgentDirs: creates every agent dir and links package files straight to
                 linkTarget(join(cwd, agentDir, 'skills/lint-repo/SKILL.md')),
                 realpathSync(join(PACKAGE_DIR, 'skills/lint-repo.md')),
             );
+        }
+    });
+});
+
+test('syncAgentDirs: a folder skill arrives in every agent dir with its scripts, each file linked to the package', async () => {
+    const folderSkill = readSkills().find((skill) => skill.name === 'spec-steward');
+    assert.ok(folderSkill?.folder, 'spec-steward is read as a folder skill');
+
+    await inTempDir({ '.keep': '' }, async (cwd) => {
+        sync(cwd, packageFiles([], [folderSkill]));
+
+        const shipped = join(PACKAGE_DIR, 'skills', folderSkill.name);
+        for (const agentDir of AGENT_DIRS) {
+            const skill = join(cwd, agentDir, 'skills', folderSkill.name);
+            assert.equal(linkTarget(join(skill, 'SKILL.md')), realpathSync(join(shipped, 'SKILL.md')));
+            assert.equal(
+                linkTarget(join(skill, 'scripts/steward.mjs')),
+                realpathSync(join(shipped, 'scripts/steward.mjs')),
+            );
+            assert.ok(!lstatSync(join(skill, 'scripts')).isSymbolicLink());
         }
     });
 });

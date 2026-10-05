@@ -24,3 +24,4 @@ paths:
     - Mock class methods/values or wrap originals in mocks for visibility
 - Create helper/factory functions for repeated setup, keep tests DRY
 - Prefer tests to be logic-free
+- Write a test because it catches a regression, NEVER so that spec text counts as covered
