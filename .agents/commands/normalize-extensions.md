@@ -6,7 +6,7 @@ Normalize every place in this repo that defines which file extensions ESLint / P
 
 # Canonical source of truth
 
-Read the current values from `packages/lint/index.js` (do NOT hardcode them — they evolve):
+Read the current values from `packages/lint/src/exts.ts` (do NOT hardcode them — they evolve):
 
 - `tsExtsRaw` — TS/JS code extensions
 - `eslintExtsRaw` — everything ESLint lints = `tsExtsRaw` + docs/markup (md, mdx, htm, html, vue)
@@ -16,20 +16,20 @@ Division logic (must hold everywhere):
 
 - **TS side** (`eslintExtsRaw`) → ESLint scope, **4 spaces** indent
 - **non-TS side** (`prettierExtsRaw`) → Prettier-only scope, **2 spaces** indent
-- **Full Prettier scope** = `eslintExtsRaw` + `prettierExtsRaw` (Prettier default `tabWidth: 2` with a `tabWidth: 4` override for `eslintExts` — see the `prettier` export in the same file)
+- **Full Prettier scope** = `eslintExtsRaw` + `prettierExtsRaw` (Prettier default `tabWidth: 2` with a `tabWidth: 4` override for `eslintExts` — see the `prettier` export in `packages/lint/src/prettier.ts`)
 
 Sanity check first: `eslintExtsRaw` and `prettierExtsRaw` must not intersect, and every extension must belong to exactly one indent group. If the canonical lists themselves are inconsistent, stop and report instead of propagating.
 
 # Known locations to normalize
 
-| File                              | What must match                                                                                                                       |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `.editorconfig`                   | 4-space section = `[*.{<eslintExtsRaw>}]`; 2-space section = `[*.{<prettierExtsRaw>}]`                                                |
-| `.idea/prettier.xml`              | `myFilesPattern` = `{**/*,*}.{<eslintExtsRaw + prettierExtsRaw>}` (the `{**/*,*}` shape covers root-level files)                      |
-| `.idea/jsLinters/eslint.xml`      | `files-pattern` = `**/*.{<eslintExtsRaw>}` — add the option if missing                                                                |
-| `packages/lint/rules/webstorm.md` | the `prettier.xml` and `jsLinters/eslint.xml` templates — same values as the two rows above                                           |
-| `packages/lint/README.md`         | "IDEA settings" section: Eslint line = `eslintExtsRaw`, Prettier line = full Prettier scope, same pattern shapes as the `.idea` files |
-| `eslint.config.mjs` (root)        | hardcoded code-file globs (e.g. the Nx module-boundaries `files`) should import `tsExts` from the package instead of inlining a list  |
+| File | What must match |
+| --- | --- |
+| `.editorconfig` | 4-space section = `[*.{<eslintExtsRaw>}]`; 2-space section = `[*.{<prettierExtsRaw>}]` |
+| `.idea/prettier.xml` | `myFilesPattern` = `{**/*,*}.{<eslintExtsRaw + prettierExtsRaw>}` (the `{**/*,*}` shape covers root-level files) |
+| `.idea/jsLinters/eslint.xml` | `files-pattern` = `**/*.{<eslintExtsRaw>}` — add the option if missing |
+| `packages/lint/skills/lint-webstorm/SKILL.md` | the `prettier.xml` and `jsLinters/eslint.xml` templates — same values as the two rows above |
+| `packages/lint/README.md` | "IDEA settings" section: Eslint line = `eslintExtsRaw`, Prettier line = full Prettier scope, same pattern shapes as the `.idea` files |
+| `eslint.config.mjs` (root) | hardcoded code-file globs (e.g. the Nx module-boundaries `files`) should import `tsExts` from the package instead of inlining a list |
 
 In JS/TS files prefer importing `tsExts` / `eslintExts` / `prettierExts` from `@kirill.konshin/lint` over pasting literals. In non-importable formats (xml, editorconfig, md docs) paste the literal expansion.
 
@@ -42,9 +42,9 @@ Grep for brace-glob extension lists — pattern like `\{[a-z0-9]+(,[a-z0-9]+)+\}
 
 # Normalization rules
 
-- Use the exact extension order from `index.js` (`tsExtsRaw` order first, then the extra eslint extensions, then `prettierExtsRaw` order). Byte-identical lists everywhere.
+- Use the exact extension order from `exts.ts` (`tsExtsRaw` order first, then the extra eslint extensions, then `prettierExtsRaw` order). Byte-identical lists everywhere.
 - No spaces inside braces, all lowercase.
-- Pattern _shape_ authority is the `webstorm.md` template (`{**/*,*}.` for Prettier, `**/*.` for ESLint); extension _set_ authority is `index.js`. If shapes disagree between locations, normalize to the template and note it in the report.
+- Pattern _shape_ authority is the `lint-webstorm` skill template (`{**/*,*}.` for Prettier, `**/*.` for ESLint); extension _set_ authority is `exts.ts`. If shapes disagree between locations, normalize to the template and note it in the report.
 - Only propagate the canonical lists — never edit `tsExtsRaw`/`eslintExtsRaw`/`prettierExtsRaw` themselves (e.g. the `TODO mdx` stays as-is).
 - If a location has a deliberately narrower scope (e.g. a glob limited to `src/`), keep its path prefix and only normalize the extension braces.
 
