@@ -1,3 +1,8 @@
+---
+name: dependencies
+description: Where dependencies are declared in this monorepo - root package.json for single-version ones, each package's own for the rest. Use when adding, removing or upgrading dependencies.
+---
+
 # Dev Dependencies
 
 Repo is using hybrid NX-like dependency management strategy:

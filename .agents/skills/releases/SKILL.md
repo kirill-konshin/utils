@@ -1,3 +1,8 @@
+---
+name: releases
+description: How Nx Release versions and publishes packages from Conventional Commits. Use when writing commit messages or working out what a change will release.
+---
+
 # Releases
 
 Automated with Nx Release + Conventional Commits (see `release` config in root `nx.json`):
