@@ -9,7 +9,7 @@ import {
     renameSync,
     symlinkSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 
@@ -28,7 +28,7 @@ const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url));
 const AGENT_DIRS = ['.agents', '.claude', '.codex'];
 const MIRROR_DIRS = ['.claude', '.codex'];
 const AUTH_RULE = { file: 'auth.md', name: 'auth', content: '' };
-const LINT_REPO_SKILL = { file: 'lint-repo.md', name: 'lint-repo' };
+const LINT_REPO_SKILL = { name: 'lint-repo' };
 
 /**
  * Where `link` points, one hop only - a chained link would resolve to another link, not to the file itself.
@@ -91,28 +91,35 @@ test('syncAgentDirs: creates every agent dir and links package files straight to
             );
             assert.equal(
                 linkTarget(join(cwd, agentDir, 'skills/lint-repo/SKILL.md')),
-                realpathSync(join(PACKAGE_DIR, 'skills/lint-repo.md')),
+                realpathSync(join(PACKAGE_DIR, 'skills/lint-repo/SKILL.md')),
             );
         }
     });
 });
 
-test('syncAgentDirs: a folder skill arrives in every agent dir with its scripts, each file linked to the package', async () => {
-    const folderSkill = readSkills().find((skill) => skill.name === 'spec-steward');
-    assert.ok(folderSkill?.folder, 'spec-steward is read as a folder skill');
+test('syncAgentDirs: every shipped skill arrives in every agent dir complete, with the package README next to SKILL.md', async () => {
+    const skills = readSkills();
+    const files = packageFiles([], skills);
 
     await inTempDir({ '.keep': '' }, async (cwd) => {
-        sync(cwd, packageFiles([], [folderSkill]));
+        sync(cwd, files);
 
-        const shipped = join(PACKAGE_DIR, 'skills', folderSkill.name);
-        for (const agentDir of AGENT_DIRS) {
-            const skill = join(cwd, agentDir, 'skills', folderSkill.name);
-            assert.equal(linkTarget(join(skill, 'SKILL.md')), realpathSync(join(shipped, 'SKILL.md')));
-            assert.equal(
-                linkTarget(join(skill, 'scripts/steward.mjs')),
-                realpathSync(join(shipped, 'scripts/steward.mjs')),
-            );
-            assert.ok(!lstatSync(join(skill, 'scripts')).isSymbolicLink());
+        for (const { name } of skills) {
+            const shipped = join(PACKAGE_DIR, 'skills', name);
+            const shippedFiles = readdirSync(shipped, { recursive: true, withFileTypes: true })
+                .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+                .map((entry) => relative(shipped, join(entry.parentPath, entry.name)));
+
+            for (const agentDir of AGENT_DIRS) {
+                const skill = join(cwd, agentDir, 'skills', name);
+
+                for (const file of shippedFiles) {
+                    assert.equal(linkTarget(join(skill, file)), realpathSync(join(shipped, file)), `${name}/${file}`);
+                    assert.ok(!lstatSync(dirname(join(skill, file))).isSymbolicLink(), `${name}/${file} dir`);
+                }
+
+                assert.ok(lstatSync(join(skill, 'README.md')).isSymbolicLink(), `${name}/README.md`);
+            }
         }
     });
 });

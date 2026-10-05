@@ -7,6 +7,8 @@ paths:
 
 - Story files: `*.stories.tsx`
 
+# Suggested basic template
+
 ```tsx
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ComponentName } from './componentName';

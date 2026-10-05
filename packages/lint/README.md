@@ -330,7 +330,7 @@ The generated `AGENTS.md` has a `# Custom Rules` section at the bottom — add p
 In the project root, `lint-prepare`:
 
 - Creates real `rules/`, `commands/` and `skills/` directories in `.agents/` (canonical, cross-tool), `.claude/` (Claude Code) and `.codex/`, and only ever symlinks files into them.
-- Links every `rules/*.md` and skill (`skills/<name>/SKILL.md` plus this `README.md` alongside it, so a skill can reference `@README.md`) into all three — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules. Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package).
+- Links every `rules/*.md` and every skill folder (`skills/<name>/` with all its files, plus this `README.md` next to `SKILL.md` unless the skill ships one, so a skill can reference `@README.md`) into all three — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules. Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package).
 - Mirrors your own files from `.agents/{rules,commands,skills}/` into `.claude/` and `.codex/`; a file of yours wins over the package file at the same path.
 - Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs. Each directory gets a generated `.gitignore` listing its links, so your own files stay tracked.
 - Generates `AGENTS.md` for other assistants (Codex, Cursor, Copilot, …) with a `# Rules` section — per rule (the package's and yours) a `## <Title>` (from the file name), its frontmatter `description` and an `@path` to its `.agents/rules/<file>` entry — and symlinks `CLAUDE.md` to it.

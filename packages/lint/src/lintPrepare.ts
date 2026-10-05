@@ -5,10 +5,10 @@
  *
  * This script makes `rules`, `commands` and `skills` real directories in the consuming project's
  * `.agents` (canonical, cross-tool), `.claude` (Claude Code) and `.codex`, and fills them with
- * file symlinks only: package rules and skills (SKILL.md plus the package README.md alongside it,
- * so a skill can reference `@README.md`; a folder skill with every file it ships) go into all three, pointing straight
- * at the installed
- * package; the user's own files in `.agents` are mirrored into `.claude` and `.codex`. It also
+ * file symlinks only: package rules and skills (every file a skill folder ships, plus the package
+ * README.md next to its SKILL.md, so a skill can reference `@README.md`) go into all three, pointing
+ * straight at the installed package; the user's own files in `.agents` are mirrored into `.claude`
+ * and `.codex`. It also
  * generates an `AGENTS.md` file for other tools, with `CLAUDE.md` symlinked to `AGENTS.md`.
  *
  * Usage:
@@ -29,7 +29,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 type Rule = { file: string; name: string; description?: string; content: string };
-type Skill = { file: string; name: string; folder?: boolean };
+type Skill = { name: string };
 type ExistingFile = { exists: boolean; generated: boolean; customSection: string | null };
 
 const AGENTS_FILE = 'AGENTS.md';
@@ -261,30 +261,23 @@ export function readRules(): Rule[] {
 }
 
 /**
- * Read the package skills directory. A markdown file becomes its own skill, named after the file (without extension)
- * - e.g. `lint-repo.md` becomes the `lint-repo` skill; a directory holding a `SKILL.md` is a folder skill named after
- * the directory, shipped with its scripts and references.
+ * Read the package skills directory: every directory holding a `SKILL.md` is a skill named after the directory,
+ * shipped with all its files (scripts, references, ...).
  */
 export function readSkills(): Skill[] {
     if (!fs.existsSync(SKILLS_DIR)) return [];
 
     return fs
         .readdirSync(SKILLS_DIR, { withFileTypes: true })
-        .flatMap((entry): Skill[] => {
-            if (entry.isDirectory() && fs.existsSync(path.join(SKILLS_DIR, entry.name, 'SKILL.md'))) {
-                return [{ file: entry.name, name: entry.name, folder: true }];
-            }
-            return entry.isFile() && entry.name.endsWith('.md')
-                ? [{ file: entry.name, name: entry.name.replace('.md', '') }]
-                : [];
-        })
+        .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(SKILLS_DIR, entry.name, 'SKILL.md')))
+        .map((entry) => ({ name: entry.name }))
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
- * Package files to link, keyed by their path inside an agent dir: `rules/<file>`, `skills/<name>/SKILL.md` plus the
- * package README.md next to it, so a skill can reference `@README.md`, and every file of a folder skill at its own
- * relative path.
+ * Package files to link, keyed by their path inside an agent dir: `rules/<file>`, and every file of a skill at its
+ * own relative path, plus the package README.md next to its `SKILL.md` (unless the skill ships one), so a skill can
+ * reference `@README.md`.
  */
 export function packageFiles(rules: Rule[], skills: Skill[]): Map<string, string> {
     const files = new Map<string, string>();
@@ -295,15 +288,14 @@ export function packageFiles(rules: Rule[], skills: Skill[]): Map<string, string
     }
 
     for (const skill of skills) {
-        if (skill.folder) {
-            const root = path.join(SKILLS_DIR, skill.file);
-            for (const file of listRealFiles(root)) {
-                files.set(path.join('skills', skill.name, file), path.join(root, file));
-            }
-            continue;
+        const root = path.join(SKILLS_DIR, skill.name);
+        const readme = path.join('skills', skill.name, 'README.md');
+
+        for (const file of listRealFiles(root)) {
+            files.set(path.join('skills', skill.name, file), path.join(root, file));
         }
-        files.set(path.join('skills', skill.name, 'SKILL.md'), path.join(SKILLS_DIR, skill.file));
-        if (hasReadme) files.set(path.join('skills', skill.name, 'README.md'), README_FILE);
+
+        if (hasReadme && !files.has(readme)) files.set(readme, README_FILE);
     }
 
     return files;

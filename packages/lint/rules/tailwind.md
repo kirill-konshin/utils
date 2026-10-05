@@ -61,4 +61,4 @@ export default defineLintConfig({
 
 # Webstorm
 
-See [specific webstorm instructions](webstorm.md) if project uses Tailwind.
+See the `lint-webstorm` skill (`.idea/tailwindcss.xml`) if project uses WebStorm.

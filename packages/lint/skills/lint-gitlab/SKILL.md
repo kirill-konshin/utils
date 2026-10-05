@@ -1,0 +1,76 @@
+---
+name: lint-gitlab
+description: Describes how to work with Gitlab Pipelines & example pipeline as a reference which essential jobs and concepts usual Gitlab project should have
+---
+
+```yml
+image: node:lts
+
+variables:
+    YARN_ENABLE_GLOBAL_CACHE: false # so that .yarn/cache is written
+
+cache:
+    - key:
+          prefix: yarn
+          files:
+              - yarn.lock # dependencies cached based on lockfile
+      paths:
+          - .yarn/cache
+      policy: pull-push
+    # Job-specific keys prevent parallel jobs from replacing each other's local build cache.
+    - key: build-$CI_JOB_NAME_SLUG-$CI_COMMIT_REF_SLUG
+      fallback_keys:
+          - build-$CI_JOB_NAME_SLUG-$CI_DEFAULT_BRANCH
+      paths:
+          - .turbo
+          - .nx/cache
+          - '**/.tscache'
+          - '**/.tsbuildinfo'
+          - '**/.next/cache'
+      policy: pull-push
+
+stages:
+    - install
+    - test
+    - build
+
+# separate so that cache can pre-populate if other steps would fail, it speeds things up
+before_script:
+    - corepack enable
+    - yarn install --immutable
+    - yarn prepare # Add this if Yarn 2+ is used and package is NOT private, otherwise postinstall should be configured, and this line skipped
+
+install:
+    stage: install
+    script:
+        - echo Done
+
+lint:
+    stage: test
+    script:
+        - yarn lint
+
+test:
+    stage: test
+    image: mcr.microsoft.com/playwright:v1.50.0-noble # keep in sync with installed Playwright version
+    artifacts:
+        when: always
+        paths:
+            - test-results
+            - test-results-html
+        reports:
+            junit: test-results/junit.xml
+    script:
+        - yarn test:playwright # https://playwright.dev/docs/ci#running-headed xvfb-run yarn test:playwright
+
+# Not needed for Vercel-hosted projects
+build:
+    stage: build
+    script:
+        - yarn build
+    only:
+        - master
+    artifacts:
+        paths:
+            - web/build
+```

@@ -20,7 +20,7 @@ Follow @README.md, reconciling (never blindly overwriting project-specific overr
 2. **Config** — create/reconcile `.editorconfig`, `eslint.config.mjs` and `.prettierrc.mjs` (pass `defineLintConfig` options as needed — e.g. `defaultIgnore: { importMetaUrl: import.meta.url }`, `next: { rootDir }` — and keep project rule overrides).
 3. **Lint-staged** — create/reconcile `.lintstagedrc.mjs`.
 4. **Husky** — `prepare/postinstall` (`prepare` by default, `postinstall` if Yarn 2+ is used AND root package.json is **private**) script; `.husky/pre-commit`, plus `eslint`/`prettier`/`lint`/`lint:staged` scripts. Drop a legacy `lint:all` if it duplicates `lint`.
-5. **IDEA** — apply the file-scope glob patterns if the repo has a JetBrains `.idea`.
+5. **IDEA** — apply `lint-webstorm` if the repo has a JetBrains `.idea`.
 6. **Install** — run the package manager (`yarn` / `npm install` / `pnpm install`) so the new deps and Husky hooks land. Under Yarn 2+ check if root `package.json` has `prepare` script, and if it does, run it.
 
 Check the README's "Issues" section before debugging a lint crash.
