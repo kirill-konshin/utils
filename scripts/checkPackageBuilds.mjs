@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { access, readdir, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +20,8 @@ const collectPaths = (value, paths = []) => {
 };
 
 const packageDirectories = (await readdir(packagesDirectory, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory())
+    // leftovers of a removed package (e.g. its ignored node_modules) have no package.json, like for Yarn workspaces
+    .filter((entry) => entry.isDirectory() && existsSync(resolve(packagesDirectory, entry.name, 'package.json')))
     .sort((left, right) => left.name.localeCompare(right.name));
 
 const missingOutputs = [];
