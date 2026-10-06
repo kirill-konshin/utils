@@ -479,7 +479,7 @@ describe('the scenario ratchet', () => {
         expect(ratchet(dir)).toHaveLength(2);
     });
 
-    test('a Known gap exempts the scenarios it names by title, or the one whose block it sits in; nothing else does', () => {
+    test('a Known gap exempts the scenarios it names by title; nothing else does', () => {
         const dir = repo({ [SPEC_FILE]: SPEC });
         const gap = (text) =>
             `${SPEC}${requirement('Refunds are idempotent', 'A refund SHALL be applied at most once per request id.', ['A repeat', 'A first refund'], `\n${text}\n`)}`;
@@ -498,9 +498,13 @@ describe('the scenario ratchet', () => {
             /## Known gaps\n\n\| Tracker \| Requirement \| Gap \|\n\| --- \| --- \| --- \|\n\| EVAA-1 \| \[demo#requirement-refunds-are-idempotent\]/,
         );
 
+        // Inside a scenario's block a Known gap exempts nothing, and is reported.
         spec = `${SPEC}${added}\n**⚠️ Known gap (openspec/changes/refunds):** not built.\n`;
         write(dir, SPEC_FILE, spec);
-        expect(ratchet(dir).map((f) => f.line)).toEqual([lineOf(spec, 'Scenario: A repeat')]);
+        expect(ratchet(dir)).toHaveLength(2);
+        expect(check(dir, { base: 'main' }).of('marker-hygiene')[0].message).toContain(
+            'inside a scenario it grants nothing',
+        );
 
         write(dir, SPEC_FILE, gap('**⚠️ Known gap:** exempts scenario _A repeat_.'));
         const run = check(dir, { base: 'main' });
@@ -929,5 +933,17 @@ describe('align', () => {
         const [pair] = align(loadCorpus(a), loadCorpus(b));
         expect(pair.requirements.map((r) => r.kind)).toEqual(['drift', 'only-a']);
         expect(pair.requirements[0].onlyA).toContain('exactly');
+    });
+
+    test('a scenario only one repository has is not drift: a shared rule is its name and statement', () => {
+        const a = repo({ [SPEC_FILE]: SPEC });
+        const b = repo({
+            [SPEC_FILE]: SPEC.replace(
+                '- **THEN** the order is confirmed\n',
+                '- **THEN** the order is confirmed\n\n#### Scenario: A repository-only case\n\n- **WHEN** an order is replayed\n- **THEN** it is confirmed once\n',
+            ),
+        });
+        const [pair] = align(loadCorpus(a), loadCorpus(b));
+        expect(pair.requirements.map((r) => r.kind)).toEqual(['identical', 'identical']);
     });
 });

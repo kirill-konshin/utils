@@ -203,6 +203,11 @@ function markerFindings(r) {
                 m.line,
                 "Advisory is the requirement's class — put it directly under the requirement heading; in a scenario it grants nothing",
             );
+        else if (m.label === KNOWN_GAP && m.scenario)
+            warn(
+                m.line,
+                'a Known gap goes under the requirement statement and names the scenarios it exempts by title; inside a scenario it grants nothing',
+            );
         else {
             const canon = m.label === ADVISORY ? DEFAULT_MARKERS[0] : `**⚠️ Known gap (${m.tracker}):**`;
             if (!m.text.startsWith(canon)) {
@@ -212,7 +217,7 @@ function markerFindings(r) {
         }
     }
     for (const g of r.gaps)
-        if (g.named && !g.exempts.some((s) => s !== g.scenario))
+        if (g.named && !g.exempts.length)
             warn(
                 g.line,
                 'names no scenario of this requirement by its title — a Known gap exempts only the scenarios it names',

@@ -165,7 +165,6 @@ export function evidenceModel(corpus, citations, sources) {
                     tracker: g.tracker,
                     text: g.text,
                     line: g.line,
-                    scenario: g.scenario,
                     exempts: g.exempts,
                 })),
                 scenarios: r.scenarios.map((s) => ({

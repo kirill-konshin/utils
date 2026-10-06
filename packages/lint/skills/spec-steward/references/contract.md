@@ -51,14 +51,14 @@ Cases:
 
 ## Markers
 
-There are exactly two markers. Each stands on a line of its own: the Advisory line in the requirement's statement, directly under its heading, and a Known gap line in the statement or inside the block of the scenario it qualifies.
+There are exactly two markers. Each stands on a line of its own: the Advisory line in the requirement's statement, directly under its heading, and a Known gap line in the statement.
 
 | Marker | Meaning |
 | --- | --- |
 | `**⚠️ Advisory:** <why review is its evidence>` | The requirement is ADVISORY. It keeps its RFC 2119 keywords and is exempt from the scenario ratchet and from `absolute-unproven`. Coverage reports it as `advisory`, and the evidence JSON classes it `advisory`. Marking an existing requirement Advisory is reported as `weakened` ("newly marked advisory"). It qualifies the whole requirement, so a requirement that mixes a contract with guidance is split. |
-| `**⚠️ Known gap (<tracker>):** <what is missing>` | Behaviour the requirement describes is knowingly absent or incomplete, or a REQUIRED rule lacks the evidence that would catch its failure. `<tracker>` is required text: a ticket key (`EVAA-34696`), a tickets-page id, or an open `openspec/changes/<name>` folder. Steward checks only that it is present: any non-empty text inside the parentheses counts and is not validated, so a placeholder counts until it is replaced. In the statement, the line records the gap and exempts nothing, unless it names scenarios of its requirement by title after `exempts`, each in quotes (`exempts scenario 'A'`, `exempts scenarios 'A' and 'B'`; double quotes, curly quotes, `_…_` and `*…*` are read too). Exactly the named scenarios are then exempt from the scenario ratchet. Inside a scenario's block, the line exempts that scenario. Coverage lists every gap with its tracker. |
+| `**⚠️ Known gap (<tracker>):** <what is missing>` | Behaviour the requirement describes is knowingly absent or incomplete, or a REQUIRED rule lacks the evidence that would catch its failure. `<tracker>` is required text: a ticket key (`EVAA-34696`), a tickets-page id, or an open `openspec/changes/<name>` folder. Steward checks only that it is present: any non-empty text inside the parentheses counts and is not validated, so a placeholder counts until it is replaced. In the statement, the line records the gap and exempts nothing, unless it names scenarios of its requirement by title after `exempts`, each in quotes (`exempts scenario 'A'`, `exempts scenarios 'A' and 'B'`; double quotes, curly quotes, `_…_` and `*…*` are read too). Exactly the named scenarios are then exempt from the scenario ratchet. Coverage lists every gap with its tracker. |
 
-Retired spellings are `**⚠️ Unenforced:**` and `**⚠️ Known gap:**` without a tracker. Each is reported as `marker-hygiene` and grants no exemption. So is a marker inside a line rather than on a line of its own, and an Advisory line inside a scenario. A misspelt marker (wrong case, missing emoji or bold) is reported as `marker-hygiene`, and `--fix` normalises it.
+Retired spellings are `**⚠️ Unenforced:**` and `**⚠️ Known gap:**` without a tracker. Each is reported as `marker-hygiene` and grants no exemption. So is a marker inside a line rather than on a line of its own, and an Advisory or Known gap line inside a scenario. A misspelt marker (wrong case, missing emoji or bold) is reported as `marker-hygiene`, and `--fix` normalises it.
 
 Cases:
 
@@ -179,7 +179,7 @@ Exit 2 on an empty listing keeps a broken checkout from passing a scan that read
 ```
 
 - `class` is `advisory` when the requirement carries the Advisory marker, else `required`.
-- `gaps` lists each Known gap line that carries a tracker. `scenario` is the slug of the scenario whose block holds the line, or `null` for a line under the requirement; `exempts` lists the slugs of the scenarios it exempts, empty when it exempts none.
+- `gaps` lists each Known gap line under the requirement that carries a tracker; `exempts` lists the slugs of the scenarios it names, empty when it names none.
 - `bindings` are the citations that [bind](#binding) a scenario or the requirement. `kind` is `test` for a test-file binding, and `file` for a lint configuration or a `--binds` file. `title` is the bound test's title, or `null`; `window` is the line range of the bound block.
 - `pointers` are every other citation of the requirement or its scenarios.
 - `terms` are the requirement's own distinctive terms, with every hit in non-test sources after comments are stripped. Line numbers are kept.

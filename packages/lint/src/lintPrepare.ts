@@ -4,11 +4,10 @@
  * @kirill.konshin/lint
  *
  * This script makes `rules`, `commands` and `skills` real directories in the consuming project's
- * `.agents` (canonical, cross-tool), `.claude` (Claude Code) and `.codex`, and fills them with
+ * `.agents` (canonical, cross-tool) and `.claude` (Claude Code), and fills them with
  * file symlinks only: package rules and skills (every file a skill folder ships, plus the package
- * README.md next to its SKILL.md, so a skill can reference `@README.md`) go into all three, pointing
- * straight at the installed package; the user's own files in `.agents` are mirrored into `.claude`
- * and `.codex`. It also
+ * README.md next to its SKILL.md, so a skill can reference `@README.md`) go into both, pointing
+ * straight at the installed package; the user's own files in `.agents` are mirrored into `.claude`. It also
  * generates an `AGENTS.md` file for other tools, with `CLAUDE.md` symlinked to `AGENTS.md`.
  *
  * Usage:
@@ -28,7 +27,10 @@ import { parse } from 'yaml';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-type Rule = { file: string; name: string; description?: string; content: string };
+/**
+ * A rule file. `paths` scopes it: Claude Code loads it only for matching files.
+ */
+type Rule = { file: string; name: string; description?: string; paths?: string[]; content: string };
 type Skill = { name: string };
 type ExistingFile = { exists: boolean; generated: boolean; customSection: string | null };
 
@@ -38,9 +40,9 @@ const RULES_DIR = path.join(__dirname, '../rules');
 const SKILLS_DIR = path.join(__dirname, '../skills');
 const README_FILE = path.join(__dirname, '../README.md');
 // `.agents` is the cross-tool location (Codex, Cursor, Antigravity) holding the package links and the user's own
-// files, the latter are mirrored into `.claude` (Claude Code reads nothing else) and `.codex`
+// files, the latter are mirrored into `.claude` (Claude Code reads nothing else)
 const CANONICAL_AGENT_DIR = '.agents';
-const MIRROR_AGENT_DIRS = ['.claude', '.codex'];
+const MIRROR_AGENT_DIRS = ['.claude'];
 const AGENT_DIRS = [CANONICAL_AGENT_DIR, ...MIRROR_AGENT_DIRS];
 const AGENT_KINDS = ['rules', 'commands', 'skills'];
 const GITIGNORE = '.gitignore';
@@ -71,23 +73,37 @@ const toTitle = (name: string): string => {
 };
 
 /**
- * The `description` field of a rule's YAML frontmatter.
+ * A rule's YAML frontmatter, empty when it has none.
  */
-const readDescription = (content: string): string | undefined => {
+const readFrontmatter = (content: string): Record<string, unknown> => {
     const frontmatter = FRONTMATTER.exec(content)?.[1];
-    const description: unknown = frontmatter ? parse(frontmatter)?.description : undefined;
-    return typeof description === 'string' ? description.trim() : undefined;
+    const parsed: unknown = frontmatter ? parse(frontmatter) : undefined;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+};
+
+/**
+ * A frontmatter field read as a list of strings: one string, or a list of them.
+ */
+const stringList = (value: unknown): string[] | undefined => {
+    const items = typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+    const strings = items.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+    return strings.length ? strings : undefined;
 };
 
 /**
  * `file` is the path inside a rules dir, e.g. `auth.md` or `frontend/react.md`.
  */
-const toRule = (file: string, content: string): Rule => ({
-    file,
-    name: path.posix.basename(file, '.md'),
-    description: readDescription(content),
-    content,
-});
+const toRule = (file: string, content: string): Rule => {
+    const { description, paths } = readFrontmatter(content);
+
+    return {
+        file,
+        name: path.posix.basename(file, '.md'),
+        description: typeof description === 'string' ? description.trim() : undefined,
+        paths: stringList(paths),
+        content,
+    };
+};
 
 /**
  * Real files under `dir`, as paths relative to `root` - symlinks (incl. the package links next to them), linked
@@ -323,8 +339,8 @@ export function readUserFiles(cwd: string): Map<string, string> {
 
 /**
  * Make `rules`, `commands` and `skills` real directories in every agent dir and link the files we know into them:
- * package files into all three, pointing straight at the package, the user's own `.agents` files into `.claude` and
- * `.codex`. Real files and linked directories are the user's - never written over or through. Dead links are
+ * package files into both, pointing straight at the package, and the user's own `.agents` files into `.claude`.
+ * Real files and linked directories are the user's - never written over or through. Dead links are
  * removed, and so are links from the previous run that are no longer placed: each directory's generated `.gitignore`
  * records them (and keeps them out of git, so the user's own files there stay tracked).
  *
@@ -420,34 +436,24 @@ export function symlinkClaudeMd(cwd: string): void {
 }
 
 /**
- * Generate AGENTS.md with a `# Rules` section: a `## Title` block per rule file (the package's
- * and the user's own) with its frontmatter `description` and a reference to its `.agents/rules` entry.
+ * Generate AGENTS.md with a `# Rules` section: one entry per rule (the package's and the user's own) with
+ * its frontmatter `description`, the `paths` it is scoped to and a plain link to its `.agents/rules` entry.
  *
- * `.claude/rules/*.md` are symlinked by syncAgentDirs() above and auto-discovered by
- * Claude Code at launch (confirmed: Claude Code recursively loads every `.md` file
- * under `.claude/rules`, symlinks included) - no reference to them is needed here.
- * The sections below are for other tools that only read AGENTS.md.
+ * The links are plain, never `@path` imports: Claude Code loads `.claude/rules` itself (syncAgentDirs() links them
+ * there) and honours each rule's `paths`, while an `@` import would load every rule into every session, scoped or not.
+ * Codex, which expands no `@`, reads this index.
  */
 export function generateAgentsFile(rules: Rule[], customSection: string | null): string {
-    /**
-     * @see https://code.claude.com/docs/en/memory#import-additional-files
-     * @see https://github.com/anthropics/claude-code/issues/13614 @import -> @path/file.md in Claude
-     * @see https://github.com/openai/codex/issues/17401 - no @path/file.md in Codex yet
-     */
-    const sections = rules.map((rule) => {
+    const entries = rules.map((rule) => {
         // the canonical entry (a package link or the user's own file), not the package install path
         const rulePath = `${CANONICAL_AGENT_DIR}/rules/${rule.file}`;
+        const description = rule.description ? ` — ${rule.description}` : '';
+        const scope = rule.paths ? `; when touching ${rule.paths.map((glob) => `\`${glob}\``).join(', ')}` : '';
 
-        return [
-            `## ${toTitle(rule.name)}`,
-            rule.description,
-            `See instructions in @${rulePath} [${rulePath}](${rulePath}).`,
-        ]
-            .filter(Boolean)
-            .join('\n\n');
+        return `- **${toTitle(rule.name)}**${description}${scope}: [${rulePath}](${rulePath})`;
     });
 
-    const generated = `${HEADER}\n\n# Rules\n\n${sections.join('\n\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
+    const generated = `${HEADER}\n\n# Rules\n\n${entries.join('\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
 
     return customSection ? `${generated}\n\n${customSection}\n` : `${generated}\n`;
 }

@@ -120,6 +120,16 @@ export function vitestConfig(option?: boolean | ToggleOptions, strict = false): 
             ...vitestPlugin.configs.recommended,
             name: 'Vitest Rules',
             files: [`**/*.{test,spec}.${tsExts}`],
+            rules: {
+                ...vitestPlugin.configs.recommended.rules,
+                // `expectTypeOf` and `assertType` are assertions too: a type test proves its contract without a runtime
+                // expect. Listed here rather than through the plugin's `typecheck` setting, which makes other rules demand
+                // type information.
+                'vitest/expect-expect': [
+                    'error',
+                    { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
+                ],
+            },
         },
         {
             ...vitestPlugin.configs.env,

@@ -31,6 +31,7 @@ export * from './configs/unicorn.js';
 
 export * from './exts.js';
 export * from './lib.js';
+export * from './restrictions.js';
 export * from './lintStaged.js';
 export * from './prettier.js';
 

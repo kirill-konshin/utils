@@ -25,8 +25,8 @@ import {
 import { inTempDir } from './testUtils.js';
 
 const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url));
-const AGENT_DIRS = ['.agents', '.claude', '.codex'];
-const MIRROR_DIRS = ['.claude', '.codex'];
+const AGENT_DIRS = ['.agents', '.claude'];
+const MIRROR_DIRS = ['.claude'];
 const AUTH_RULE = { file: 'auth.md', name: 'auth', content: '' };
 const LINT_REPO_SKILL = { name: 'lint-repo' };
 
@@ -49,10 +49,16 @@ test('readRules: every shipped rule has a frontmatter description', () => {
     }
 });
 
-test('generateAgentsFile: a titled block per rule with its description and canonical .agents path', () => {
+test('generateAgentsFile: one plain entry per rule with its description, scope and .agents path, never an @ import', () => {
     const content = generateAgentsFile(
         [
-            { file: 'monorepo-turbo-nx.md', name: 'monorepo-turbo-nx', description: 'Monorepo rules', content: '' },
+            {
+                file: 'monorepo-turbo-nx.md',
+                name: 'monorepo-turbo-nx',
+                description: 'Monorepo rules',
+                paths: ['**/nx.json', '**/turbo.json'],
+                content: '',
+            },
             { file: 'i18n.md', name: 'i18n', content: '' },
         ],
         null,
@@ -60,15 +66,15 @@ test('generateAgentsFile: a titled block per rule with its description and canon
 
     const expected = [
         '# Rules',
-        '## Monorepo turbo nx',
-        'Monorepo rules',
-        'See instructions in @.agents/rules/monorepo-turbo-nx.md [.agents/rules/monorepo-turbo-nx.md](.agents/rules/monorepo-turbo-nx.md).',
-        '## I18n',
-        'See instructions in @.agents/rules/i18n.md [.agents/rules/i18n.md](.agents/rules/i18n.md).',
+        '',
+        '- **Monorepo turbo nx** — Monorepo rules; when touching `**/nx.json`, `**/turbo.json`: [.agents/rules/monorepo-turbo-nx.md](.agents/rules/monorepo-turbo-nx.md)',
+        '- **I18n**: [.agents/rules/i18n.md](.agents/rules/i18n.md)',
+        '',
         '---',
-    ].join('\n\n');
+    ].join('\n');
 
     assert.ok(content.includes(expected), content);
+    assert.ok(!content.includes('@.agents'), content);
 });
 
 test('syncAgentDirs: creates every agent dir and links package files straight to the package, from a symlinked cwd too', async () => {
@@ -146,14 +152,14 @@ test("syncAgentDirs: mirrors the user's own .agents files, which win over the pa
     });
 });
 
-test("syncAgentDirs: removes dead links and links it no longer places, keeps the user's files and links", async () => {
+test("syncAgentDirs: removes dead links and links it no longer places, keeps the user's files and links, never touches .codex", async () => {
     await inTempDir(
         { '.agents/rules/old.md': '', '.claude/rules/own.md': '', '.codex/rules/default.rules': '' },
         async (cwd) => {
             sync(cwd);
 
             renameSync(join(cwd, '.agents/rules/old.md'), join(cwd, '.agents/rules/new.md'));
-            symlinkSync('missing.md', join(cwd, '.codex/rules/dead.md'));
+            symlinkSync('missing.md', join(cwd, '.claude/rules/dead.md'));
             mkdirSync(join(cwd, '.claude/skills/gone'));
             symlinkSync('missing.md', join(cwd, '.claude/skills/gone/SKILL.md'));
             symlinkSync(join(cwd, '.agents/rules/new.md'), join(cwd, '.claude/rules/alias.md'));
@@ -163,7 +169,7 @@ test("syncAgentDirs: removes dead links and links it no longer places, keeps the
 
             assert.deepEqual(list(join(cwd, '.agents/rules')), ['new.md']);
             assert.deepEqual(list(join(cwd, '.claude/rules')), ['.gitignore', 'alias.md', 'new.md', 'own.md']);
-            assert.deepEqual(list(join(cwd, '.codex/rules')), ['.gitignore', 'default.rules', 'new.md']);
+            assert.deepEqual(list(join(cwd, '.codex/rules')), ['default.rules']);
             assert.deepEqual(list(join(cwd, '.claude/skills')), []);
         },
     );
@@ -171,8 +177,7 @@ test("syncAgentDirs: removes dead links and links it no longer places, keeps the
 
 test('syncAgentDirs: never writes over a real file or through a linked directory', async () => {
     await inTempDir({ '.claude/rules/auth.md': 'mine', 'shared/.keep': '' }, async (cwd) => {
-        mkdirSync(join(cwd, '.codex'));
-        symlinkSync(join(cwd, 'shared'), join(cwd, '.codex/skills'));
+        symlinkSync(join(cwd, 'shared'), join(cwd, '.claude/skills'));
 
         sync(cwd);
 

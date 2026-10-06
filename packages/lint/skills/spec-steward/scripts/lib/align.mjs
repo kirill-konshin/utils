@@ -1,7 +1,8 @@
 // @ts-check
 /**
  * Rules shared by several repositories, compared: capabilities pair by path or by leaf name, requirements by anchor or
- * by text. Reports identical, drifted and one-sided rules; choosing the wording stays with the owner.
+ * by statement. A rule is its name and statement; its scenarios are each repository's own, so a scenario only one
+ * repository has is not drift. Reports identical, drifted and one-sided rules; choosing the wording stays with the owner.
  */
 import { loadCorpus } from './corpus.mjs';
 import { jaccard, normalize, words } from './util.mjs';
@@ -11,8 +12,8 @@ import { jaccard, normalize, words } from './util.mjs';
  * @typedef {import('./corpus.mjs').Requirement} Requirement
  */
 
-/** Body without heading, normalized. @param {Requirement} r */
-const body = (r) => normalize(r.block.split('\n').slice(1).join('\n'));
+/** The rule's own words: its statement, without its markers and scenarios, normalized. @param {Requirement} r */
+const statement = (r) => normalize(r.statement);
 
 /**
  * Word-level difference of two texts: the words only one side has, in order.
@@ -46,7 +47,7 @@ export function align(a, b) {
             if (!rb) {
                 const best = cb.requirements
                     .filter((x) => !used.has(x.slug))
-                    .map((x) => ({ x, s: jaccard(words(ra.block), words(x.block)) }))
+                    .map((x) => ({ x, s: jaccard(words(ra.statement), words(x.statement)) }))
                     .sort((p, q) => q.s - p.s)[0];
                 if (best && best.s >= 0.5) rb = best.x;
             }
@@ -55,12 +56,12 @@ export function align(a, b) {
                 continue;
             }
             used.add(rb.slug);
-            const same = body(ra) === body(rb) && ra.name === rb.name;
+            const same = statement(ra) === statement(rb) && ra.name === rb.name;
             reqs.push({
                 kind: same ? 'identical' : 'drift',
                 a: ra,
                 b: rb,
-                ...(same ? {} : wordDiff(ra.block, rb.block)),
+                ...(same ? {} : wordDiff(ra.statement, rb.statement)),
             });
         }
         for (const rb of cb.requirements) if (!used.has(rb.slug)) reqs.push({ kind: 'only-b', b: rb });

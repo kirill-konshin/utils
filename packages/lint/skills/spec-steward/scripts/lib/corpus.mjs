@@ -2,7 +2,7 @@
 /**
  * The OpenSpec corpus as data: capabilities, requirements, scenarios, each with its line and anchor, and the two
  * markers a requirement can carry — `**⚠️ Advisory:**` (its class) and `**⚠️ Known gap (<tracker>):**` (a gap,
- * exempting the scenarios it names or whose block it sits in).
+ * exempting the scenarios it names by title).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,8 +14,7 @@ import { slugify, stripCode, strongCount, weakCount } from './util.mjs';
  * @typedef {{ kw: string, text: string, line: number }} Step
  * @typedef {{ label: string, tracker: string | null, line: number, text: string, scenario: string | null,
  *   inline: boolean }} Marker
- * @typedef {{ tracker: string, text: string, line: number, scenario: string | null, exempts: string[],
- *   named: boolean }} Gap
+ * @typedef {{ tracker: string, text: string, line: number, exempts: string[], named: boolean }} Gap
  * @typedef {{ name: string, slug: string, line: number, end: number, block: string, steps: Step[],
  *   markers: Marker[] }} Scenario
  * @typedef {{
@@ -114,16 +113,14 @@ export function parseSpec(text, file, capability) {
         const own = r.markers.filter((m) => !m.inline);
         r.advisory = own.some((m) => m.label === ADVISORY && !m.scenario);
         r.gaps = own
-            .filter((m) => m.label === KNOWN_GAP && m.tracker)
+            .filter((m) => m.label === KNOWN_GAP && m.tracker && !m.scenario)
             .map((m) => {
                 const named = namedIn(m.text, r.scenarios);
-                const exempts = [...new Set([...(m.scenario ? [m.scenario] : []), ...(named ?? [])])];
                 return {
                     tracker: /** @type {string} */ (m.tracker),
                     text: m.text,
                     line: m.line,
-                    scenario: m.scenario,
-                    exempts,
+                    exempts: named ?? [],
                     named: named !== null,
                 };
             });

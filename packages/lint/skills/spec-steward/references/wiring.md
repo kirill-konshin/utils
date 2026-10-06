@@ -4,8 +4,8 @@ A skill is discovered at the agent's discretion, so it cannot be the only thing 
 
 | Point | What it does | Placed by |
 | --- | --- | --- |
-| Scoped rule `.agents/rules/openspec.md` (+ `.claude/rules`, `.codex/rules`) | Hard constraints, loaded when the agent touches `openspec/**`. | `lint-prepare` (`@kirill.konshin/lint`) |
-| Skill `.agents/skills/spec-steward` (+ `.claude/skills`, `.codex/skills`) | The procedures, the model, the contract and the scripts. | `lint-prepare` |
+| Scoped rule `.agents/rules/openspec.md` (+ `.claude/rules`) | Hard constraints, loaded when the agent touches `openspec/**`. | `lint-prepare` (`@kirill.konshin/lint`) |
+| Skill `.agents/skills/spec-steward` (+ `.claude/skills`) | The procedures, the model, the contract and the scripts. | `lint-prepare` |
 | Edit hook in `.claude/settings.json` | Runs `steward hook` after every Edit/Write/MultiEdit and feeds findings back to the agent at once — only for what the edit changed, with no ratchet. | `steward wire --fix` |
 | Routing line in `AGENTS.md` | Tells every agent, Codex included, where the guard lives, and that corpus-quality audits use this skill while code conformance is the repository's own audit. | You, beside the specification-driven convention; `wire --fix` prints the line. |
 | OPSX operation guidance in `openspec/config.yaml` | One narrow line each for `apply` and `archive`: run the repository's spec gate (AGENTS.md → Checks); a `weakened` finding stops the flow. | `steward wire --fix`, when the file has OpenSpec's standard shape |

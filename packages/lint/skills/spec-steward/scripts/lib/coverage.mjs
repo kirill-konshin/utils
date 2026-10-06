@@ -60,14 +60,13 @@ export function coverageReport(corpus, citations) {
             const scenarioBound = (/** @type {import('./corpus.mjs').Scenario} */ s) =>
                 bound.has(`${r.file}#${s.slug}`) || (r.scenarios.length === 1 && bound.has(reqKey));
             const anyBound = bound.has(reqKey) || r.scenarios.some(scenarioBound);
-            const requirementGaps = r.gaps.filter((g) => !g.scenario);
             if (r.advisory) totals.advisory++;
             totals.gaps += r.gaps.length;
             if (!r.advisory && !anyBound) totals.unboundRequirements++;
             const status = r.advisory
                 ? 'advisory'
-                : requirementGaps.length
-                  ? `known gap (${requirementGaps.map((g) => mdx(g.tracker)).join(', ')})`
+                : r.gaps.length
+                  ? `known gap (${r.gaps.map((g) => mdx(g.tracker)).join(', ')})`
                   : anyBound
                     ? 'tested'
                     : 'no test';

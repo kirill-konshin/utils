@@ -68,7 +68,7 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
 
 # `.agents/rules`
 
-- `.agents/rules` must be accompanied by symlinks in `.claude/rules` and `.codex/rules`
+- `.agents/rules` must be accompanied by symlinks in `.claude/rules`
 - Files should be scoped to certain paths
 - Files should be small,
 - Examples not allowed in general
@@ -81,7 +81,7 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
 
 # `.agents/skills`
 
-- `.agents/skills` must be accompanied by symlinks in `.claude/skills` and `.codex/skills`
+- `.agents/skills` must be accompanied by symlinks in `.claude/skills`
 - May define either
     - A workflow
     - A process
@@ -94,7 +94,7 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
 
 # `.agents/commands`
 
-- `.agents/commands` must be accompanied by symlinks in `.claude/commands` and `.codex/commands`
+- `.agents/commands` must be accompanied by symlinks in `.claude/commands`
 - Smaller and simpler than skills
 - One-off commands, not flows
 
@@ -104,7 +104,7 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
     - User facing or externally observable behavior
     - Durable component/system/API contracts & invariants
     - Not general coding instructions
-- Openspec-specific instructions must assume that flow WAS ENTERED, thus `AGENTS.md` or `[.agents|.claude|.codex]/skills` must be used to define how to enter the flow, and how flow should look like from outside perspective (without details)
+- Openspec-specific instructions must assume that flow WAS ENTERED, thus `AGENTS.md` or `[.agents|.claude]/skills` must be used to define how to enter the flow, and how flow should look like from outside perspective (without details)
 - `openspec/config.yml#context` - should only have very narrow instructions for OpenSpec specifically, when user entered flow
     - Context will already contain root `AGENTS.md`, no duplication needed
 - `openspec/config.yml#rules.[specs|proposal]` - very narrow sets of rules specifically for defined part of the flow when it's entered
@@ -115,6 +115,7 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
 - Requirements and scenarios should (preferrably) be proven by tests, and may be cited in tests for stronger connection
     - Tests should be validated that they do what spec says (optional, unless project mandates this in root `AGENTS.md`)
 - Code citations must resolve, not checked for validity
+- Comments, descriptions, prompt or documentation text, and citations are not evidence that code complies, and their absence or wording is never a violation
 
 # Common for `AGENTS.md` `.agents/rules` `.agents/skills`
 
