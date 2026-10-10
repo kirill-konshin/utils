@@ -7,21 +7,22 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 // Every case drives git; on a loaded machine one process start can take seconds.
 vi.setConfig({ testTimeout: 300_000 });
-import { align } from './lib/align.mjs';
-import { applyFixes } from './lib/checks.mjs';
-import { scanCitations } from './lib/citations.mjs';
-import { loadCorpus, parseSpec } from './lib/corpus.mjs';
-import { coverageReport } from './lib/coverage.mjs';
-import { evidenceModel, sourceIndex } from './lib/evidence.mjs';
-import { forget } from './lib/git.mjs';
-import { lint, parseReview, render, status, verify } from './lib/review.mjs';
-import { blockAt, stripComments, testBlocks } from './lib/scan.mjs';
-import { globToRegExp, slugify } from './lib/util.mjs';
-import { addGuidance, AGENTS_LINE, hookFindings } from './lib/wire.mjs';
-import { runCheck } from './steward.mjs';
+import { align } from './lib/align';
+import { applyFixes, type Finding } from './lib/checks';
+import { scanCitations } from './lib/citations';
+import { loadCorpus, parseSpec } from './lib/corpus';
+import { coverageReport } from './lib/coverage';
+import { evidenceModel, sourceIndex } from './lib/evidence';
+import { forget } from './lib/git';
+import { type Finding as ReviewFinding, lint, parseReview, render, status, verify } from './lib/review';
+import { blockAt, stripComments, testBlocks } from './lib/scan';
+import { globToRegExp, slugify } from './lib/util';
+import { addGuidance, AGENTS_LINE, HOOK_COMMAND, hookFindings } from './lib/wire';
+import { runCheck } from './steward';
 
-const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'steward.mjs');
-const dirs = [];
+/** The published bundle — the package's `test` script builds it first. */
+const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../skills/spec-tools/scripts/cli.js');
+const dirs: string[] = [];
 
 const SPEC = `# demo Specification
 
@@ -57,13 +58,15 @@ The service SHALL keep payloads lean, as implemented in \`apps/api/src/payload.t
 const SPEC_FILE = 'openspec/specs/demo/spec.md';
 
 /** A requirement block to append to SPEC; `extra` goes between its statement and its scenarios. */
-const requirement = (name, statement, scenarios, extra = '') =>
+const requirement = (name: string, statement: string, scenarios: string[], extra = '') =>
     `\n### Requirement: ${name}\n\n${statement}\n${extra}${scenarios
-        .map((s) => `\n#### Scenario: ${s}\n\n- **WHEN** ${s.toLowerCase()} happens\n- **THEN** it is handled\n`)
+        .map(
+            (s: string) => `\n#### Scenario: ${s}\n\n- **WHEN** ${s.toLowerCase()} happens\n- **THEN** it is handled\n`,
+        )
         .join('')}`;
 /** 1-based line of the first line containing `needle`. */
-const lineOf = (text, needle) => text.split('\n').findIndex((l) => l.includes(needle)) + 1;
-const cite = (anchor) => `{@link ${SPEC_FILE}#${anchor}}`;
+const lineOf = (text: string, needle: string) => text.split('\n').findIndex((l) => l.includes(needle)) + 1;
+const cite = (anchor: string) => `{@link ${SPEC_FILE}#${anchor}}`;
 
 const ENV = { ...process.env, CI: '', CI_MERGE_REQUEST_DIFF_BASE_SHA: '' };
 const GIT_ENV = {
@@ -73,15 +76,16 @@ const GIT_ENV = {
     GIT_COMMITTER_NAME: 't',
     GIT_COMMITTER_EMAIL: 't@t',
 };
-const git = (dir, ...args) => spawnSync('git', args, { cwd: dir, env: GIT_ENV, encoding: 'utf8' }).stdout.trim();
+const git = (dir: string, ...args: string[]) =>
+    spawnSync('git', args, { cwd: dir, env: GIT_ENV, encoding: 'utf8' }).stdout.trim();
 
-const write = (dir, file, text) => {
+const write = (dir: string, file: string, text: string) => {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), text);
 };
 
 /** A git repository with the given files committed on `main`, which `origin/main` also names. */
-function repo(files) {
+function repo(files: Record<string, string>) {
     const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'steward-')));
     dirs.push(dir);
     for (const [file, text] of Object.entries(files)) write(dir, file, text);
@@ -96,17 +100,17 @@ function repo(files) {
     return dir;
 }
 
-const rootOf = (dir) => ({ name: path.basename(dir), path: dir, specsDir: 'openspec/specs' });
-/** Findings of one in-process check run, as `spec-steward check` computes them. */
-const check = (dir, opts = {}) => {
+const rootOf = (dir: string) => ({ name: path.basename(dir), path: dir, specsDir: 'openspec/specs' });
+/** Findings of one in-process check run, as `spec-tools steward check` computes them. */
+const check = (dir: string, opts: Record<string, unknown> = {}) => {
     const run = runCheck(rootOf(dir), opts);
-    return { ...run, of: (kind) => run.findings.filter((f) => f.kind === kind) };
+    return { ...run, of: (kind: string) => run.findings.filter((f) => f.kind === kind) };
 };
-const steward = (dir, args, { input, env } = {}) =>
-    spawnSync('node', [CLI, ...args], { cwd: dir, input, encoding: 'utf8', env: { ...ENV, ...env } });
-const anchorsOf = (text) => parseSpec(text, '', '').slugs;
+const steward = (dir: string, args: string[], { input, env }: { input?: string; env?: Record<string, string> } = {}) =>
+    spawnSync('node', [CLI, 'steward', ...args], { cwd: dir, input, encoding: 'utf8', env: { ...ENV, ...env } });
+const anchorsOf = (text: string) => parseSpec(text, '', '').slugs;
 /** The coverage report's row for a requirement or scenario, by its title. */
-const coverageRow = (dir, title) =>
+const coverageRow = (dir: string, title: string) =>
     coverageReport(loadCorpus(dir), scanCitations(dir, anchorsOf))
         .markdown.split('\n')
         .find((l) => l.includes(`[${title}]`));
@@ -389,7 +393,7 @@ describe('size', () => {
             'The gate MUST run. It SHALL NOT skip `MUST`. It is REQUIRED, RECOMMENDED and OPTIONAL. It NEVER, ALWAYS waits.';
         const spec = `${SPEC}${requirement('Counting', statement, ['One'], '\n**⚠️ Advisory:** MUST MUST MUST.\n')}`;
         const r = parseSpec(spec, 'x', 'x').requirements.find((x) => x.name === 'Counting');
-        expect(r.strong + r.weak).toBe(5);
+        expect(r!.strong + r!.weak).toBe(5);
         const example =
             'The gate MUST run. It SHALL NOT skip `MUST`; it MAY warn, is NEVER silent and ALWAYS logs; logging is RECOMMENDED.';
         const [e] = parseSpec(requirement('Example', example, ['One']), 'x', 'x').requirements;
@@ -401,7 +405,7 @@ describe('size', () => {
         const longest = `The service SHALL ${'reply '.repeat(500)}.`;
         const spec = `${SPEC}${requirement('Long', long, ['One'])}${requirement('Many', 'It MUST a, MUST b, MUST c, MUST d, MUST e, MUST f.', ['Two'])}${requirement('Longest', longest, ['Three'])}`;
         const dir = repo({ [SPEC_FILE]: spec });
-        const sizes = (opts) =>
+        const sizes = (opts: Record<string, unknown>) =>
             check(dir, opts)
                 .of('size')
                 .map((f) => `${f.line} ${f.severity} ${f.message.split(' — ')[0]}`);
@@ -426,7 +430,8 @@ describe('the scenario ratchet', () => {
         'A repeat',
         'A first refund',
     ]);
-    const ratchet = (dir, opts = {}) => check(dir, { base: 'main', ...opts }).of('scenario-unproven');
+    const ratchet = (dir: string, opts: Record<string, unknown> = {}) =>
+        check(dir, { base: 'main', ...opts }).of('scenario-unproven');
 
     test('fails a new or modified scenario of a REQUIRED requirement that nothing binds, at file:line', () => {
         const dir = repo({ [SPEC_FILE]: SPEC });
@@ -484,7 +489,7 @@ describe('the scenario ratchet', () => {
 
     test('a Known gap exempts the scenarios it names by title; nothing else does', () => {
         const dir = repo({ [SPEC_FILE]: SPEC });
-        const gap = (text) =>
+        const gap = (text: string) =>
             `${SPEC}${requirement('Refunds are idempotent', 'A refund SHALL be applied at most once per request id.', ['A repeat', 'A first refund'], `\n${text}\n`)}`;
         let spec = gap("**⚠️ Known gap (PROJ-1):** exempts scenario 'A repeat': no store yet.");
         write(dir, SPEC_FILE, spec);
@@ -549,9 +554,9 @@ describe('--base', () => {
         const dir = repo({ [SPEC_FILE]: SPEC });
         const sha = git(dir, 'rev-parse', 'HEAD');
         write(dir, SPEC_FILE, SPEC.replace('MUST NOT retry', 'SHOULD NOT retry'));
-        const run = (env) => {
+        const run = (env: Record<string, string>) => {
             const res = steward(dir, ['check', '--json', '--base', 'auto'], { env });
-            return { stderr: res.stderr, findings: JSON.parse(res.stdout) };
+            return { stderr: res.stderr, findings: JSON.parse(res.stdout) as Finding[] };
         };
 
         const mr = run({ CI: 'true', CI_MERGE_REQUEST_DIFF_BASE_SHA: sha });
@@ -600,7 +605,7 @@ describe('--base', () => {
 });
 
 describe('markers', () => {
-    const marked = (line) => SPEC.replace('The service SHALL keep', `${line}\n\nThe service SHALL keep`);
+    const marked = (line: string) => SPEC.replace('The service SHALL keep', `${line}\n\nThe service SHALL keep`);
 
     test('only Advisory and a tracked Known gap are read; the rest warn and grant nothing', () => {
         const dir = repo({
@@ -634,8 +639,9 @@ describe('markers', () => {
     });
 
     test('absolute-unproven prompts a REQUIRED absolute with no named exception and nothing binding it', () => {
-        const absolute = (statement, extra = '') => `${SPEC}${requirement('Absolute', statement, ['One'], extra)}`;
-        const prompts = (spec, files = {}) =>
+        const absolute = (statement: string, extra = '') =>
+            `${SPEC}${requirement('Absolute', statement, ['One'], extra)}`;
+        const prompts = (spec: string, files: Record<string, string> = {}) =>
             check(repo({ [SPEC_FILE]: spec, ...files }))
                 .of('absolute-unproven')
                 .map((f) => f.id);
@@ -653,19 +659,19 @@ describe('markers', () => {
 describe('exit 2', () => {
     test('an unknown flag, a missing base ref, no upstream, a missing specs directory, a tree git cannot list', () => {
         const dir = repo({ [SPEC_FILE]: SPEC });
-        const two = (cwd, args, env) => {
+        const two = (cwd: string, args: string[], env?: Record<string, string>) => {
             const res = steward(cwd, args, { env });
-            const lines = res.stderr.split('\n').filter((l) => l.startsWith('spec-steward: '));
+            const lines = res.stderr.split('\n').filter((l) => l.startsWith('spec-tools steward: '));
             return [res.status, lines.pop() ?? res.stderr];
         };
-        expect(two(dir, ['check', '--marker', 'x'])).toEqual([2, 'spec-steward: check: unknown flag --marker']);
+        expect(two(dir, ['check', '--marker', 'x'])).toEqual([2, 'spec-tools steward: check: unknown flag --marker']);
         expect(two(dir, ['check', '--base', 'nope'])).toEqual([
             2,
-            'spec-steward: base ref nope not found — git fetch origin',
+            'spec-tools steward: base ref nope not found — git fetch origin',
         ]);
         expect(
             two(dir, ['check', '--base', 'auto'], { CI: 'true', CI_MERGE_REQUEST_DIFF_BASE_SHA: 'f'.repeat(40) }),
-        ).toEqual([2, `spec-steward: CI_MERGE_REQUEST_DIFF_BASE_SHA ${'f'.repeat(40)} is not in this clone`]);
+        ).toEqual([2, `spec-tools steward: CI_MERGE_REQUEST_DIFF_BASE_SHA ${'f'.repeat(40)} is not in this clone`]);
         git(dir, 'update-ref', '-d', 'refs/remotes/origin/main');
         expect(two(dir, ['check', '--base', 'auto'])).toEqual([2, expect.stringContaining('git fetch origin')]);
         expect(two(dir, ['coverage', '--specs', 'nowhere'])[1]).toContain('no specs directory nowhere');
@@ -705,7 +711,7 @@ describe('coverage', () => {
         expect(md).toContain(
             '3 requirements across 1 capabilities. **1** advisory; **1** known gaps; **1** REQUIRED requirements bound by no test; **3** REQUIRED scenarios bound by no test; **1** retired markers.',
         );
-        const row = (label) => md.split('\n').find((l) => l.includes(`[${label}]`));
+        const row = (label: string) => md.split('\n').find((l) => l.includes(`[${label}]`));
         expect(row('Orders are confirmed once')).toMatch(/\| tested \|$/);
         expect(row('A confirmation times out')).toMatch(/`apps\/a\.test\.ts:1` \| — \| bound \|$/);
         expect(row('A confirmation succeeds')).toMatch(/\| — \| `apps\/a\.ts:1` \| no test \|$/);
@@ -775,7 +781,7 @@ describe('evidence --json', () => {
             ],
             terms: [{ term: 'confirmOrder', hits: [{ file: 'apps/order.ts', line: 2 }] }],
         });
-        expect(orders.scenarios.map((s) => [s.slug, s.bound])).toEqual([
+        expect(orders.scenarios.map((s: { slug: string; bound: boolean }) => [s.slug, s.bound])).toEqual([
             ['scenario-a-confirmation-times-out', false],
             ['scenario-a-confirmation-succeeds', true],
         ]);
@@ -787,7 +793,7 @@ describe('hook', () => {
     test('feeds back what an edit weakened, once, and ignores unrelated files', () => {
         const dir = repo({ [SPEC_FILE]: SPEC, 'README.md': '# x\n' });
         write(dir, SPEC_FILE, SPEC.replace('MUST NOT retry', 'SHOULD NOT retry'));
-        const hook = (file) =>
+        const hook = (file: string) =>
             steward(dir, ['hook'], {
                 input: JSON.stringify({ tool_name: 'Edit', cwd: dir, tool_input: { file_path: path.join(dir, file) } }),
             });
@@ -851,12 +857,41 @@ describe('wire', () => {
         expect(
             JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8')).hooks.PostToolUse[0].hooks[0]
                 .command,
-        ).toContain('node_modules/.bin/spec-steward"; [ ! -x "$f" ] || "$f" hook');
+        ).toContain('node_modules/.bin/spec-tools"; [ ! -x "$f" ] || "$f" steward hook');
 
         write(dir, 'AGENTS.md', '# Agents\n\nSpecs are guarded by spec-steward.\n');
         write(dir, '.agents/rules/openspec.md', '-');
         write(dir, '.claude/skills/spec-steward/SKILL.md', '-');
         expect(steward(dir, ['wire', '--check']).status).toBe(0);
+    });
+
+    test('replaces an edit hook an earlier version wired with the current one, keeping other hooks', () => {
+        const dir = repo({ [SPEC_FILE]: SPEC });
+        const legacy = 'f="$CLAUDE_PROJECT_DIR/node_modules/.bin/spec-steward"; [ ! -x "$f" ] || "$f" hook';
+        const other = { type: 'command', command: 'echo other' };
+        write(
+            dir,
+            '.claude/settings.json',
+            JSON.stringify({
+                hooks: {
+                    PostToolUse: [
+                        { matcher: 'Edit', hooks: [{ type: 'command', command: legacy }] },
+                        { matcher: 'Write', hooks: [other] },
+                    ],
+                },
+            }),
+        );
+        expect(steward(dir, ['wire', '--check']).stdout).toContain('✗ .claude/settings.json runs the edit hook');
+        steward(dir, ['wire', '--fix']);
+        const hooks = JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8')).hooks.PostToolUse;
+        expect(
+            hooks.map(
+                (
+                    /**
+                     */ e: any,
+                ) => e.hooks.map((h: any) => h.command),
+            ),
+        ).toEqual([['echo other'], [HOOK_COMMAND]]);
     });
 
     test('replaces guidance an earlier version wrote with the pointer to the spec gate', () => {
@@ -875,7 +910,7 @@ describe('wire', () => {
 });
 
 describe('review', () => {
-    const finding = (over) => ({
+    const finding = (over: Partial<ReviewFinding>) => ({
         repo: 'X',
         file: SPEC_FILE,
         line: 11,

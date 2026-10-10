@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
-import { slugify } from '../../skills/spec-steward/scripts/lib/util.mjs';
 import { type RequirementBlock, requirementBlocks } from './changeGates';
 import { capabilityMoves, classify, render } from './specDiff';
+import { slugify } from './steward/lib/util';
 
 const block = (name: string, text: string, file = 'openspec/specs/cap/spec.md', line = 9): RequirementBlock => ({
     file,

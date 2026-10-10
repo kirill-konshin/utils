@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * The review file: rendered from audit findings, answered by the owner item by item, processed round by round.
  * Format: references/review-format.md.
@@ -6,35 +5,61 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { normalize, parseArgs } from './util.mjs';
+import { normalize, parseArgs } from './util';
 
-/**
- * @typedef {{
- *   repo: string, file: string, line: number, quote: string, ruleName?: string, criteria?: number[], layer: string,
- *   whatsWrong: string, proposed: string, evidence?: string[], crossRefs?: string[], needsHumanIntent?: boolean,
- *   reversesPastDecision?: string, area?: string, note?: string, cid?: string
- * }} Finding
- * @typedef {{ key?: string, title: string, whatsWrong: string, proposed: string, layer: string, criteria?: number[],
- *   needsHumanIntent?: boolean, members: Finding[] }} Theme
- * @typedef {{ id: string, line: number, end: number, heading: string, theme: boolean,
- *   members: { quote: string, location: string, line: number, comments: string[] }[],
- *   quote: string, location: string, response: string, responseLine: number, state: string, applied: string[] }} Item
- */
+export type Finding = {
+    repo: string;
+    file: string;
+    line: number;
+    quote: string;
+    ruleName?: string;
+    criteria?: readonly number[];
+    layer: string;
+    whatsWrong: string;
+    proposed: string;
+    evidence?: readonly string[];
+    crossRefs?: readonly string[];
+    needsHumanIntent?: boolean;
+    reversesPastDecision?: string;
+    area?: string;
+    note?: string;
+    cid?: string;
+};
+export type Theme = {
+    key?: string;
+    title: string;
+    whatsWrong: string;
+    proposed: string;
+    layer: string;
+    criteria?: readonly number[];
+    needsHumanIntent?: boolean;
+    members: readonly Finding[];
+};
+export type Item = {
+    id: string;
+    line: number;
+    end: number;
+    heading: string;
+    theme: boolean;
+    members: { quote: string; location: string; line: number; comments: string[] }[];
+    quote: string;
+    location: string;
+    response: string;
+    responseLine: number;
+    state: string;
+    applied: string[];
+};
 
 const RESPONSE_STATES = ['open', 'accepted', 'accepted-with-comment', 'comment', 'rejected', 'rejected-with-comment'];
 
-/** @param {string} text */
-const oneLine = (text) => normalize(String(text ?? '')).replace(/\s*\n\s*/g, ' ');
-/** @param {Finding} f */
-const location = (f) => `\`${f.repo} ${f.file}:${f.line}\``;
-/** @param {string} q */
-const quoted = (q) => `“${oneLine(q).replace(/[“”]/g, '"')}”`;
+const oneLine = (text: string) => normalize(String(text ?? '')).replace(/\s*\n\s*/g, ' ');
 
-/**
- * The extra context a reader needs to decide: evidence, cross references, intent, reversal.
- * @param {Finding | Theme} f
- */
-function context(f) {
+const location = (f: Finding) => `\`${f.repo} ${f.file}:${f.line}\``;
+
+const quoted = (q: string) => `“${oneLine(q).replace(/[“”]/g, '"')}”`;
+
+/** The extra context a reader needs to decide: evidence, cross references, intent, reversal. */
+function context(f: Finding | Theme) {
     const parts = [];
     if ('reversesPastDecision' in f && f.reversesPastDecision)
         parts.push(`Reverses an earlier decision: ${oneLine(f.reversesPastDecision).replace(/[.\s]+$/, '')}.`);
@@ -49,17 +74,12 @@ function context(f) {
     return parts.length ? ` ${parts.join(' ')}` : '';
 }
 
-/**
- * One item in the mandated five-bullet shape.
- * @param {string} id
- * @param {Finding | Theme} item
- * @param {boolean} theme
- */
-export function renderItem(id, item, theme) {
+/** One item in the mandated five-bullet shape. */
+export function renderItem(id: string, item: Finding | Theme, theme: boolean) {
     const crit = (item.criteria ?? []).join(', ');
     const intent = item.needsHumanIntent ? ' · ❓ intent' : '';
     if (!theme) {
-        const f = /** @type {Finding} */ (item);
+        const f = item as Finding;
         return [
             `### ${id} · ${f.layer} · ${f.repo} ${f.area ?? ''}`.trimEnd() + `${crit ? ` · ${crit}` : ''}${intent}`,
             '',
@@ -71,7 +91,7 @@ export function renderItem(id, item, theme) {
             '',
         ].join('\n');
     }
-    const t = /** @type {Theme} */ (item);
+    const t = item as Theme;
     return [
         `### ${id} · ${t.layer} · Theme: ${oneLine(t.title)}${crit ? ` · ${crit}` : ''}${intent}`,
         '',
@@ -85,22 +105,24 @@ export function renderItem(id, item, theme) {
     ].join('\n');
 }
 
-/**
- * Render audit output into review sections.
- * @param {{ themes?: Theme[], findings?: Finding[] }} data
- * @param {{ start?: number, sections?: { key: string, title: string, areas?: string[], intro?: string }[] }} opts
- */
-export function render(data, { start = 1, sections } = {}) {
+/** Render audit output into review sections. */
+/** A section of the review file: the areas it gathers, under its title and an optional introduction. */
+export type Section = { key: string; title: string; areas?: (string | undefined)[]; intro?: string };
+
+export function render(
+    data: { themes?: readonly Theme[]; findings?: readonly Finding[] },
+    { start = 1, sections }: { start?: number; sections?: Section[] } = {},
+) {
     let n = start;
     const next = () => `R-${String(n++).padStart(3, '0')}`;
     const themes = data.themes ?? [];
     const findings = data.findings ?? [];
-    const areaOfTheme = (/** @type {Theme} */ t) => {
+    const areaOfTheme = (t: Theme) => {
         const counts = new Map();
         for (const m of t.members) counts.set(m.area, (counts.get(m.area) ?? 0) + 1);
         return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
     };
-    const layout =
+    const layout: Section[] =
         sections ??
         [...new Set([...themes.map(areaOfTheme), ...findings.map((f) => f.area)])].map((a) => ({
             key: a ?? 'other',
@@ -129,8 +151,7 @@ const FIELD =
     /^\s*[*-]\s+(Rule|Location|What[’']s wrong|Proposed|My response|Applied|Previous response[^:]*)\s*:\s?(.*)$/;
 const MEMBER = /^\s{2,}[*-]\s+“(.+?)”\s+—\s+`([^`]+)`/;
 
-/** @param {string} response */
-export function stateOf(response) {
+export function stateOf(response: string) {
     const r = response.trim();
     if (!r || r === '⬜') return 'open';
     if (r.startsWith('✅')) return r.replace('✅', '').trim() ? 'accepted-with-comment' : 'accepted';
@@ -139,17 +160,13 @@ export function stateOf(response) {
     return 'comment';
 }
 
-/**
- * Parse a review file into items.
- * @param {string} text
- * @returns {Item[]}
- */
-export function parseReview(text) {
+/** Parse a review file into items. */
+export function parseReview(text: string): Item[] {
     const lines = text.split('\n');
-    /** @type {Item[]} */
-    const items = [];
-    /** @type {Item | null} */
-    let cur = null;
+
+    const items: Item[] = [];
+
+    let cur: Item | null = null;
     let field = '';
     lines.forEach((line, i) => {
         const h = ITEM.exec(line);
@@ -201,24 +218,21 @@ export function parseReview(text) {
     return items;
 }
 
-/**
- * Locations a review names: `NAME path:line`.
- * @param {string} loc
- */
-const parseLocation = (loc) => {
+/** Locations a review names: `NAME path:line`. */
+const parseLocation = (loc: string) => {
     const m = /`?([\w-]+)\s+([^`\s]+):(\d+)`?/.exec(loc);
     return m ? { repo: m[1], file: m[2], line: Number(m[3]) } : null;
 };
 
 /**
  * Every quote must be found, fragment by fragment in order, at its location (a window from the line on).
- * @param {Item[]} items
- * @param {Map<string, string>} roots NAME → absolute path
+ *
+ * @param roots NAME → absolute path
  */
-export function verify(items, roots) {
-    const problems = [];
+export function verify(items: Item[], roots: Map<string, string>) {
+    const problems: string[] = [];
     const cache = new Map();
-    const check = (/** @type {string} */ id, /** @type {string} */ quote, /** @type {string} */ loc) => {
+    const check = (id: string, quote: string, loc: string) => {
         const at = parseLocation(loc);
         if (!at) return problems.push(`${id}: location not understood: ${loc}`);
         const root = roots.get(at.repo);
@@ -251,9 +265,8 @@ export function verify(items, roots) {
     return problems;
 }
 
-/** @param {string} text @param {Item[]} items */
-export function lint(text, items) {
-    const problems = [];
+export function lint(text: string, items: Item[]) {
+    const problems: string[] = [];
     const seen = new Set();
     const lines = text.split('\n');
     for (const it of items) {
@@ -271,8 +284,7 @@ export function lint(text, items) {
     return problems;
 }
 
-/** @param {Item[]} items */
-export function status(items) {
+export function status(items: Item[]) {
     const counts = Object.fromEntries(RESPONSE_STATES.map((s) => [s, 0]));
     for (const it of items) counts[it.state]++;
     const pending = items.filter((it) => it.state.startsWith('accepted') && !it.applied.length).map((it) => it.id);
@@ -295,10 +307,9 @@ export function status(items) {
 }
 
 /**
- * @param {string[]} argv `render <data.json> [--out f] [--append] [--sections s.json]` | `status <file>` | `verify <file>` | `lint <file>`
- * @param {{ name: string, path: string }[]} roots
+ * @param argv `render <data.json> [--out f] [--append] [--sections s.json]` | `status <file>` | `verify <file>` | `lint <file>`
  */
-export function reviewCli(argv, roots) {
+export function reviewCli(argv: string[], roots: { name: string; path: string }[]) {
     const [sub, ...rest] = argv;
     const opts = parseArgs(rest, ['root']);
     const file = opts._[0];
@@ -342,6 +353,6 @@ export function reviewCli(argv, roots) {
         process.stderr.write(`${items.length} items, ${problems.length} problem(s)\n`);
         return problems.length ? 1 : 0;
     }
-    process.stderr.write('usage: steward review render|status|verify|lint <file>\n');
+    process.stderr.write('usage: spec-tools steward review render|status|verify|lint <file>\n');
     return 2;
 }

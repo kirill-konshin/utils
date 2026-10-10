@@ -12,9 +12,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { slugify } from '../../skills/spec-steward/scripts/lib/util.mjs';
 import { gateBase } from './ci';
 import { git, root } from './repo';
+import { slugify } from './steward/lib/util';
 
 /** Every capability specification in the working tree, with its requirement and scenario headings. */
 export function capabilitySpecs() {

@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Deterministic checks over the corpus, a diff of it, and the citations of it. Every kind is cheap and mechanical;
  * judgement stays with the reader. Severity: `error` fails the run, `warn` fails it under --strict, `info` is a prompt
@@ -7,8 +6,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { boundAnchors } from './citations.mjs';
-import { ADVISORY, allRequirements, DEFAULT_MARKERS, gapExempts, KNOWN_GAP, RETIRED } from './corpus.mjs';
+import type { Citation } from './citations';
+import { boundAnchors } from './citations';
+import type { Corpus, Requirement, Scenario } from './corpus';
+import { ADVISORY, allRequirements, DEFAULT_MARKERS, gapExempts, KNOWN_GAP, RETIRED } from './corpus';
 import {
     absolutesIn,
     codeTokens,
@@ -19,30 +20,33 @@ import {
     sentences,
     wordCount,
     words,
-} from './util.mjs';
+} from './util';
 
 export { DEFAULT_MARKERS };
 
-/**
- * @typedef {import('./corpus.mjs').Corpus} Corpus
- * @typedef {import('./corpus.mjs').Requirement} Requirement
- * @typedef {import('./corpus.mjs').Scenario} Scenario
- * @typedef {import('./citations.mjs').Citation} Citation
- * @typedef {'error' | 'warn' | 'info'} Severity
- * @typedef {{
- *   kind: string, severity: Severity, file: string, line: number, id?: string, scenario?: string, message: string,
- *   fix?: { file: string, from: string, to: string, all?: boolean }[]
- * }} Finding
- * @typedef {{ reqBlocks: Set<string>, scenarioBlocks: Set<string> }} BaseIndex
- * @typedef {{
- *   maxWords?: [number, number], maxObligations?: [number, number], files?: Set<string>, base?: BaseIndex | null
- * }} CheckOptions
- */
+export type Severity = 'error' | 'warn' | 'info';
+export type Finding = {
+    kind: string;
+    severity: Severity;
+    file: string;
+    line: number;
+    id?: string;
+    scenario?: string;
+    message: string;
+    fix?: { file: string; from: string; to: string; all?: boolean }[];
+};
+export type BaseIndex = { reqBlocks: Set<string>; scenarioBlocks: Set<string> };
+export type CheckOptions = {
+    maxWords?: [number, number];
+    maxObligations?: [number, number];
+    files?: Set<string>;
+    base?: BaseIndex | null;
+};
 
 /** The size lines: [prompt, failing] for a block's words and a statement's obligations. */
 export const SIZE = {
-    words: /** @type {[number, number]} */ ([300, 500]),
-    obligations: /** @type {[number, number]} */ ([5, 8]),
+    words: [300, 500] as [number, number],
+    obligations: [5, 8] as [number, number],
 };
 /** The kinds that need a base, skipped when there is none. */
 export const DIFF_KINDS = ['weakened', 'new-requirement', 'renamed-anchor', 'scenario-unproven', 'non-ears', 'non-bdd'];
@@ -65,17 +69,14 @@ const EARS = /^(?:When|While|Where)\b|^If\b[\s\S]*\bthen\b|\bSHALL\b/;
 const EARS_FORMS =
     'When <trigger>, the <system> SHALL <response>; While <state>, …; If <condition>, then …; Where <feature>, …; or The <system> SHALL …';
 
-/** @param {Corpus} corpus */
-const reqIndex = (corpus) => new Map(allRequirements(corpus).map((r) => [r.id, r]));
-/** Body without its heading, normalized: identity apart from name. @param {string} block */
-const bodyKey = (block) => normalize(block.split('\n').slice(1).join('\n'));
+const reqIndex = (corpus: Corpus) => new Map(allRequirements(corpus).map((r) => [r.id, r]));
+/** Body without its heading, normalized: identity apart from name. */
+const bodyKey = (block: string) => normalize(block.split('\n').slice(1).join('\n'));
 
 /**
  * What the base corpus holds, for telling added or edited text from text it already had (a verbatim move is neither).
- * @param {Corpus} base
- * @returns {BaseIndex}
  */
-export function baseIndex(base) {
+export function baseIndex(base: Corpus): BaseIndex {
     const reqs = allRequirements(base);
     return {
         reqBlocks: new Set(reqs.map((r) => normalize(r.block))),
@@ -86,13 +87,12 @@ export function baseIndex(base) {
 /**
  * Compare a base corpus with the head: removals, weaker obligations, dropped absolutes, added exceptions, new advisory
  * markers — and renames (same body, new heading or file), which are not weakening but move every anchor citing them.
- * @param {Corpus} base
- * @param {Corpus} head
- * @returns {{ findings: Finding[], renames: { from: string, to: string }[] }}
  */
-export function diffCorpus(base, head) {
-    /** @type {Finding[]} */
-    const findings = [];
+export function diffCorpus(
+    base: Corpus,
+    head: Corpus,
+): { findings: Finding[]; renames: { from: string; to: string }[] } {
+    const findings: Finding[] = [];
     const renames = [];
     const b = reqIndex(base);
     const h = reqIndex(head);
@@ -136,8 +136,8 @@ export function diffCorpus(base, head) {
                 message: `scenario removed: "${s.name}"`,
             });
         }
-        /** @type {string[]} */
-        const why = [];
+
+        const why: string[] = [];
         if (now.strong < old.strong) why.push(`MUST/SHALL ${old.strong} → ${now.strong}`);
         const absOld = absolutesIn(old.statement).length;
         const absNow = absolutesIn(now.statement).length;
@@ -173,13 +173,10 @@ export function diffCorpus(base, head) {
 /**
  * The marker findings of one requirement: retired, tracker-less, misplaced or misspelled markers grant nothing until
  * they are fixed, and say so.
- * @param {Requirement} r
- * @returns {Finding[]}
  */
-function markerFindings(r) {
-    /** @type {Finding[]} */
-    const out = [];
-    const warn = (/** @type {number} */ line, /** @type {string} */ message, /** @type {any} */ fix) =>
+function markerFindings(r: Requirement): Finding[] {
+    const out: Finding[] = [];
+    const warn = (line: number, message: string, fix?: Finding['fix']) =>
         out.push({
             kind: 'marker-hygiene',
             severity: 'warn',
@@ -225,20 +222,13 @@ function markerFindings(r) {
     return out;
 }
 
-/**
- * Checks over one corpus and its citations.
- * @param {Corpus} corpus
- * @param {Citation[]} citations
- * @param {CheckOptions} opts
- * @returns {Finding[]}
- */
-export function checkCorpus(corpus, citations, opts = {}) {
-    /** @type {Finding[]} */
-    const out = [];
+/** Checks over one corpus and its citations. */
+export function checkCorpus(corpus: Corpus, citations: Citation[], opts: CheckOptions = {}): Finding[] {
+    const out: Finding[] = [];
     const [wordsInfo, wordsFail] = opts.maxWords ?? SIZE.words;
     const [obligationsInfo, obligationsFail] = opts.maxObligations ?? SIZE.obligations;
     const bound = boundAnchors(citations);
-    const inScope = (/** @type {string} */ f) => !opts.files || opts.files.has(f);
+    const inScope = (f: string) => !opts.files || opts.files.has(f);
     const base = opts.base ?? null;
 
     for (const cap of corpus.capabilities) {
@@ -252,14 +242,14 @@ export function checkCorpus(corpus, citations, opts = {}) {
                 message: `renders #${d.slug} as line ${d.first} does — a citation reaches only the first; rename one`,
             });
         for (const r of cap.requirements) {
-            const at = (/** @type {number} */ line, /** @type {Scenario | undefined} */ s = undefined) => ({
+            const at = (line: number, s: Scenario | undefined = undefined) => ({
                 file: r.file,
                 line,
                 id: r.id,
                 ...(s && { scenario: s.slug }),
             });
             const stmtWords = words(r.statement);
-            const binds = (/** @type {Scenario} */ s) =>
+            const binds = (s: Scenario) =>
                 bound.has(`${r.file}#${s.slug}`) || (r.scenarios.length === 1 && bound.has(`${r.file}#${r.slug}`));
 
             const paths = [...r.block.matchAll(FILE_PATH)].map((m) => m[0]).filter((p) => !p.includes('openspec/'));
@@ -385,18 +375,13 @@ export function checkCorpus(corpus, citations, opts = {}) {
     return out;
 }
 
-/**
- * The same requirement name in two capabilities, or two requirements with the same body up to whitespace.
- * @param {Corpus} corpus
- * @returns {Finding[]}
- */
-function duplicateRequirements(corpus) {
-    /** @type {Finding[]} */
-    const out = [];
-    /** @type {Map<string, Requirement[]>} */
-    const byName = new Map();
-    /** @type {Map<string, Requirement[]>} */
-    const byBody = new Map();
+/** The same requirement name in two capabilities, or two requirements with the same body up to whitespace. */
+function duplicateRequirements(corpus: Corpus): Finding[] {
+    const out: Finding[] = [];
+
+    const byName: Map<string, Requirement[]> = new Map();
+
+    const byBody: Map<string, Requirement[]> = new Map();
     for (const r of allRequirements(corpus)) {
         const name = r.name.toLowerCase();
         byName.set(name, [...(byName.get(name) ?? []), r]);
@@ -430,22 +415,16 @@ function duplicateRequirements(corpus) {
 
 /**
  * Citations that do not resolve, tests that assert on text, and bindings that do not seem to prove what they cite.
- * @param {Corpus} corpus
- * @param {Citation[]} citations
- * @param {(file: string) => boolean} inScope
- * @returns {Finding[]}
  */
-function citationFindings(corpus, citations, inScope) {
-    /** @type {Finding[]} */
-    const out = [];
+function citationFindings(corpus: Corpus, citations: Citation[], inScope: (file: string) => boolean): Finding[] {
+    const out: Finding[] = [];
     const reqs = allRequirements(corpus);
-    /** @type {Map<string, Requirement>} */
-    const byScenario = new Map();
+
+    const byScenario: Map<string, Requirement> = new Map();
     for (const r of reqs) for (const s of r.scenarios) byScenario.set(`${r.file}#${s.slug}`, r);
     const reqByAnchor = new Map(reqs.map((r) => [`${r.file}#${r.slug}`, r]));
 
-    /** @type {Map<string, Citation[]>} */
-    const testsByFile = new Map();
+    const testsByFile: Map<string, Citation[]> = new Map();
     for (const c of citations) {
         if (!inScope(c.file)) continue;
         if (!c.resolves)
@@ -520,12 +499,12 @@ function citationFindings(corpus, citations, inScope) {
 /**
  * Prompts limited to what the diff added or edited: a requirement or scenario whose text the base holds nowhere, and
  * citations in changed files. Errors and warnings stay corpus-wide.
- * @param {Finding[]} findings
- * @param {Corpus} head
- * @param {BaseIndex} base
- * @param {Set<string>} changed files the working tree changes against the base
+ *
+ *
+ *
+ * @param changed files the working tree changes against the base
  */
-export function scopePrompts(findings, head, base, changed) {
+export function scopePrompts(findings: Finding[], head: Corpus, base: BaseIndex, changed: Set<string>) {
     const edited = new Set();
     for (const r of allRequirements(head)) {
         if (!base.reqBlocks.has(normalize(r.block))) edited.add(r.id);
@@ -538,15 +517,9 @@ export function scopePrompts(findings, head, base, changed) {
     );
 }
 
-/**
- * Fixes for anchors a diff renamed: every citation of the old anchor is rewritten to the new one.
- * @param {{ from: string, to: string }[]} renames
- * @param {Citation[]} citations
- * @returns {Finding[]}
- */
-export function renameFindings(renames, citations) {
-    /** @type {Finding[]} */
-    const out = [];
+/** Fixes for anchors a diff renamed: every citation of the old anchor is rewritten to the new one. */
+export function renameFindings(renames: { from: string; to: string }[], citations: Citation[]): Finding[] {
+    const out: Finding[] = [];
     for (const { from, to } of renames) {
         const hits = citations.filter((c) => c.anchor && `${c.target}#${c.anchor}` === from);
         for (const c of hits)
@@ -564,13 +537,12 @@ export function renameFindings(renames, citations) {
 
 /**
  * Apply every finding's fix; each file is rewritten once. A rename replaces whole anchors only (`#x` never `#x-y`).
- * @param {string} root
- * @param {Finding[]} findings
- * @returns {string[]} files changed
+ *
+ *
+ * @returns files changed
  */
-export function applyFixes(root, findings) {
-    /** @type {Map<string, string>} */
-    const texts = new Map();
+export function applyFixes(root: string, findings: Finding[]): string[] {
+    const texts: Map<string, string> = new Map();
     for (const f of findings)
         for (const fix of f.fix ?? []) {
             const abs = path.join(root, fix.file);

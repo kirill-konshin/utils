@@ -111,7 +111,7 @@ export function render(diff: SpecDiff, base: string, moved: readonly CapabilityM
         out.push('');
     }
     out.push(
-        'A removed or renamed heading takes its anchor with it; `spec-steward check` fails every citation that no longer resolves.',
+        'A removed or renamed heading takes its anchor with it; `spec-tools steward check` fails every citation that no longer resolves.',
         '',
     );
     return out.join('\n');

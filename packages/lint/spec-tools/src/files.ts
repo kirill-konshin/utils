@@ -7,7 +7,7 @@
 export const PARTS_DIR = 'audit-parts';
 /** Every unit in scope with its class, for the merge to grade a finding against an ⚠️ Advisory requirement. */
 export const UNITS_FILE = `${PARTS_DIR}/units.json`;
-/** spec-steward's evidence model, which `spec-steward evidence --json` writes. */
+/** spec-steward's evidence model, which `spec-tools steward evidence --json` writes. */
 export const EVIDENCE_FILE = 'spec-evidence.json';
 
 /** The audits the engine runs: the code-conformance audit and spec-steward's corpus-quality audit. */

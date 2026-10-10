@@ -1,17 +1,16 @@
-#!/usr/bin/env node
-// @ts-check
 /**
- * spec-steward CLI — deterministic support for writing, guarding and auditing an OpenSpec corpus. Installed as the
- * `spec-steward` bin of `@kirill.konshin/lint`; repositories call the CLI and read its JSON, never its modules.
+ * spec-steward — deterministic support for writing, guarding and auditing an OpenSpec corpus. It runs as
+ * `spec-tools steward <command>`, the one `spec-tools` bin of `@kirill.konshin/lint`; repositories call the CLI and read
+ * its JSON, never its modules.
  *
- *   spec-steward check     [--base auto|<ref>] [--binds <glob>]... [--file f] [--fix] [--strict] [--json]
- *                          [--max-words P,F] [--max-obligations P,F]      the corpus gate (also local and the hook)
- *   spec-steward coverage  [--out file] [--binds <glob>]...              the coverage report, MDX-safe Markdown
- *   spec-steward evidence  --json [--binds <glob>]...                     the audits' evidence model on stdout
- *   spec-steward review    render|status|verify|lint ...                  the review-file engine
- *   spec-steward align     --root A=path --root B=path [--json]           wording drift of shared rules across repos
- *   spec-steward wire      [--check|--fix]                                the guard's steering points in a repository
- *   spec-steward hook                                                     Claude Code PostToolUse entry (stdin JSON)
+ *   spec-tools steward check     [--base auto|<ref>] [--binds <glob>]... [--file f] [--fix] [--strict] [--json]
+ *                                [--max-words P,F] [--max-obligations P,F]   the corpus gate (also local and the hook)
+ *   spec-tools steward coverage  [--out file] [--binds <glob>]...           the coverage report, MDX-safe Markdown
+ *   spec-tools steward evidence  --json [--binds <glob>]...                  the audits' evidence model on stdout
+ *   spec-tools steward review    render|status|verify|lint ...               the review-file engine
+ *   spec-tools steward align     --root A=path --root B=path [--json]        wording drift of shared rules across repos
+ *   spec-tools steward wire      [--check|--fix]                             the guard's steering points in a repository
+ *   spec-tools steward hook                                                  Claude Code PostToolUse entry (stdin JSON)
  *
  * Common flags: --root NAME=path (repeatable), --specs <dir> (default openspec/specs). A repository's own binds live in its
  * root package.json, `"spec-steward": { "binds": [...] }`, and add to every `--binds` given.
@@ -21,6 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import type { Finding } from './lib/checks';
 import {
     applyFixes,
     baseIndex,
@@ -30,15 +30,15 @@ import {
     renameFindings,
     scopePrompts,
     SIZE,
-} from './lib/checks.mjs';
-import { scanCitations } from './lib/citations.mjs';
-import { DEFAULT_SPECS_DIR, loadCorpus, loadCorpusAt, parseSpec } from './lib/corpus.mjs';
-import { coverageReport } from './lib/coverage.mjs';
-import { evidenceModel, sourceIndex } from './lib/evidence.mjs';
-import { changedFiles, forget, listFiles, resolveBase, toplevel } from './lib/git.mjs';
-import { parseArgs } from './lib/util.mjs';
+} from './lib/checks';
+import { scanCitations } from './lib/citations';
+import { DEFAULT_SPECS_DIR, loadCorpus, loadCorpusAt, parseSpec } from './lib/corpus';
+import { coverageReport } from './lib/coverage';
+import { evidenceModel, sourceIndex } from './lib/evidence';
+import { changedFiles, forget, listFiles, resolveBase, toplevel } from './lib/git';
+import { parseArgs } from './lib/util';
 
-const anchorsOf = (/** @type {string} */ text) => parseSpec(text, '', '').slugs;
+const anchorsOf = (text: string) => parseSpec(text, '', '').slugs;
 
 /** Flags each command accepts; review, align, wire and hook read their own. */
 const FLAGS = {
@@ -52,35 +52,32 @@ const BOOLEANS = ['fix', 'strict', 'json', 'all-citations', 'check'];
 /** A usage or environment error: reported on stderr, exit 2. */
 class UsageError extends Error {}
 
-/** @param {Record<string, any>} opts */
-export function rootsOf(opts) {
+/** The roots the flags name, or the repository of `cwd`. */
+export function rootsOf(opts: Record<string, any>, cwd: string = process.cwd()) {
     const specsDir = opts.specs ?? DEFAULT_SPECS_DIR;
-    const given = /** @type {string[]} */ (opts.root ?? []);
+    const given = (opts.root ?? []) as string[];
     if (!given.length) {
-        const top = fs.realpathSync(toplevel(process.cwd()) ?? process.cwd());
+        const top = fs.realpathSync(toplevel(cwd) ?? cwd);
         return [{ name: path.basename(top), path: top, specsDir }];
     }
     return given.map((r) => {
         const eq = r.indexOf('=');
-        const p = fs.realpathSync(path.resolve(eq > 0 ? r.slice(eq + 1) : r));
+        const p = fs.realpathSync(path.resolve(cwd, eq > 0 ? r.slice(eq + 1) : r));
         return { name: eq > 0 ? r.slice(0, eq) : path.basename(p), path: p, specsDir };
     });
 }
 
-/** A `P,F` pair of size lines, or the default. @param {unknown} value @param {[number, number]} fallback */
-function pair(value, fallback) {
+/** A `P,F` pair of size lines, or the default. */
+function pair(value: unknown, fallback: [number, number]) {
     if (value === undefined) return fallback;
     const [p, f] = String(value).split(',').map(Number);
     if (!Number.isFinite(p) || (f !== undefined && !Number.isFinite(f)))
         throw new UsageError(`bad size line: ${value}`);
-    return /** @type {[number, number]} */ ([p, f ?? fallback[1]]);
+    return [p, f ?? fallback[1]] as [number, number];
 }
 
-/**
- * The repository must hold a specs directory and a non-empty git listing; otherwise every scan would be vacuous.
- * @param {{ name: string, path: string, specsDir: string }} root
- */
-function assertScannable(root) {
+/** The repository must hold a specs directory and a non-empty git listing; otherwise every scan would be vacuous. */
+function assertScannable(root: { name: string; path: string; specsDir: string }) {
     if (!fs.existsSync(path.join(root.path, root.specsDir)))
         throw new UsageError(`${root.name}: no specs directory ${root.specsDir}`);
     if (!listFiles(root.path)?.length)
@@ -90,27 +87,19 @@ function assertScannable(root) {
 /**
  * What binds beyond the defaults: the repository's own `binds` (`"spec-steward": { "binds": [...] }` in its root
  * `package.json`), then every `--binds` given.
- * @param {Record<string, any>} opts
- * @param {string} root
  */
-const bindsOf = (opts, root) => {
+const bindsOf = (opts: Record<string, any>, root: string) => {
     let configured = [];
     try {
         configured = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))['spec-steward']?.binds ?? [];
     } catch {
         // no package.json, or not JSON: nothing configured
     }
-    return /** @type {string[]} */ (
-        [...[].concat(configured), ...[].concat(opts.binds ?? [])].filter((b) => typeof b === 'string')
-    );
+    return [...[].concat(configured), ...[].concat(opts.binds ?? [])].filter((b) => typeof b === 'string') as string[];
 };
 
-/**
- * Every finding for one repository, and the base it was judged against.
- * @param {{ name: string, path: string, specsDir: string }} root
- * @param {Record<string, any>} opts
- */
-export function runCheck(root, opts) {
+/** Every finding for one repository, and the base it was judged against. */
+export function runCheck(root: { name: string; path: string; specsDir: string }, opts: Record<string, any>) {
     forget();
     assertScannable(root);
     let base = null;
@@ -125,7 +114,7 @@ export function runCheck(root, opts) {
     const binds = bindsOf(opts, root.path);
     if (opts.file && (typeof opts.file !== 'string' || !fs.existsSync(path.resolve(opts.file))))
         throw new UsageError(`--file ${opts.file}: no such file`);
-    const relative = (/** @type {string} */ f) =>
+    const relative = (f: string) =>
         path
             .relative(root.path, fs.realpathSync(path.resolve(f)))
             .split(path.sep)
@@ -155,36 +144,41 @@ export function runCheck(root, opts) {
 
 const ORDER = { error: 0, warn: 1, info: 2 };
 
-/**
- * @param {string} cmd
- * @param {Record<string, any>} opts
- */
-function validateFlags(cmd, opts) {
-    const known = /** @type {Record<string, string[]>} */ (FLAGS)[cmd];
+function validateFlags(cmd: string, opts: Record<string, any>) {
+    const known = (FLAGS as Record<string, string[]>)[cmd];
     if (!known) return;
     const unknown = Object.keys(opts).filter((k) => k !== '_' && !known.includes(k) && !COMMON.includes(k));
     if (unknown.length) throw new UsageError(`${cmd}: unknown flag ${unknown.map((k) => `--${k}`).join(', ')}`);
 }
 
-/** @param {{ name: string }[]} roots @param {string} cmd */
-function oneRoot(roots, cmd) {
+function oneRoot(roots: { name: string }[], cmd: string) {
     if (roots.length !== 1) throw new UsageError(`${cmd} takes one --root`);
-    return /** @type {{ name: string, path: string, specsDir: string }} */ (roots[0]);
+    return roots[0] as { name: string; path: string; specsDir: string };
 }
 
-/** @param {string[]} argv */
-async function main(argv) {
+/** The audits' evidence model of one root. */
+export function evidenceAt(root: { name: string; path: string; specsDir: string }, opts: Record<string, any> = {}) {
+    assertScannable(root);
+    return evidenceModel(
+        loadCorpus(root.path, root),
+        scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path) }),
+        sourceIndex(root.path),
+    );
+}
+
+async function main(argv: string[], cwd: string) {
     const [cmd, ...rest] = argv;
     const opts = parseArgs(rest, ['root', 'lens', 'binds'], BOOLEANS);
     validateFlags(cmd, opts);
-    const roots = rootsOf(opts);
+    const roots = rootsOf(opts, cwd);
 
     if (cmd === 'check') {
         let failed = false;
-        const all = [];
+        const all: (Pick<Finding, 'file' | 'line' | 'severity' | 'kind' | 'id' | 'message'> & { root: string })[] = [];
         const prefix = roots.length > 1;
         for (const root of roots) {
-            let { findings, how, base } = runCheck(root, opts);
+            const { how, base, ...run } = runCheck(root, opts);
+            let { findings } = run;
             if (opts.fix) {
                 const changed = applyFixes(root.path, findings);
                 for (const f of changed) process.stderr.write(`fixed ${root.name} ${f}\n`);
@@ -214,11 +208,8 @@ async function main(argv) {
                 process.stdout.write(
                     `${prefix ? `${f.root} ` : ''}${f.file}:${f.line} ${f.severity} ${f.kind} ${f.message}\n`,
                 );
-        const by = all.reduce(
-            (m, f) => ((m[f.kind] = (m[f.kind] ?? 0) + 1), m),
-            /** @type {Record<string, number>} */ ({}),
-        );
-        const n = (/** @type {string} */ s) => all.filter((f) => f.severity === s).length;
+        const by = all.reduce((m, f) => ((m[f.kind] = (m[f.kind] ?? 0) + 1), m), {} as Record<string, number>);
+        const n = (s: string) => all.filter((f) => f.severity === s).length;
         process.stderr.write(
             `${all.length} finding(s): ${
                 Object.entries(by)
@@ -247,43 +238,40 @@ async function main(argv) {
 
     if (cmd === 'evidence') {
         if (!opts.json) throw new UsageError('evidence takes --json: the evidence model on stdout');
-        const root = oneRoot(roots, cmd);
-        assertScannable(root);
-        const model = evidenceModel(
-            loadCorpus(root.path, root),
-            scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path) }),
-            sourceIndex(root.path),
-        );
-        process.stdout.write(JSON.stringify(model) + '\n');
+        process.stdout.write(JSON.stringify(evidenceAt(oneRoot(roots, cmd), opts)) + '\n');
         return 0;
     }
 
-    if (cmd === 'review') return (await import('./lib/review.mjs')).reviewCli(rest, roots);
-    if (cmd === 'align') return (await import('./lib/align.mjs')).alignCli(opts, roots);
-    if (cmd === 'wire') return (await import('./lib/wire.mjs')).wireCli(opts, roots[0]);
-    if (cmd === 'hook') return (await import('./lib/wire.mjs')).hookCli(opts);
+    if (cmd === 'review') return (await import('./lib/review')).reviewCli(rest, roots);
+    if (cmd === 'align') return (await import('./lib/align')).alignCli(opts, roots);
+    if (cmd === 'wire') return (await import('./lib/wire')).wireCli(opts, roots[0]);
+    if (cmd === 'hook') return (await import('./lib/wire')).hookCli(opts);
 
     throw new UsageError(
-        'usage: spec-steward check|coverage|evidence|review|align|wire|hook — see the header of steward.mjs',
+        'usage: spec-tools steward check|coverage|evidence|review|align|wire|hook — see the spec-steward skill',
     );
 }
 
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url).pathname)) {
-    const cmd = process.argv[2];
+/**
+ * `spec-tools steward <argv>` in the repository of `cwd`: its exit code. A usage error is reported, exit 2; outside CI
+ * a command other than `hook` and `wire` first warns when the guard is not fully wired, and that check never blocks.
+ */
+export async function run(argv: string[], cwd: string = process.cwd()) {
+    const [cmd, ...rest] = argv;
     if (cmd && cmd !== 'hook' && cmd !== 'wire' && !process.env.CI) {
         try {
-            const { wireWarning } = await import('./lib/wire.mjs');
-            const warning = wireWarning(rootsOf(parseArgs(process.argv.slice(3), ['root']))[0]);
+            const { wireWarning } = await import('./lib/wire');
+            const warning = wireWarning(rootsOf(parseArgs(rest, ['root']), cwd)[0]);
             if (warning) process.stderr.write(warning + '\n');
         } catch {
             // the wire check never blocks a command
         }
     }
     try {
-        process.exitCode = await main(process.argv.slice(2));
+        return await main(argv, cwd);
     } catch (error) {
         if (!(error instanceof UsageError)) throw error;
-        process.stderr.write(`spec-steward: ${error.message}\n`);
-        process.exitCode = 2;
+        process.stderr.write(`spec-tools steward: ${error.message}\n`);
+        return 2;
     }
 }

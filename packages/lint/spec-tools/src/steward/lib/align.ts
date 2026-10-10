@@ -1,26 +1,17 @@
-// @ts-check
 /**
  * Rules shared by several repositories, compared: capabilities pair by path or by leaf name, requirements by anchor or
  * by statement. A rule is its name and statement; its scenarios are each repository's own, so a scenario only one
  * repository has is not drift. Reports identical, drifted and one-sided rules; choosing the wording stays with the owner.
  */
-import { loadCorpus } from './corpus.mjs';
-import { jaccard, normalize, words } from './util.mjs';
+import type { Corpus, Requirement } from './corpus';
+import { loadCorpus } from './corpus';
+import { jaccard, normalize, words } from './util';
 
-/**
- * @typedef {import('./corpus.mjs').Corpus} Corpus
- * @typedef {import('./corpus.mjs').Requirement} Requirement
- */
+/** The rule's own words: its statement, without its markers and scenarios, normalized. */
+const statement = (r: Requirement) => normalize(r.statement);
 
-/** The rule's own words: its statement, without its markers and scenarios, normalized. @param {Requirement} r */
-const statement = (r) => normalize(r.statement);
-
-/**
- * Word-level difference of two texts: the words only one side has, in order.
- * @param {string} a
- * @param {string} b
- */
-export function wordDiff(a, b) {
+/** Word-level difference of two texts: the words only one side has, in order. */
+export function wordDiff(a: string, b: string) {
     const wa = normalize(a).split(' ');
     const wb = normalize(b).split(' ');
     const sa = new Set(wa);
@@ -28,20 +19,25 @@ export function wordDiff(a, b) {
     return { onlyA: wa.filter((w) => !sb.has(w)).join(' '), onlyB: wb.filter((w) => !sa.has(w)).join(' ') };
 }
 
-/**
- * @param {Corpus} a
- * @param {Corpus} b
- */
-export function align(a, b) {
-    const pairs = [];
-    const leaf = (/** @type {string} */ c) => c.split('/').pop();
+/** One requirement of a shared capability: in both repositories, worded alike or not, or in one alone. */
+export type RequirementPair = {
+    kind: 'identical' | 'drift' | 'only-a' | 'only-b';
+    a?: Requirement;
+    b?: Requirement;
+    onlyA?: string;
+    onlyB?: string;
+};
+
+export function align(a: Corpus, b: Corpus) {
+    const pairs: { a: string; b: string; requirements: RequirementPair[] }[] = [];
+    const leaf = (c: string) => c.split('/').pop();
     for (const ca of a.capabilities) {
         const cb =
             b.capabilities.find((x) => x.capability === ca.capability) ??
             b.capabilities.find((x) => leaf(x.capability) === leaf(ca.capability));
         if (!cb) continue;
         const used = new Set();
-        const reqs = [];
+        const reqs: RequirementPair[] = [];
         for (const ra of ca.requirements) {
             let rb = cb.requirements.find((x) => x.slug === ra.slug && !used.has(x.slug));
             if (!rb) {
@@ -70,11 +66,7 @@ export function align(a, b) {
     return pairs;
 }
 
-/**
- * @param {Record<string, any>} opts
- * @param {{ name: string, path: string, specsDir: string }[]} roots
- */
-export function alignCli(opts, roots) {
+export function alignCli(opts: Record<string, any>, roots: { name: string; path: string; specsDir: string }[]) {
     if (roots.length < 2) {
         process.stderr.write('align needs two --root NAME=path\n');
         return 2;
@@ -102,7 +94,7 @@ export function alignCli(opts, roots) {
     }
     let drift = 0;
     for (const p of pairs) {
-        const count = (/** @type {string} */ k) => p.requirements.filter((r) => r.kind === k).length;
+        const count = (k: string) => p.requirements.filter((r) => r.kind === k).length;
         process.stdout.write(
             `\n${ra.name}:${p.a} ↔ ${rb.name}:${p.b} — identical ${count('identical')}, drift ${count('drift')}, only ${ra.name} ${count('only-a')}, only ${rb.name} ${count('only-b')}\n`,
         );

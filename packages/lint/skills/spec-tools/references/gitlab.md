@@ -16,14 +16,7 @@ The jobs a GitLab repository runs around `spec-steward` and `spec-tools`. Names 
 
 ## Getting the tools into an AI job
 
-An image that carries `claude` and Node but no workspace install unpacks the pinned package; the bundle needs no install, and the skills the repository links resolve through it:
-
-```yaml
-.spec-tools-setup: &spec-tools-setup
-    - mkdir -p node_modules/@kirill.konshin/lint
-    - npm pack "@kirill.konshin/lint@$(node -p "require('./package.json').devDependencies['@kirill.konshin/lint']")" --silent
-    - tar -xzf kirill.konshin-lint-*.tgz --strip-components 1 -C node_modules/@kirill.konshin/lint
-```
+An AI job's image carries `claude` and Node but no workspace install. The job that computes the scope runs with the workspace installed and hands the package's `skills/` on as an artifact: the self-contained CLI, `skills/spec-tools/scripts/cli.js`, and the skills its workers read. The AI jobs `needs:` that job and call the file with `node`; they run no setup.
 
 `spec-tools scope` and `changed` load `typescript`, so they run in a job with the workspace installed.
 
@@ -51,18 +44,26 @@ spec-diff:
     script: [yarn spec-tools diff]
     artifacts: { when: always, paths: [spec-diff.md] }
 
-# The run class, the coverage report and the audit's inputs, handed on as artifacts.
+# The run class, the coverage report and the audit's inputs, handed on as artifacts — with the package's skills/,
+# which hold the CLI the AI jobs run.
 spec-coverage:
     stage: review
     script:
         - yarn spec-tools tier | tee audit-tier.env
         - set -a && . ./audit-tier.env && set +a
-        - yarn spec-steward coverage --out spec-coverage.md
+        - yarn spec-tools steward coverage --out spec-coverage.md
         - yarn spec-tools scope
     artifacts:
         when: always
         reports: { dotenv: audit-tier.env }
-        paths: [audit-tier.env, spec-coverage.md, audit-scope.json, audit-parts/]
+        paths:
+            [
+                audit-tier.env,
+                spec-coverage.md,
+                audit-scope.json,
+                audit-parts/,
+                node_modules/@kirill.konshin/lint/skills/,
+            ]
 
 # The reading, shared out: each job reads the parts dealt to it.
 spec-verify:read:
@@ -72,8 +73,7 @@ spec-verify:read:
     parallel: 2 # 8 on the nightly
     allow_failure: true
     script:
-        - *spec-tools-setup
-        - node_modules/.bin/spec-tools workers
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers
     artifacts: { when: always, paths: [audit-parts/findings/] }
 
 # The judge: merge, complete what the reading left short, verify every ERROR, gate.
@@ -83,13 +83,12 @@ spec-verify:
     needs: [spec-coverage, { job: 'spec-verify:read', optional: true }]
     allow_failure: { exit_codes: [3, 77] }
     script:
-        - *spec-tools-setup
-        - node_modules/.bin/spec-tools report
-        - node_modules/.bin/spec-tools workers --complete
-        - node_modules/.bin/spec-tools report
-        - node_modules/.bin/spec-tools workers --verify
-        - node_modules/.bin/spec-tools report
-        - node_modules/.bin/spec-tools verdict spec-verify.json
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers --complete
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers --verify
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js verdict spec-verify.json
     artifacts: { when: always, paths: [spec-verify.md, spec-verify.json, audit-parts/findings/] }
 
 # Any other skill-driven review: headless, then its verdict.
@@ -99,8 +98,7 @@ some-review:
     needs: [spec-coverage]
     allow_failure: { exit_codes: [3, 77] }
     script:
-        - *spec-tools-setup
-        - node_modules/.bin/spec-tools run some-review --verdict some-review.md --advisory
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js run some-review --verdict some-review.md --advisory
     artifacts: { when: always, paths: [some-review.md, claude.jsonl, 'job-log-*.md'] }
 
 render-reviews:

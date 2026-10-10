@@ -6,8 +6,7 @@
   "skipGenerate": true,
   "bin": {
     "lint-prepare": "./dist/lintPrepare.js",
-    "spec-steward": "./skills/spec-steward/scripts/steward.mjs",
-    "spec-tools": "./spec-tools/dist/cli.mjs"
+    "spec-tools": "./skills/spec-tools/scripts/cli.js"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -34,7 +33,7 @@
   },
   "scripts": {
     "----- BUILD -----": "",
-    "clean": "rm -rf dist spec-tools/dist",
+    "clean": "rm -rf dist skills/spec-tools/scripts",
     "build": "tsdown",
     "start": "tsdown --watch",
     "----- TEST -----": "",
@@ -46,7 +45,6 @@
     "commands",
     "rules",
     "skills",
-    "spec-tools/dist",
     "!**/*.test.*"
   ],
   "dependencies": {
@@ -142,7 +140,7 @@
       "build": {
         "outputs": [
           "{projectRoot}/dist",
-          "{projectRoot}/spec-tools/dist"
+          "{projectRoot}/skills/spec-tools/scripts"
         ]
       }
     }

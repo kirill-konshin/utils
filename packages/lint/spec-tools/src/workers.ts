@@ -23,13 +23,13 @@
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import type { Finding, ShortPart } from './auditReport';
 import type { Part, ScopeJson } from './auditScope';
 import { shard } from './ci';
 import { AUDIT_FILES, type AuditFiles, type AuditName, findingsFile } from './files';
 import { git, root } from './repo';
+import { SKILLS_DIR } from './skillsDir';
 import * as steward from './stewardAudit';
 import { CHEAP_EFFORT, CHEAP_MODEL, EXPENSIVE_MODEL } from './tier';
 
@@ -107,7 +107,7 @@ export function treeChanges(before: Map<string, string>, after: Map<string, stri
 const TOOL_RULE =
     'Tool rule: only Skill, Read, Glob, Grep, Write, Edit and the git commands — no ls/cat/find, no shell validation of your JSON; other commands are denied here and only cost a turn.';
 /** The shipped skill, two levels above this module in the source and in the build alike. */
-const SKILL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/spec-verify/SKILL.md');
+const SKILL = path.join(SKILLS_DIR, 'spec-verify/SKILL.md');
 /** Loading the skill: by name where the repository links it, else from the package — a job with no install links none. */
 const loadSkill = (repo: string) =>
     `First, load the skill instructions: use the Skill tool with skill "spec-verify" (or Read ${path.relative(repo, SKILL)} if that fails) to get the checks, the grading contract, the findings-file contract and the tool rules. Follow them exactly.`;

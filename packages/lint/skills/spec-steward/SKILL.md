@@ -1,6 +1,6 @@
 ---
 name: spec-steward
-description: Guard, audit and repair an OpenSpec specification corpus — whether these are the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (review rounds where the owner answers items with ⬜ / ✅ / ❌), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the `spec-verify` skill does. Writing a rule is the `/spec-author` command.
+description: Guard, audit and repair an OpenSpec specification corpus — whether these are the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (review rounds where the owner answers items with ⬜ / ✅ / ❌), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-tools steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the `spec-verify` skill does. Writing a rule is the `/spec-author` command.
 ---
 
 # Spec steward
@@ -12,7 +12,7 @@ Procedures for an OpenSpec corpus. Four things live elsewhere and are not repeat
 - the specification model (REQUIRED versus ⚠️ ADVISORY, Known gaps, the evidence ladder, what is not evidence, how requirements and scenarios are written) — [references/model.md](references/model.md)
 - what the gate checks and emits (citations, binding, markers, size lines, the scenario ratchet, base resolution, exit codes, the coverage report, the evidence JSON) — [references/contract.md](references/contract.md)
 
-`steward` below means the `spec-steward` bin that `@kirill.konshin/lint` installs (`node_modules/.bin/spec-steward`); where the bin is absent, `node <this skill's folder>/scripts/steward.mjs`. Inside a Yarn script the bin resolves only once the installed release carries it (a yalc link adds `node_modules/.bin/spec-steward`, which Yarn's script PATH does not include); until then call it by path. It has no dependencies and needs Node ≥ 20 and git. Every command takes `--root NAME=path` (repeatable, for several repositories) and `--specs <dir>` (default `openspec/specs`).
+`steward` below means `spec-tools steward`, through the `spec-tools` bin `@kirill.konshin/lint` installs; where the bin is absent, `node <the spec-tools skill's folder>/scripts/cli.js steward`. The file is self-contained and needs Node ≥ 20 and git. Every command takes `--root NAME=path` (repeatable, for several repositories) and `--specs <dir>` (default `openspec/specs`).
 
 ## Pick the procedure
 

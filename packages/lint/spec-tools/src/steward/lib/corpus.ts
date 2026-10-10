@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * The OpenSpec corpus as data: capabilities, requirements, scenarios, each with its line and anchor, and the two
  * markers a requirement can carry — `**⚠️ Advisory:**` (its class) and `**⚠️ Known gap (<tracker>):**` (a gap,
@@ -7,26 +6,56 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { filesAt, showMany } from './git.mjs';
-import { slugify, stripCode, strongCount, weakCount } from './util.mjs';
+import { filesAt, showMany } from './git';
+import { slugify, stripCode, strongCount, weakCount } from './util';
 
-/**
- * @typedef {{ kw: string, text: string, line: number }} Step
- * @typedef {{ label: string, tracker: string | null, line: number, text: string, scenario: string | null,
- *   inline: boolean }} Marker
- * @typedef {{ tracker: string, text: string, line: number, exempts: string[], named: boolean }} Gap
- * @typedef {{ name: string, slug: string, line: number, end: number, block: string, steps: Step[],
- *   markers: Marker[] }} Scenario
- * @typedef {{
- *   capability: string, file: string, name: string, slug: string, id: string, line: number, end: number,
- *   block: string, statement: string, statementLine: number, markers: Marker[], scenarios: Scenario[],
- *   strong: number, weak: number, advisory: boolean, gaps: Gap[]
- * }} Requirement
- * @typedef {{ line: number, slug: string, first: number }} DuplicateHeading
- * @typedef {{ capability: string, file: string, purpose: string, slugs: Set<string>, requirements: Requirement[],
- *   duplicates: DuplicateHeading[] }} Capability
- * @typedef {{ name: string, path: string, specsDir: string, capabilities: Capability[] }} Corpus
- */
+export type Step = { kw: string; text: string; line: number };
+export type Marker = {
+    label: string;
+    tracker: string | null;
+    line: number;
+    text: string;
+    scenario: string | null;
+    inline: boolean;
+};
+export type Gap = { tracker: string; text: string; line: number; exempts: string[]; named: boolean };
+export type Scenario = {
+    name: string;
+    slug: string;
+    line: number;
+    end: number;
+    block: string;
+    steps: Step[];
+    markers: Marker[];
+};
+export type Requirement = {
+    capability: string;
+    file: string;
+    name: string;
+    slug: string;
+    id: string;
+    line: number;
+    end: number;
+    block: string;
+    statement: string;
+    statementLine: number;
+    markers: Marker[];
+    scenarios: Scenario[];
+    strong: number;
+    weak: number;
+    advisory: boolean;
+    gaps: Gap[];
+};
+export type DuplicateHeading = { line: number; slug: string; first: number };
+export type Capability = {
+    capability: string;
+    file: string;
+    purpose: string;
+    slugs: Set<string>;
+    requirements: Requirement[];
+    duplicates: DuplicateHeading[];
+};
+export type Corpus = { name: string; path: string; specsDir: string; capabilities: Capability[] };
 
 export const DEFAULT_SPECS_DIR = 'openspec/specs';
 
@@ -48,54 +77,50 @@ const QUOTES = [`'…'`, `"…"`, `‘…’`, `“…”`, `_…_`, `*…*`];
 /**
  * The scenarios a Known gap names by title after "exempts" (quoted '…', "…", ‘…’, “…”, _…_ or *…*); null when it
  * names none that way.
- * @param {string} text
- * @param {Scenario[]} scenarios
  */
-function namedIn(text, scenarios) {
+function namedIn(text: string, scenarios: Scenario[]) {
     const clause = /\bexempts?\b([\s\S]*)$/i.exec(text)?.[1].toLowerCase();
     if (clause === undefined) return null;
-    const quoted = (/** @type {string} */ name) => QUOTES.map((q) => q.replace('…', name.toLowerCase()));
+    const quoted = (name: string) => QUOTES.map((q) => q.replace('…', name.toLowerCase()));
     return scenarios.filter((s) => quoted(s.name).some((q) => clause.includes(q))).map((s) => s.slug);
 }
 
 /**
  * Parse one capability specification.
- * @param {string} text
- * @param {string} file repository-relative path of the spec.md
- * @param {string} capability
- * @returns {Capability}
+ *
+ * @param file repository-relative path of the spec.md
  */
-export function parseSpec(text, file, capability) {
+export function parseSpec(text: string, file: string, capability: string): Capability {
     const lines = text.split('\n');
     const seen = new Map();
-    /** @type {Map<string, number>} */
-    const firstAt = new Map();
-    /** @type {DuplicateHeading[]} */
-    const duplicates = [];
-    /** @type {Requirement[]} */
-    const requirements = [];
-    /** @type {Set<string>} */
-    const slugs = new Set();
-    /** @type {Requirement | null} */
-    let req = null;
-    /** @type {Scenario | null} */
-    let scen = null;
+
+    const firstAt: Map<string, number> = new Map();
+
+    const duplicates: DuplicateHeading[] = [];
+
+    const requirements: Requirement[] = [];
+
+    const slugs: Set<string> = new Set();
+
+    let req: Requirement | null = null;
+
+    let scen: Scenario | null = null;
     let section = '';
-    const purpose = [];
-    const blockOf = (/** @type {number} */ from, /** @type {number} */ to) =>
+    const purpose: string[] = [];
+    const blockOf = (from: number, to: number) =>
         lines
             .slice(from - 1, to)
             .join('\n')
             .trimEnd();
 
-    const closeScenario = (/** @type {number} */ end) => {
+    const closeScenario = (end: number) => {
         if (!scen) return;
         scen.end = end;
         scen.block = blockOf(scen.line, end);
         scen = null;
     };
 
-    const close = (/** @type {number} */ end) => {
+    const close = (end: number) => {
         closeScenario(end);
         if (!req) return;
         const r = req;
@@ -117,7 +142,7 @@ export function parseSpec(text, file, capability) {
             .map((m) => {
                 const named = namedIn(m.text, r.scenarios);
                 return {
-                    tracker: /** @type {string} */ (m.tracker),
+                    tracker: m.tracker as string,
                     text: m.text,
                     line: m.line,
                     exempts: named ?? [],
@@ -178,10 +203,10 @@ export function parseSpec(text, file, capability) {
         const m = atStart && LABELS.has(atStart[1].trim().toLowerCase()) ? atStart : null;
         const inline = !atStart && INLINE_MARKER.exec(stripCode(raw));
         if (m || inline) {
-            const found = /** @type {RegExpExecArray} */ (m || inline);
-            const label = /** @type {string} */ (LABELS.get(found[1].trim().toLowerCase()));
-            /** @type {Marker} */
-            const marker = {
+            const found = (m || inline) as RegExpExecArray;
+            const label = LABELS.get(found[1].trim().toLowerCase()) as string;
+
+            const marker: Marker = {
                 label,
                 tracker: m ? m[2]?.trim() || null : null,
                 line: n,
@@ -199,10 +224,9 @@ export function parseSpec(text, file, capability) {
     return { capability, file, purpose: purpose.join('\n').trim(), slugs, requirements, duplicates };
 }
 
-/** Every spec.md under a directory on disk. @param {string} dir */
-function walkSpecs(dir) {
-    /** @type {string[]} */
-    const out = [];
+/** Every spec.md under a directory on disk. */
+function walkSpecs(dir: string) {
+    const out: string[] = [];
     if (!fs.existsSync(dir)) return out;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, entry.name);
@@ -212,16 +236,18 @@ function walkSpecs(dir) {
     return out.sort();
 }
 
-/** `openspec/specs/billing/refunds/spec.md` → `billing/refunds`. @param {string} specsDir @param {string} file */
-export const capabilityOf = (specsDir, file) => path.relative(specsDir, path.dirname(file)).split(path.sep).join('/');
+/** `openspec/specs/billing/refunds/spec.md` → `billing/refunds`. */
+export const capabilityOf = (specsDir: string, file: string) =>
+    path.relative(specsDir, path.dirname(file)).split(path.sep).join('/');
 
 /**
  * The corpus as the working tree holds it.
- * @param {string} root absolute repository root
- * @param {{ name?: string, specsDir?: string }} [opts]
- * @returns {Corpus}
+ * @param root absolute repository root
  */
-export function loadCorpus(root, { name = path.basename(root), specsDir = DEFAULT_SPECS_DIR } = {}) {
+export function loadCorpus(
+    root: string,
+    { name = path.basename(root), specsDir = DEFAULT_SPECS_DIR }: { name?: string; specsDir?: string } = {},
+): Corpus {
     const abs = path.join(root, specsDir);
     const capabilities = walkSpecs(abs).map((p) => {
         const file = path.relative(root, p).split(path.sep).join('/');
@@ -230,14 +256,12 @@ export function loadCorpus(root, { name = path.basename(root), specsDir = DEFAUL
     return { name, path: root, specsDir, capabilities };
 }
 
-/**
- * The corpus as a git ref holds it.
- * @param {string} root
- * @param {string} ref
- * @param {{ name?: string, specsDir?: string }} [opts]
- * @returns {Corpus}
- */
-export function loadCorpusAt(root, ref, { name = path.basename(root), specsDir = DEFAULT_SPECS_DIR } = {}) {
+/** The corpus as a git ref holds it. */
+export function loadCorpusAt(
+    root: string,
+    ref: string,
+    { name = path.basename(root), specsDir = DEFAULT_SPECS_DIR }: { name?: string; specsDir?: string } = {},
+): Corpus {
     const files = filesAt(root, ref, specsDir)
         .filter((f) => f.endsWith('/spec.md'))
         .sort();
@@ -246,11 +270,11 @@ export function loadCorpusAt(root, ref, { name = path.basename(root), specsDir =
     return { name, path: root, specsDir, capabilities };
 }
 
-/** Every requirement of a corpus. @param {Corpus} corpus */
-export const allRequirements = (corpus) => corpus.capabilities.flatMap((c) => c.requirements);
+/** Every requirement of a corpus. */
+export const allRequirements = (corpus: Corpus) => corpus.capabilities.flatMap((c) => c.requirements);
 
-/** Which corpus file a repository-relative path is, if any. @param {Corpus} corpus @param {string} file */
-export const capabilityByFile = (corpus, file) => corpus.capabilities.find((c) => c.file === file);
+/** Which corpus file a repository-relative path is, if any. */
+export const capabilityByFile = (corpus: Corpus, file: string) => corpus.capabilities.find((c) => c.file === file);
 
-/** Whether a scenario is exempt from the ratchet by a Known gap. @param {Requirement} r @param {Scenario} s */
-export const gapExempts = (r, s) => r.gaps.some((g) => g.exempts.includes(s.slug));
+/** Whether a scenario is exempt from the ratchet by a Known gap. */
+export const gapExempts = (r: Requirement, s: Scenario) => r.gaps.some((g) => g.exempts.includes(s.slug));

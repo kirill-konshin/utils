@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Zero-dependency source reading: which characters of a file are code, comment or string, the extent of every test
  * call and type assertion in a test file, and a file's text with its comments blanked. A call's extent is found by
@@ -9,10 +8,10 @@ export const CODE = 0;
 export const COMMENT = 1;
 export const STRING = 2;
 
-/** Files read with the C-family lexer; every other text file has `#` comments. @param {string} file */
-export const isCLike = (file) => /\.(?:[cm]?[jt]sx?|go)$/i.test(file);
-/** @param {string} file */
-export const isDoc = (file) => /\.mdx?$/i.test(file);
+/** Files read with the C-family lexer; every other text file has `#` comments. */
+export const isCLike = (file: string) => /\.(?:[cm]?[jt]sx?|go)$/i.test(file);
+
+export const isDoc = (file: string) => /\.mdx?$/i.test(file);
 
 const REGEX_AFTER = new Set([...'(,=:[!&|?{};+-*%<>~^', '']);
 const REGEX_KEYWORD = /^(?:return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/;
@@ -20,17 +19,14 @@ const REGEX_KEYWORD = /^(?:return|typeof|instanceof|in|of|new|delete|void|throw|
 /**
  * Classify every character of a C-family source as CODE, COMMENT or STRING. A quoted string never spans a line: an
  * unterminated quote (an apostrophe in JSX text) is read as code.
- * @param {string} text
- * @returns {Uint8Array}
  */
-export function lex(text) {
+export function lex(text: string): Uint8Array {
     const n = text.length;
     const cls = new Uint8Array(n);
-    const mark = (/** @type {number} */ from, /** @type {number} */ to, /** @type {number} */ k) =>
-        cls.fill(k, from, to);
+    const mark = (from: number, to: number, k: number) => cls.fill(k, from, to);
 
-    /** @param {number} from just past the opening backtick @returns {number} just past the closing one */
-    const template = (from) => {
+    /** @param from just past the opening backtick@returns just past the closing one */
+    const template = (from: number): number => {
         let j = from;
         while (j < n) {
             const ch = text[j];
@@ -51,8 +47,7 @@ export function lex(text) {
         return n;
     };
 
-    /** @param {number} from @param {boolean} inTemplate @returns {number} */
-    const code = (from, inTemplate) => {
+    const code = (from: number, inTemplate: boolean): number => {
         let j = from;
         let depth = 0;
         let prev = '';
@@ -137,15 +132,9 @@ export function lex(text) {
 
 const OPEN = { '(': ')', '[': ']', '{': '}' };
 
-/**
- * The index of the bracket closing the one at `open`, counting code characters only; -1 when it never closes.
- * @param {string} text
- * @param {Uint8Array} cls
- * @param {number} open
- */
-export function matchClose(text, cls, open) {
-    /** @type {string[]} */
-    const stack = [];
+/** The index of the bracket closing the one at `open`, counting code characters only; -1 when it never closes. */
+export function matchClose(text: string, cls: Uint8Array, open: number) {
+    const stack: string[] = [];
     for (let j = open; j < text.length; j++) {
         if (cls[j] !== CODE) continue;
         const ch = text[j];
@@ -158,11 +147,11 @@ export function matchClose(text, cls, open) {
     return -1;
 }
 
-/** The offset each line starts at, and the 1-based line of any offset. @param {string} text */
-function lineIndex(text) {
+/** The offset each line starts at, and the 1-based line of any offset. */
+function lineIndex(text: string) {
     const starts = [0];
     for (let i = 0; i < text.length; i++) if (text[i] === '\n') starts.push(i + 1);
-    const lineOf = (/** @type {number} */ at) => {
+    const lineOf = (at: number) => {
         let lo = 0;
         let hi = starts.length - 1;
         while (lo < hi) {
@@ -175,13 +164,10 @@ function lineIndex(text) {
     return { starts, lineOf };
 }
 
-/** @param {string} line */
-const indentOf = (line) => /^\s*/.exec(line)?.[0].length ?? 0;
+const indentOf = (line: string) => /^\s*/.exec(line)?.[0].length ?? 0;
 
-/**
- * @typedef {{ start: number, attach: number, end: number, title: string | null, kind: 'test' | 'type' }} Block
- *   1-based lines: `attach` is the first line of the comment run directly above `start` (or `start` itself).
- */
+/** 1-based lines: `attach` is the first line of the comment run directly above `start` (or `start` itself). */
+export type Block = { start: number; attach: number; end: number; title: string | null; kind: 'test' | 'type' };
 
 const TEST_NAME = /(?<![\w$.])(?:describe|it|test|suite|bench)(?![\w$])/g;
 /** Chained modifiers a test call may carry: Vitest/Jest (`.only`, `.each(…)`, …) and Playwright (`.describe`, `.step`). */
@@ -195,11 +181,8 @@ const C_COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
 /**
  * The first line of the comment run (for Python, also decorators) directly above a 1-based line, no blank between.
- * @param {string[]} lines
- * @param {number} start
- * @param {RegExp} comment
  */
-function attachedAbove(lines, start, comment) {
+function attachedAbove(lines: string[], start: number, comment: RegExp) {
     let attach = start;
     while (attach > 1 && comment.test(lines[attach - 2])) attach--;
     return attach;
@@ -207,24 +190,24 @@ function attachedAbove(lines, start, comment) {
 
 /**
  * Where a call that the brackets cannot close ends: the next line at or left of its indent that closes a block.
- * @param {string[]} lines
- * @param {number} start 1-based
+ *
+ * @param start 1-based
  */
-function endByIndent(lines, start) {
+function endByIndent(lines: string[], start: number) {
     const indent = indentOf(lines[start - 1]);
     for (let k = start; k < lines.length; k++)
         if (lines[k].trim() && indentOf(lines[k]) <= indent) return /^\s*[})]/.test(lines[k]) ? k + 1 : -1;
     return -1;
 }
 
-/** Test calls and type assertions of a C-family test file. @param {string} text @returns {Block[]} */
-function cLikeBlocks(text) {
+/** Test calls and type assertions of a C-family test file. */
+function cLikeBlocks(text: string): Block[] {
     const cls = lex(text);
     const { starts, lineOf } = lineIndex(text);
     const lines = text.split('\n');
-    /** @type {Block[]} */
-    const out = [];
-    const skipSpace = (/** @type {number} */ j) => {
+
+    const out: Block[] = [];
+    const skipSpace = (j: number) => {
         while (j < text.length && (/\s/.test(text[j]) || cls[j] === COMMENT)) j++;
         return j;
     };
@@ -284,11 +267,11 @@ function cLikeBlocks(text) {
     return out;
 }
 
-/** Test functions and classes of a Python test file, by indentation. @param {string} text @returns {Block[]} */
-function pythonBlocks(text) {
+/** Test functions and classes of a Python test file, by indentation. */
+function pythonBlocks(text: string): Block[] {
     const lines = text.split('\n');
-    /** @type {Block[]} */
-    const out = [];
+
+    const out: Block[] = [];
     lines.forEach((line, i) => {
         const m = /^(\s*)(?:async\s+)?def\s+(test_\w+)|^(\s*)class\s+(Test\w*)/.exec(line);
         if (!m) return;
@@ -306,8 +289,8 @@ function pythonBlocks(text) {
     return out;
 }
 
-/** Test functions of a Go test file. @param {string} text @returns {Block[]} */
-function goBlocks(text) {
+/** Test functions of a Go test file. */
+function goBlocks(text: string): Block[] {
     const cls = lex(text);
     const { lineOf } = lineIndex(text);
     const lines = text.split('\n');
@@ -317,40 +300,27 @@ function goBlocks(text) {
         if (end < 0) return [];
         const start = lineOf(m.index ?? 0);
         const attach = attachedAbove(lines, start, C_COMMENT_LINE);
-        return [{ start, attach, end: lineOf(end), title: m[1], kind: /** @type {const} */ ('test') }];
+        return [{ start, attach, end: lineOf(end), title: m[1], kind: 'test' as const }];
     });
 }
 
-/**
- * Every test call and type assertion of a test file.
- * @param {string} file
- * @param {string} text
- * @returns {Block[]}
- */
-export function testBlocks(file, text) {
+/** Every test call and type assertion of a test file. */
+export function testBlocks(file: string, text: string): Block[] {
     if (/\.py$/.test(file)) return pythonBlocks(text);
     if (/\.go$/.test(file)) return goBlocks(text);
     return isCLike(file) ? cLikeBlocks(text) : [];
 }
 
-/**
- * The innermost block a 1-based line sits in, or in whose attached comment run it sits.
- * @param {Block[]} blocks
- * @param {number} line
- */
-export function blockAt(blocks, line) {
-    let best = /** @type {Block | null} */ (null);
+/** The innermost block a 1-based line sits in, or in whose attached comment run it sits. */
+export function blockAt(blocks: Block[], line: number) {
+    let best = null as Block | null;
     for (const b of blocks)
         if (b.attach <= line && line <= b.end && (!best || b.end - b.attach < best.end - best.attach)) best = b;
     return best;
 }
 
-/**
- * A source's text with its comments blanked to spaces, line breaks kept, so a term search finds code, not prose.
- * @param {string} file
- * @param {string} text
- */
-export function stripComments(file, text) {
+/** A source's text with its comments blanked to spaces, line breaks kept, so a term search finds code, not prose. */
+export function stripComments(file: string, text: string) {
     if (/\.json$/i.test(file)) return text;
     if (!isCLike(file))
         return text

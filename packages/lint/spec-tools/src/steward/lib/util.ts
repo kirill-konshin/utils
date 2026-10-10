@@ -1,15 +1,11 @@
-// @ts-check
 /** Text helpers shared by every steward command: slugs, tokens, RFC 2119 keywords, absolutes. */
 
 /**
  * GitHub/Docusaurus heading slug (github-slugger semantics): lowercase, drop punctuation and symbols, every space
  * becomes a hyphen (runs are NOT collapsed, so `a — b` is `a--b`). `seen` makes repeats unique the way a rendered
  * page does (`x`, `x-1`, `x-2`).
- *
- * @param {string} heading
- * @param {Map<string, number>} [seen]
  */
-export function slugify(heading, seen) {
+export function slugify(heading: string, seen?: Map<string, number>) {
     const base = heading
         .toLowerCase()
         .trim()
@@ -26,40 +22,38 @@ export function slugify(heading, seen) {
     return slug;
 }
 
-/** Inline code spans removed: a keyword in backticks is mentioned, not issued. @param {string} text */
-export const stripCode = (text) => text.replace(/`[^`\n]*`/g, ' ');
+/** Inline code spans removed: a keyword in backticks is mentioned, not issued. */
+export const stripCode = (text: string) => text.replace(/`[^`\n]*`/g, ' ');
 
-/** Whitespace-normalized text, for comparing blocks regardless of wrapping. @param {string} text */
-export const normalize = (text) => text.replace(/\s+/g, ' ').trim();
+/** Whitespace-normalized text, for comparing blocks regardless of wrapping. */
+export const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 /** The RFC 2119 keywords, a NOT form counted once (NEVER and ALWAYS are not among them). */
 export const STRONG = /\b(MUST NOT|MUST|SHALL NOT|SHALL|REQUIRED)\b/g;
 export const WEAK = /\b(SHOULD NOT|SHOULD|RECOMMENDED|MAY|OPTIONAL)\b/g;
 
-/** @param {string} text */
-export const strongCount = (text) => (stripCode(text).match(STRONG) ?? []).length;
-/** @param {string} text */
-export const weakCount = (text) => (stripCode(text).match(WEAK) ?? []).length;
+export const strongCount = (text: string) => (stripCode(text).match(STRONG) ?? []).length;
+
+export const weakCount = (text: string) => (stripCode(text).match(WEAK) ?? []).length;
 
 export const ABSOLUTE = /\b(never|always|only|every|all|none|no|any)\b/gi;
 export const EXCEPTION =
     /\b(except|unless|where possible|if possible|when feasible|as appropriate|otherwise|instead)\b/gi;
 
-/** Sentences of a block, split on terminal punctuation or list bullets. @param {string} text */
-export const sentences = (text) =>
+/** Sentences of a block, split on terminal punctuation or list bullets. */
+export const sentences = (text: string) =>
     stripCode(text)
         .split(/(?<=[.!?])\s+|\n\s*[-*]\s+|\n{2,}/)
         .map((s) => s.trim())
         .filter(Boolean);
 
-/** Absolutes issued inside obligation sentences (an absolute in plain prose obliges nothing). @param {string} text */
-export const absolutesIn = (text) =>
+/** Absolutes issued inside obligation sentences (an absolute in plain prose obliges nothing). */
+export const absolutesIn = (text: string) =>
     sentences(text)
         .filter((s) => /\b(MUST|SHALL|REQUIRED)\b/.test(s))
         .flatMap((s) => (s.match(ABSOLUTE) ?? []).map((w) => w.toLowerCase()));
 
-/** @param {string} text */
-export const exceptionsIn = (text) => (stripCode(text).match(EXCEPTION) ?? []).map((w) => w.toLowerCase());
+export const exceptionsIn = (text: string) => (stripCode(text).match(EXCEPTION) ?? []).map((w) => w.toLowerCase());
 
 const STOP = new Set(
     'the a an and or of to in on for with by from at as is are be been was were it its this that these those when then which who what where while if else not no any all each every one two than into onto via per their there them they his her our your can may must shall should will would could does do did has have had only also more most less such same other another so but nor yet very just over under between within without about after before during because both either neither'.split(
@@ -67,8 +61,8 @@ const STOP = new Set(
     ),
 );
 
-/** Content words (lowercase, ≥ 4 letters, no stopwords). @param {string} text */
-export const words = (text) =>
+/** Content words (lowercase, ≥ 4 letters, no stopwords). */
+export const words = (text: string) =>
     (
         stripCode(text)
             .toLowerCase()
@@ -77,11 +71,11 @@ export const words = (text) =>
         .filter((w) => !STOP.has(w))
         .map((w) => (w.length > 4 ? w.replace(/(?:ing|ed|es|s)$/, '') : w));
 
-/** Backticked terms — the identifiers a requirement names. @param {string} text */
-export const codeTokens = (text) => [...text.matchAll(/`([^`\n]{2,80})`/g)].map((m) => m[1].trim());
+/** Backticked terms — the identifiers a requirement names. */
+export const codeTokens = (text: string) => [...text.matchAll(/`([^`\n]{2,80})`/g)].map((m) => m[1].trim());
 
-/** Share of `a`'s distinct words that also occur in `b`. @param {string[]} a @param {string[]} b */
-export const containment = (a, b) => {
+/** Share of `a`'s distinct words that also occur in `b`. */
+export const containment = (a: string[], b: string[]) => {
     const sa = new Set(a);
     if (!sa.size) return 0;
     const sb = new Set(b);
@@ -90,8 +84,8 @@ export const containment = (a, b) => {
     return hit / sa.size;
 };
 
-/** Jaccard similarity of two word lists. @param {string[]} a @param {string[]} b */
-export const jaccard = (a, b) => {
+/** Jaccard similarity of two word lists. */
+export const jaccard = (a: string[], b: string[]) => {
     const sa = new Set(a);
     const sb = new Set(b);
     if (!sa.size && !sb.size) return 1;
@@ -100,19 +94,15 @@ export const jaccard = (a, b) => {
     return inter / (sa.size + sb.size - inter);
 };
 
-/** Word count of a block. @param {string} text */
-export const wordCount = (text) => (text.match(/\S+/g) ?? []).length;
+/** Word count of a block. */
+export const wordCount = (text: string) => (text.match(/\S+/g) ?? []).length;
 
 /**
  * Minimal argv parser: `--key value`, `--key=value`, `--flag`, repeated keys collect into arrays. A key listed in
  * `booleans` never takes the next argument as its value.
- * @param {string[]} argv
- * @param {string[]} [repeatable]
- * @param {string[]} [booleans]
  */
-export function parseArgs(argv, repeatable = [], booleans = []) {
-    /** @type {Record<string, any>} */
-    const opts = { _: [] };
+export function parseArgs(argv: string[], repeatable: string[] = [], booleans: string[] = []) {
+    const opts: Record<string, any> = { _: [] };
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if (!arg.startsWith('--')) {
@@ -130,14 +120,12 @@ export function parseArgs(argv, repeatable = [], booleans = []) {
     return opts;
 }
 
-/** @param {string} s */
-const escapeRe = (s) => s.replace(/[.+^$()|[\]\\]/g, '\\$&');
+const escapeRe = (s: string) => s.replace(/[.+^$()|[\]\\]/g, '\\$&');
 
 /**
  * A repository-relative glob as a RegExp: `**` spans directories, `*` and `?` stay inside one, `{a,b}` alternates.
- * @param {string} glob
  */
-export function globToRegExp(glob) {
+export function globToRegExp(glob: string) {
     let re = '';
     for (let i = 0; i < glob.length; i++) {
         const c = glob[i];

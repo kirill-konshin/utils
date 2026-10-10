@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Evidence for an audit, assembled mechanically so a reader judges instead of searching. For every requirement: the
  * tests bound to it and its scenarios, and where its own terms occur in the sources with comments stripped. Code
@@ -8,18 +7,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { isTestFile } from './citations.mjs';
-import { allRequirements } from './corpus.mjs';
-import { listFiles } from './git.mjs';
-import { stripComments } from './scan.mjs';
-import { codeTokens, jaccard, words } from './util.mjs';
+import type { Citation } from './citations';
+import { isTestFile } from './citations';
+import type { Corpus, Requirement } from './corpus';
+import { allRequirements } from './corpus';
+import { listFiles } from './git';
+import { stripComments } from './scan';
+import { codeTokens, jaccard, words } from './util';
 
-/**
- * @typedef {import('./corpus.mjs').Corpus} Corpus
- * @typedef {import('./corpus.mjs').Requirement} Requirement
- * @typedef {import('./citations.mjs').Citation} Citation
- * @typedef {{ file: string, text: string, lines: string[] }} Source text has its comments blanked; lines are as written
- */
+/** text has its comments blanked; lines are as written */
+export type Source = { file: string; text: string; lines: string[] };
 
 const SOURCE_EXT = /\.(?:[cm]?[jt]sx?|ya?ml|json|sh|py|go|conf|toml|sql|tpl|Dockerfile)$|(?:^|\/)Dockerfile[^/]*$/;
 const SOURCE_SKIP =
@@ -38,12 +35,8 @@ const COMMON = new Set([
     'type',
 ]);
 
-/**
- * The non-test source files of a repository, read once, comments blanked for searching.
- * @param {string} root
- * @returns {Source[]}
- */
-export function sourceIndex(root) {
+/** The non-test source files of a repository, read once, comments blanked for searching. */
+export function sourceIndex(root: string): Source[] {
     return (listFiles(root) ?? [])
         .filter((f) => SOURCE_EXT.test(f) && !SOURCE_SKIP.test(f) && !isTestFile(f))
         .flatMap((file) => {
@@ -58,26 +51,21 @@ export function sourceIndex(root) {
         });
 }
 
-/** Terms worth searching for: the identifiers a requirement names in backticks. @param {Requirement} r */
-export const searchTerms = (r) =>
+/** Terms worth searching for: the identifiers a requirement names in backticks. */
+export const searchTerms = (r: Requirement) =>
     [...new Set(codeTokens(r.block))].filter(
         (t) => t.length >= 3 && /^[\w$.@/:<>-]+$/.test(t) && !COMMON.has(t.toLowerCase()),
     );
 
-/** A term as a pattern: an identifier-like end never matches inside a longer identifier. @param {string} term */
-const termPattern = (term) =>
+/** A term as a pattern: an identifier-like end never matches inside a longer identifier. */
+const termPattern = (term: string) =>
     new RegExp(
         `${/^[\w$]/.test(term) ? '(?<![\\w$])' : ''}${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}${/[\w$]$/.test(term) ? '(?![\\w$])' : ''}`,
         'g',
     );
 
-/**
- * Every line of a source the term occurs on, comments stripped.
- * @param {string} term
- * @param {Source[]} sources
- * @returns {{ file: string, line: number }[]}
- */
-export function termHits(term, sources) {
+/** Every line of a source the term occurs on, comments stripped. */
+export function termHits(term: string, sources: Source[]): { file: string; line: number }[] {
     const re = termPattern(term);
     const hits = [];
     for (const s of sources) {
@@ -96,13 +84,8 @@ export function termHits(term, sources) {
     return hits;
 }
 
-/**
- * Requirements sharing terms or wording with `r`, strongest first.
- * @param {Requirement} r
- * @param {{ corpus: Corpus, requirement: Requirement }[]} everywhere
- * @param {Corpus} corpus
- */
-function relatedOf(r, everywhere, corpus) {
+/** Requirements sharing terms or wording with `r`, strongest first. */
+function relatedOf(r: Requirement, everywhere: { corpus: Corpus; requirement: Requirement }[], corpus: Corpus) {
     const mine = new Set(searchTerms(r));
     const myWords = words(r.statement);
     return everywhere
@@ -116,25 +99,20 @@ function relatedOf(r, everywhere, corpus) {
         .slice(0, 5);
 }
 
-/** The citations of a requirement's anchors. @param {Requirement} r @param {Citation[]} citations */
-function citationsOf(r, citations) {
+/** The citations of a requirement's anchors. */
+function citationsOf(r: Requirement, citations: Citation[]) {
     const anchors = new Set([`${r.file}#${r.slug}`, ...r.scenarios.map((s) => `${r.file}#${s.slug}`)]);
     return citations.filter((c) => c.anchor && c.resolves && anchors.has(`${c.target}#${c.anchor}`));
 }
 
-/**
- * The audit's evidence model for one repository, `spec-evidence.json`.
- * @param {Corpus} corpus
- * @param {Citation[]} citations
- * @param {Source[]} sources
- */
-export function evidenceModel(corpus, citations, sources) {
+/** The audit's evidence model for one repository, `spec-evidence.json`. */
+export function evidenceModel(corpus: Corpus, citations: Citation[], sources: Source[]) {
     const everywhere = allRequirements(corpus).map((requirement) => ({ corpus, requirement }));
-    /** @type {Map<string, { file: string, line: number }[]>} */
-    const hitsByTerm = new Map();
-    const hitsOf = (/** @type {string} */ term) => {
+
+    const hitsByTerm: Map<string, { file: string; line: number }[]> = new Map();
+    const hitsOf = (term: string) => {
         if (!hitsByTerm.has(term)) hitsByTerm.set(term, termHits(term, sources));
-        return /** @type {{ file: string, line: number }[]} */ (hitsByTerm.get(term));
+        return hitsByTerm.get(term) as { file: string; line: number }[];
     };
     return {
         version: 1,

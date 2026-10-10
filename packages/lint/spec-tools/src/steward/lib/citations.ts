@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Citations of the corpus in the repository's files. A citation is a mention of `openspec/specs/<path>/spec.md`, with
  * or without `#<anchor>`, in a comment, a `{@link}` or `@see` tag, or a Markdown/MDX document. Most citations are
@@ -10,18 +9,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { listFiles } from './git.mjs';
-import { blockAt, COMMENT, isCLike, isDoc, lex, testBlocks } from './scan.mjs';
-import { globToRegExp } from './util.mjs';
+import { listFiles } from './git';
+import { blockAt, COMMENT, isCLike, isDoc, lex, testBlocks } from './scan';
+import { globToRegExp } from './util';
 
-/**
- * @typedef {'test' | 'file'} BindingKind
- * @typedef {{
- *   file: string, line: number, target: string, anchor: string | null, kind: 'test' | 'code' | 'doc',
- *   binding: BindingKind | null, resolves: boolean, reason?: string, testTitle?: string, window: [number, number]
- * }} Citation
- * @typedef {{ files?: string[], binds?: string[] }} ScanOptions
- */
+export type BindingKind = 'test' | 'file';
+export type Citation = {
+    file: string;
+    line: number;
+    target: string;
+    anchor: string | null;
+    kind: 'test' | 'code' | 'doc';
+    binding: BindingKind | null;
+    resolves: boolean;
+    reason?: string;
+    testTitle?: string;
+    window: [number, number];
+};
+export type ScanOptions = { files?: string[]; binds?: string[] };
 
 const CITE = /((?:\.{1,2}\/)*(?:[\w@.-]+\/)*?openspec\/specs\/[\w./-]*?spec\.md)(?:#([\w-]+))?/g;
 /** Build outputs and vendored copies, the specs themselves, and every change folder (prose that quotes other trees). */
@@ -32,22 +37,21 @@ const TEST_FILE =
 /** Lint configurations: a citation anywhere in one binds (a lint rule is the cheapest evidence). */
 const LINT_CONFIG = /(?:^|\/)(?:eslint\.config\.[cm]?[jt]s|yarn\.config\.cjs)$/;
 
-/** @param {string} file */
-export const isTestFile = (file) => TEST_FILE.test(file) && !isDoc(file);
-/** @param {string} file */
-export const isLintConfig = (file) => LINT_CONFIG.test(file);
+export const isTestFile = (file: string) => TEST_FILE.test(file) && !isDoc(file);
+
+export const isLintConfig = (file: string) => LINT_CONFIG.test(file);
 
 /**
  * A mention counts as a citation in a document, in a comment, or in a `{@link …}`/`@see` tag — never in code or a
  * string, where a path is data (a fixture, a constant). C-family files are lexed; every other text file has `#`
  * comments besides the common markers.
- * @param {string} file
- * @param {string} line
- * @param {number} at index of the match in the line
- * @param {Uint8Array | null} cls the file's lexer classes, for C-family files
- * @param {number} offset the line's start offset in the file
+ *
+ *
+ * @param at index of the match in the line
+ * @param cls the file's lexer classes, for C-family files
+ * @param offset the line's start offset in the file
  */
-function citesHere(file, line, at, cls, offset) {
+function citesHere(file: string, line: string, at: number, cls: Uint8Array | null, offset: number) {
     if (isDoc(file)) return true;
     const before = line.slice(0, at);
     if (/\/\/$/.test(before)) return false; // a URL's path, not a repository path
@@ -59,8 +63,8 @@ function citesHere(file, line, at, cls, offset) {
 
 /** Anchors a spec file renders, cached per absolute path. */
 const anchorCache = new Map();
-/** @param {string} abs @param {(text: string) => Set<string>} anchorsOf */
-function anchorsFor(abs, anchorsOf) {
+
+function anchorsFor(abs: string, anchorsOf: (text: string) => Set<string>) {
     if (!anchorCache.has(abs))
         anchorCache.set(abs, fs.existsSync(abs) ? anchorsOf(fs.readFileSync(abs, 'utf8')) : null);
     return anchorCache.get(abs);
@@ -68,23 +72,24 @@ function anchorsFor(abs, anchorsOf) {
 
 /**
  * The files a scan reads: every tracked or untracked-unignored file, or the given ones; null when git cannot list them.
- * @param {string} root
- * @param {ScanOptions} [opts]
  */
-export const scanUniverse = (root, { files } = {}) => (files ?? listFiles(root))?.filter((f) => !SKIP.test(f)) ?? null;
+export const scanUniverse = (root: string, { files }: ScanOptions = {}) =>
+    (files ?? listFiles(root))?.filter((f) => !SKIP.test(f)) ?? null;
 
 /**
  * Every citation in the repository's text files (a NUL byte marks a binary file).
- * @param {string} root
- * @param {(text: string) => Set<string>} anchorsOf renders a spec's anchors
- * @param {ScanOptions} [opts]
- * @returns {Citation[]}
+ *
+ * @param anchorsOf renders a spec's anchors
  */
-export function scanCitations(root, anchorsOf, opts = {}) {
+export function scanCitations(
+    root: string,
+    anchorsOf: (text: string) => Set<string>,
+    opts: ScanOptions = {},
+): Citation[] {
     anchorCache.clear();
     const binds = (opts.binds ?? []).map(globToRegExp);
-    /** @type {Citation[]} */
-    const out = [];
+
+    const out: Citation[] = [];
     for (const file of scanUniverse(root, opts) ?? []) {
         let buf;
         try {
@@ -118,8 +123,8 @@ export function scanCitations(root, anchorsOf, opts = {}) {
                     reason = `anchor #${anchor} not found`;
                 }
                 const block = blockAt(blocks, i + 1);
-                /** @type {BindingKind | null} */
-                const binding = block ? 'test' : wholeFile ? 'file' : null;
+
+                const binding: BindingKind | null = block ? 'test' : wholeFile ? 'file' : null;
                 out.push({
                     file,
                     line: i + 1,
@@ -139,10 +144,9 @@ export function scanCitations(root, anchorsOf, opts = {}) {
     return out;
 }
 
-/** Citations grouped by `<target>#<anchor>`. @param {Citation[]} citations */
-export function byAnchor(citations) {
-    /** @type {Map<string, Citation[]>} */
-    const map = new Map();
+/** Citations grouped by `<target>#<anchor>`. */
+export function byAnchor(citations: Citation[]) {
+    const map: Map<string, Citation[]> = new Map();
     for (const c of citations) {
         if (!c.anchor) continue;
         const key = `${c.target}#${c.anchor}`;
@@ -151,6 +155,6 @@ export function byAnchor(citations) {
     return map;
 }
 
-/** The anchors a binding citation proves, as `<spec file>#<anchor>`. @param {Citation[]} citations */
-export const boundAnchors = (citations) =>
+/** The anchors a binding citation proves, as `<spec file>#<anchor>`. */
+export const boundAnchors = (citations: Citation[]) =>
     new Set(citations.filter((c) => c.binding && c.anchor && c.resolves).map((c) => `${c.target}#${c.anchor}`));

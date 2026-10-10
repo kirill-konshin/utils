@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * The guard's wiring into a repository — routing in AGENTS.md, the scoped rule, the edit hook, the OPSX operation
  * guidance — and the edit hook itself. Correctness never depends on the skill being discovered: the hook and the
@@ -7,14 +6,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { baseIndex, checkCorpus, diffCorpus } from './checks.mjs';
-import { isTestFile, scanCitations } from './citations.mjs';
-import { capabilityOf, DEFAULT_SPECS_DIR, parseSpec } from './corpus.mjs';
-import { git, show, toplevel } from './git.mjs';
+import { baseIndex, checkCorpus, diffCorpus } from './checks';
+import { isTestFile, scanCitations } from './citations';
+import { capabilityOf, DEFAULT_SPECS_DIR, parseSpec } from './corpus';
+import { git, show, toplevel } from './git';
 
 /** The bin the package installs; the hook is a no-op until the repository's install provides it. */
-export const BIN = 'node_modules/.bin/spec-steward';
-export const HOOK_COMMAND = `f="$CLAUDE_PROJECT_DIR/${BIN}"; [ ! -x "$f" ] || "$f" hook`;
+export const BIN = 'node_modules/.bin/spec-tools';
+export const HOOK_COMMAND = `f="$CLAUDE_PROJECT_DIR/${BIN}"; [ ! -x "$f" ] || "$f" steward hook`;
+/** An edit hook as earlier versions wired it — the `spec-steward` bin, or the script by path; `wire --fix` replaces it. */
+const LEGACY_HOOK = /spec-steward|steward\.mjs/;
 export const AGENTS_LINE =
     'Specifications: edits under `openspec/` are guarded by the scoped rule `.agents/rules/openspec.md` and the `spec-steward` edit hook; corpus-quality audits, review rounds and cross-repository alignment use the `spec-steward` skill, and code conformance is the `spec-verify` audit (`spec-tools`).';
 /** The OPSX guidance points at the repository's own spec gate; the gate runs spec-steward, so no second command. */
@@ -24,40 +25,30 @@ export const GUIDANCE = {
     archive: `Archive only after the repository's spec gate (${GATE_POINTER}) passes and every \`weakened\` finding has the owner's answer.`,
 };
 /** A guidance item from an earlier version that ran steward by path; `wire --fix` replaces it with the pointer. */
-const LEGACY_GUIDANCE = /steward\.mjs check|spec-steward check/;
+const LEGACY_GUIDANCE = /steward\.mjs check|spec-tools steward check/;
 /**
  * Whether the operation's own section of `operations:` points at the gate.
- * @param {'apply' | 'archive'} op
- * @param {string} ops the config from its `operations:` key onwards
+ *
+ * @param ops the config from its `operations:` key onwards
  */
-const hasPointer = (op, ops) => {
+const hasPointer = (op: 'apply' | 'archive', ops: string) => {
     const re = new RegExp(`^ {2}${op}:[^\\n]*\\n((?:(?: {3,}|[ \\t]*#)[^\\n]*\\n?|[ \\t]*\\n)*)`, 'm');
     const section = re.exec(ops)?.[1];
     return !!section && /AGENTS\.md\s*(?:→|->)\s*Checks/.test(section);
 };
 
-/** @param {string} root */
-const configPath = (root) =>
+const configPath = (root: string) =>
     ['openspec/config.yaml', 'openspec/config.yml'].map((p) => path.join(root, p)).find((p) => fs.existsSync(p));
 
-/**
- * Which steering points are in place.
- * @param {{ path: string, specsDir?: string }} root
- */
-export function wireStatus(root) {
-    const has = (/** @type {string} */ p) => fs.existsSync(path.join(root.path, p));
-    const read = (/** @type {string} */ p) => (has(p) ? fs.readFileSync(path.join(root.path, p), 'utf8') : '');
+/** Which steering points are in place. */
+export function wireStatus(root: { path: string; specsDir?: string }) {
+    const has = (p: string) => fs.existsSync(path.join(root.path, p));
+    const read = (p: string) => (has(p) ? fs.readFileSync(path.join(root.path, p), 'utf8') : '');
     const hook = (() => {
         try {
             const settings = JSON.parse(read('.claude/settings.json') || '{}');
-            return (settings.hooks?.PostToolUse ?? []).some((/** @type {any} */ e) =>
-                (e.hooks ?? []).some(
-                    (/** @type {any} */ h) =>
-                        typeof h.command === 'string' &&
-                        // the bin, or the script by path as earlier versions wired it
-                        /spec-steward|steward\.mjs/.test(h.command) &&
-                        h.command.includes('hook'),
-                ),
+            return (settings.hooks?.PostToolUse ?? []).some((e: any) =>
+                (e.hooks ?? []).some((h: any) => h.command === HOOK_COMMAND),
             );
         } catch {
             return false;
@@ -76,35 +67,35 @@ export function wireStatus(root) {
     };
 }
 
-/** One line when the guard is not fully wired, else empty. @param {{ path: string, specsDir?: string }} root */
-export function wireWarning(root) {
+/** One line when the guard is not fully wired, else empty. */
+export function wireWarning(root: { path: string; specsDir?: string }) {
     const s = wireStatus(root);
     if (!s.applicable) return '';
     const missing = Object.entries(s)
         .filter(([k, v]) => k !== 'applicable' && !v)
         .map(([k]) => k);
     return missing.length
-        ? `spec-steward: the guard is not fully wired (missing: ${missing.join(', ')}) — run \`steward wire --check\``
+        ? `spec-tools steward: the guard is not fully wired (missing: ${missing.join(', ')}) — run \`spec-tools steward wire --check\``
         : '';
 }
 
 /**
  * Add a line to a YAML list `operations.<op>.guidance`, creating the keys when absent, or replace the item an earlier
  * version wrote there. Text-level, so comments survive; handles OpenSpec's standard shape and refuses anything else.
- * @param {string} text
- * @param {'apply' | 'archive'} op
- * @param {string} line
- * @returns {string | null} the new text, or null when the shape is not recognised
+ *
+ *
+ *
+ * @returns the new text, or null when the shape is not recognised
  */
-export function addGuidance(text, op, line) {
+export function addGuidance(text: string, op: 'apply' | 'archive', line: string): string | null {
     const item = `'${line.replace(/'/g, "''")}'`;
     const lines = text.split('\n');
-    let ops = lines.findIndex((l) => /^operations:\s*$/.test(l));
+    const ops = lines.findIndex((l) => /^operations:\s*$/.test(l));
     if (ops < 0) {
         const out = text.replace(/\s*$/, '');
         return `${out}\n\noperations:\n  ${op}:\n    guidance:\n      - ${item}\n`;
     }
-    const end = (/** @type {number} */ from, /** @type {number} */ indent) => {
+    const end = (from: number, indent: number) => {
         let i = from + 1;
         while (
             i < lines.length &&
@@ -141,20 +132,25 @@ export function addGuidance(text, op, line) {
     return lines.join('\n');
 }
 
-/**
- * @param {Record<string, any>} opts
- * @param {{ name: string, path: string, specsDir?: string }} root
- */
-export function wireCli(opts, root) {
+export function wireCli(opts: Record<string, any>, root: { name: string; path: string; specsDir?: string }) {
     if (opts.fix) {
         const settingsFile = path.join(root.path, '.claude/settings.json');
         const settings = fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
         if (!wireStatus(root).hook) {
             settings.hooks ??= {};
-            settings.hooks.PostToolUse ??= [];
+            settings.hooks.PostToolUse = (settings.hooks.PostToolUse ?? [])
+                .map((e: any) => ({
+                    ...e,
+                    hooks: (e.hooks ?? []).filter(
+                        (h: any) => !(typeof h.command === 'string' && LEGACY_HOOK.test(h.command)),
+                    ),
+                }))
+                .filter((e: any) => e.hooks.length);
             settings.hooks.PostToolUse.push({
                 matcher: 'Edit|Write|MultiEdit',
-                hooks: [{ type: 'command', command: HOOK_COMMAND, timeout: 30, statusMessage: 'spec-steward check' }],
+                hooks: [
+                    { type: 'command', command: HOOK_COMMAND, timeout: 30, statusMessage: 'spec-tools steward check' },
+                ],
             });
             fs.mkdirSync(path.dirname(settingsFile), { recursive: true });
             fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 4) + '\n');
@@ -163,7 +159,7 @@ export function wireCli(opts, root) {
         const cfg = configPath(root.path);
         if (cfg && !wireStatus(root).opsx) {
             let text = fs.readFileSync(cfg, 'utf8');
-            for (const op of /** @type {const} */ (['apply', 'archive'])) {
+            for (const op of ['apply', 'archive'] as const) {
                 const ops = text.slice(Math.max(0, text.search(/^operations:/m)));
                 if (hasPointer(op, ops) && text.search(/^operations:/m) >= 0) continue;
                 const next = addGuidance(text, op, GUIDANCE[op]);
@@ -194,24 +190,24 @@ export function wireCli(opts, root) {
         return 0;
     }
     for (const [k, label] of Object.entries(labels))
-        process.stdout.write(`${s[/** @type {keyof typeof s} */ (k)] ? '✓' : '✗'} ${label}\n`);
+        process.stdout.write(`${s[k as keyof typeof s] ? '✓' : '✗'} ${label}\n`);
     return Object.entries(s).every(([, v]) => v) ? 0 : 1;
 }
 
-/** Keys of findings already reported, per worktree, so an agent is told once per content. @param {string} root */
-function memory(root) {
+/** Keys of findings already reported, per worktree, so an agent is told once per content. */
+function memory(root: string) {
     const dir = git(root, ['rev-parse', '--git-dir'])?.trim();
     const file = dir ? path.resolve(root, dir, 'spec-steward-hook.json') : null;
-    /** @type {string[]} */
-    let seen = [];
+
+    let seen: string[] = [];
     try {
         if (file && fs.existsSync(file)) seen = JSON.parse(fs.readFileSync(file, 'utf8'));
     } catch {
         seen = [];
     }
     return {
-        has: (/** @type {string} */ k) => seen.includes(k),
-        save: (/** @type {string[]} */ keys) => {
+        has: (k: string) => seen.includes(k),
+        save: (keys: string[]) => {
             if (!file || !keys.length) return;
             try {
                 fs.writeFileSync(file, JSON.stringify([...seen, ...keys].slice(-500)));
@@ -225,11 +221,8 @@ function memory(root) {
 /**
  * Findings for one edited file: on a spec, what the edit changed against HEAD; on a test or source file, its
  * citations. Never the backlog of findings an untouched requirement already had.
- * @param {string} root
- * @param {string} rel
- * @param {string} specsDir
  */
-export function hookFindings(root, rel, specsDir = DEFAULT_SPECS_DIR) {
+export function hookFindings(root: string, rel: string, specsDir: string = DEFAULT_SPECS_DIR) {
     const abs = path.join(root, rel);
     if (!fs.existsSync(abs)) return [];
     const text = fs.readFileSync(abs, 'utf8');
@@ -268,7 +261,7 @@ export function hookFindings(root, rel, specsDir = DEFAULT_SPECS_DIR) {
         return [...findings, ...local];
     }
     if (!text.includes('openspec/')) return [];
-    const anchorsOf = (/** @type {string} */ t) => parseSpec(t, '', '').slugs;
+    const anchorsOf = (t: string) => parseSpec(t, '', '').slugs;
     const citations = scanCitations(root, anchorsOf, { files: [rel] });
     if (!citations.length) return [];
     const corpusFiles = [...new Set(citations.filter((c) => c.resolves).map((c) => c.target))];
@@ -290,9 +283,8 @@ export function hookFindings(root, rel, specsDir = DEFAULT_SPECS_DIR) {
 /**
  * Claude Code PostToolUse entry: reads the hook JSON on stdin, prints a `decision: block` with the findings so they are
  * fed back to the agent at once, or nothing.
- * @param {Record<string, any>} opts
  */
-export async function hookCli(opts) {
+export async function hookCli(opts: Record<string, any>) {
     let input = '';
     for await (const chunk of process.stdin) input += chunk;
     let event;

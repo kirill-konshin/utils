@@ -26,9 +26,10 @@ const NODE_DECLARATIONS = { compilerOptions: { module: 'nodenext', moduleResolut
 
 /**
  * Two builds. The library — ESLint, Prettier, lint-staged and Yarn configs and `lint-prepare` — one file per source
- * module with its declarations, its dependencies left to the consumer's install. `spec-tools` — one self-contained
- * bundle, so a CI job that untars the package runs it with no install; `typescript` alone stays external, loaded only by
- * the commands that read source (`scope`, `changed`).
+ * module with its declarations, its dependencies left to the consumer's install. `spec-tools` — spec-steward and the
+ * audits in one self-contained file, `skills/spec-tools/scripts/cli.js`, so a CI job that has only the package's files
+ * runs it with no install; `typescript` alone stays external, loaded only by the commands that read source (`scope`,
+ * `changed`).
  */
 export default defineConfig([
     {
@@ -50,11 +51,13 @@ export default defineConfig([
     },
     {
         entry: { cli: 'spec-tools/src/cli.ts' },
-        outDir: 'spec-tools/dist',
+        outDir: 'skills/spec-tools/scripts',
         platform: 'node',
         format: 'esm',
-        fixedExtension: true,
+        fixedExtension: false,
         dts: false,
+        // One file: the skills and a CI job name it, so no chunk may sit beside it.
+        outputOptions: { codeSplitting: false },
         deps: { neverBundle: ['typescript'], alwaysBundle: ['jsonrepair', 'marked', 'github-markdown-css'] },
         plugins: [raw],
     },

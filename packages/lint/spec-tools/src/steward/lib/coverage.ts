@@ -1,40 +1,32 @@
-// @ts-check
 /**
  * The coverage report: for every requirement and scenario, what binds it, which pointers name it, and its status —
  * from bindings and markers only; a code or document citation never changes a status. Markdown, safe to publish as
  * MDX. It fails nothing.
  */
-import { boundAnchors } from './citations.mjs';
-import { KNOWN_GAP, RETIRED } from './corpus.mjs';
+import type { Citation } from './citations';
+import { boundAnchors } from './citations';
+import type { Corpus, Scenario } from './corpus';
+import { KNOWN_GAP, RETIRED } from './corpus';
 
-/**
- * @typedef {import('./corpus.mjs').Corpus} Corpus
- * @typedef {import('./citations.mjs').Citation} Citation
- */
+const MDX_ESCAPES: Record<string, string> = { '<': '&lt;', '>': '&gt;', '{': '&#123;', '}': '&#125;', '|': '\\|' };
+/** Text safe in an MDX table cell: angle brackets and braces would read as JSX, a pipe as a column. */
+export const mdx = (s: string) => s.replace(/[<>{}|]/g, (c) => MDX_ESCAPES[c]);
 
-/** @type {Record<string, string>} */
-const MDX_ESCAPES = { '<': '&lt;', '>': '&gt;', '{': '&#123;', '}': '&#125;', '|': '\\|' };
-/** Text safe in an MDX table cell: angle brackets and braces would read as JSX, a pipe as a column. @param {string} s */
-export const mdx = (s) => s.replace(/[<>{}|]/g, (c) => MDX_ESCAPES[c]);
+const show = (sites: Citation[]) => (sites.length ? sites.map((s) => `\`${s.file}:${s.line}\``).join('<br />') : '—');
 
-/** @param {Citation[]} sites */
-const show = (sites) => (sites.length ? sites.map((s) => `\`${s.file}:${s.line}\``).join('<br />') : '—');
-
-/**
- * @param {Corpus} corpus
- * @param {Citation[]} citations
- * @returns {{ markdown: string, totals: Record<string, number> }}
- */
-export function coverageReport(corpus, citations) {
+export function coverageReport(
+    corpus: Corpus,
+    citations: Citation[],
+): { markdown: string; totals: Record<string, number> } {
     const bound = boundAnchors(citations);
-    /** @type {Map<string, Citation[]>} */
-    const byAnchor = new Map();
+
+    const byAnchor: Map<string, Citation[]> = new Map();
     for (const c of citations) {
         if (!c.anchor || !c.resolves) continue;
         const key = `${c.target}#${c.anchor}`;
         byAnchor.set(key, [...(byAnchor.get(key) ?? []), c]);
     }
-    const sites = (/** @type {string} */ key) => byAnchor.get(key) ?? [];
+    const sites = (key: string) => byAnchor.get(key) ?? [];
     const totals = {
         requirements: 0,
         capabilities: corpus.capabilities.length,
@@ -57,7 +49,7 @@ export function coverageReport(corpus, citations) {
         for (const r of cap.requirements) {
             totals.requirements++;
             const reqKey = `${r.file}#${r.slug}`;
-            const scenarioBound = (/** @type {import('./corpus.mjs').Scenario} */ s) =>
+            const scenarioBound = (s: Scenario) =>
                 bound.has(`${r.file}#${s.slug}`) || (r.scenarios.length === 1 && bound.has(reqKey));
             const anyBound = bound.has(reqKey) || r.scenarios.some(scenarioBound);
             if (r.advisory) totals.advisory++;

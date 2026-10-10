@@ -2,27 +2,25 @@
  * spec-steward's corpus-quality audit on the shared engine: the same evidence, partition, workers, completion and
  * verification passes as spec-verify, with spec-steward's worker contract (`skills/spec-steward/references/worker.md`),
  * its sweeps (`skills/spec-steward/sweeps.json`) as units beside the capability parts, a skeptic verifier for every
- * finding, and a mechanical merge into the review file `spec-steward review render` writes — the owner's to answer.
+ * finding, and a mechanical merge into the review file `spec-tools steward review render` writes — the owner's to answer.
  * What `workflows/audit.js` once did with model passes is mechanical here: a quote not at its line drops the finding,
  * the judged lists stand for the critic, and findings sharing a theme key are offered as a theme for the operator to
  * sharpen.
  */
-import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { jsonrepair } from 'jsonrepair';
 
-import { globToRegExp } from '../../skills/spec-steward/scripts/lib/util.mjs';
 import type { EvidenceModel } from './auditParts';
 import type { ShortPart } from './auditReport';
 import type { Part, ScopeJson } from './auditScope';
 import { AUDIT_FILES, findingsFile } from './files';
 import { git, root } from './repo';
+import { SKILLS_DIR } from './skillsDir';
+import { render as renderReview } from './steward/lib/review';
+import { globToRegExp } from './steward/lib/util';
 
 const FILES = AUDIT_FILES['spec-steward'];
-const SKILLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills');
-const STEWARD_CLI = path.join(SKILLS, 'spec-steward/scripts/steward.mjs');
 
 /** One sweep as the skill declares it: an angle, the criteria it looks for, and where it reads. */
 type Sweep = {
@@ -89,7 +87,7 @@ export type StewardData = {
 
 /** The skill's sweeps, each a unit numbered after the last capability part, its files resolved in this repository. */
 export function sweepUnits(model: EvidenceModel, after: number, cwd: string = root()): Part[] {
-    const sweeps = JSON.parse(fs.readFileSync(path.join(SKILLS, 'spec-steward/sweeps.json'), 'utf8')) as Sweep[];
+    const sweeps = JSON.parse(fs.readFileSync(path.join(SKILLS_DIR, 'spec-steward/sweeps.json'), 'utf8')) as Sweep[];
     const tracked = git(['ls-files', '-co', '--exclude-standard'], cwd).split('\n').filter(Boolean);
     const fromEvidence = (kind: 'bindings' | 'pointers') => [
         ...new Set(model.requirements.flatMap((r) => r[kind].map((b) => b.file))),
@@ -116,7 +114,7 @@ export function sweepUnits(model: EvidenceModel, after: number, cwd: string = ro
 }
 
 const LOAD_SKILL = (repo: string) =>
-    `First, load the skill: use the Skill tool with skill "spec-steward" (or Read ${path.relative(repo, path.join(SKILLS, 'spec-steward/SKILL.md'))} if that fails), then Read its references/worker.md, references/model.md and references/criteria.md, and the placement guide ${path.relative(repo, path.join(SKILLS, '../rules/agent.md'))}, in full. worker.md is your contract: follow it exactly.`;
+    `First, load the skill: use the Skill tool with skill "spec-steward" (or Read ${path.relative(repo, path.join(SKILLS_DIR, 'spec-steward/SKILL.md'))} if that fails), then Read its references/worker.md, references/model.md and references/criteria.md, and the placement guide ${path.relative(repo, path.join(SKILLS_DIR, '../rules/agent.md'))}, in full. worker.md is your contract: follow it exactly.`;
 const TOOL_RULE =
     'Tool rule: only Skill, Read, Glob, Grep, Write and the read-only git commands — no ls/cat/find, no shell validation of your JSON; other commands are denied here and only cost a turn.';
 
@@ -177,7 +175,7 @@ export const briefVerify = (f: Candidate, file: string, repo: string): string =>
         themeKey,
         needsHumanIntent,
     };
-    return `You are the skeptic verifying ONE finding of spec-steward's corpus-quality audit in repo ${repo}. Its quote was found at its line mechanically. Judge it by spec-steward's references/model.md and references/criteria.md and the placement guide ${path.relative(repo, path.join(SKILLS, '../rules/agent.md'))}, reading with Read and Grep only.
+    return `You are the skeptic verifying ONE finding of spec-steward's corpus-quality audit in repo ${repo}. Its quote was found at its line mechanically. Judge it by spec-steward's references/model.md and references/criteria.md and the placement guide ${path.relative(repo, path.join(SKILLS_DIR, '../rules/agent.md'))}, reading with Read and Grep only.
 
 The finding:
 ${JSON.stringify(finding, null, 2)}
@@ -329,10 +327,6 @@ export function merge(read: (file: string) => readonly string[] | undefined, cwd
     };
     fs.mkdirSync(path.dirname(path.join(cwd, FILES.data)), { recursive: true });
     fs.writeFileSync(path.join(cwd, FILES.data), JSON.stringify(data, null, 2) + '\n');
-    const render = spawnSync(process.execPath, [STEWARD_CLI, 'review', 'render', FILES.data, '--out', FILES.report], {
-        cwd,
-        encoding: 'utf8',
-    });
-    if (render.status !== 0) throw new Error(`spec-steward review render failed: ${render.stderr}`);
+    fs.writeFileSync(path.join(cwd, FILES.report), renderReview(data).markdown.trimEnd() + '\n');
     return `${summary} → ${FILES.report}`;
 }

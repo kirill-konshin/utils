@@ -3,8 +3,8 @@
  * from. GitLab CI's variables today; another CI is one more branch here, never a read anywhere else. The gate base is
  * spec-steward's own resolver, so the corpus gate and the change gates always judge against the same commit.
  */
-import { resolveBase } from '../../skills/spec-steward/scripts/lib/git.mjs';
 import { git, root } from './repo';
+import { resolveBase } from './steward/lib/git';
 
 type Env = NodeJS.ProcessEnv;
 

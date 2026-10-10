@@ -1,13 +1,19 @@
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
-import ts from 'typescript';
+import type * as ts from 'typescript';
 
 import { EVIDENCE_FILE, PARTS_DIR, UNITS_FILE } from './files';
 import { root } from './repo';
+import { evidenceAt, rootsOf } from './steward/steward';
+
+let loaded: typeof ts | undefined;
+/** TypeScript, loaded on first use: only the commands that read source need it, and the bundle runs without it. */
+const typescript = (): typeof ts => (loaded ??= createRequire(import.meta.url)('typescript') as typeof ts);
 
 /**
  * The evidence each audit worker judges, assembled here before the audit starts from spec-steward's evidence model
- * (`spec-evidence.json`, which `spec-steward evidence --json` writes): one file per capability under `audit-parts/`
+ * (`spec-evidence.json`, which `spec-tools steward evidence --json` writes): one file per capability under `audit-parts/`
  * carrying every requirement verbatim and, under each, the tests bound to it quoted at their real `file:line`, the
  * source lines where its own terms occur with comments stripped, and the other requirements that share its terms; the
  * code and documents that cite it are not evidence, and are left out. A capability larger than one reader holds is
@@ -90,11 +96,16 @@ export type Requirement = {
     readonly related: readonly { id: string; shared: readonly string[] }[];
 };
 
+/** spec-steward's evidence model of the repository at `cwd`, written to its root for the scope and the focused check. */
+export function writeEvidence(cwd: string): void {
+    fs.writeFileSync(path.join(cwd, EVIDENCE_FILE), JSON.stringify(evidenceAt(rootsOf({}, cwd)[0]!)) + '\n');
+}
+
 /** The evidence model at a path; a missing file is the operator's to fix — the scope never guesses its evidence. */
 export function loadEvidence(file = path.join(root(), EVIDENCE_FILE)): EvidenceModel {
     if (!fs.existsSync(file))
         throw new Error(
-            `${EVIDENCE_FILE} is missing — \`spec-tools scope\` writes it with \`spec-steward evidence --json\``,
+            `${EVIDENCE_FILE} is missing — \`spec-tools scope\` writes it with \`spec-tools steward evidence --json\``,
         );
     const model = JSON.parse(fs.readFileSync(file, 'utf8')) as EvidenceModel;
     if (model.version !== 1 || !Array.isArray(model.requirements))
@@ -221,26 +232,26 @@ export type Excerpt = { readonly startLine: number; readonly text: string; reado
 
 /** A quotable unit: a statement, a class member, a callback, or an object literal's entry. */
 const isBoundary = (node: ts.Node) =>
-    (ts.isStatement(node) && !ts.isBlock(node)) ||
-    ts.isClassElement(node) ||
-    ts.isFunctionExpression(node) ||
-    ts.isArrowFunction(node) ||
-    ts.isPropertyAssignment(node);
+    (typescript().isStatement(node) && !typescript().isBlock(node)) ||
+    typescript().isClassElement(node) ||
+    typescript().isFunctionExpression(node) ||
+    typescript().isArrowFunction(node) ||
+    typescript().isPropertyAssignment(node);
 
 /** `describe(…)`, `it(…)`, `test(…)`: a call whose callback is the unit a reader wants whole. */
 const isCallbackStatement = (node: ts.Node) =>
-    ts.isExpressionStatement(node) &&
-    ts.isCallExpression(node.expression) &&
-    node.expression.arguments.some((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a));
+    typescript().isExpressionStatement(node) &&
+    typescript().isCallExpression(node.expression) &&
+    node.expression.arguments.some((a) => typescript().isArrowFunction(a) || typescript().isFunctionExpression(a));
 
 /**
  * What an inline citation quotes: the top-level statement, the test block, the class member or the
  * object entry around it — never a lone statement inside a body, which would quote one line.
  */
 const isUnit = (node: ts.Node) =>
-    (ts.isStatement(node) && (ts.isSourceFile(node.parent) || isCallbackStatement(node))) ||
-    ts.isClassElement(node) ||
-    ts.isPropertyAssignment(node);
+    (typescript().isStatement(node) && (typescript().isSourceFile(node.parent) || isCallbackStatement(node))) ||
+    typescript().isClassElement(node) ||
+    typescript().isPropertyAssignment(node);
 
 const lineOf = (sf: ts.SourceFile, pos: number) => sf.getLineAndCharacterOfPosition(pos).line + 1;
 
@@ -250,9 +261,9 @@ export function enclosing(sf: ts.SourceFile, pos: number): ts.Node[] {
     const visit = (node: ts.Node) => {
         if (pos < node.getFullStart() || pos >= node.getEnd()) return;
         if (isBoundary(node)) path.push(node);
-        ts.forEachChild(node, visit);
+        typescript().forEachChild(node, visit);
     };
-    ts.forEachChild(sf, visit);
+    typescript().forEachChild(sf, visit);
     return path;
 }
 
@@ -283,29 +294,38 @@ const TEST_CALLS = new Set(['describe', 'it', 'test']);
 function outline(sf: ts.SourceFile, lines: readonly string[], line: number): Excerpt {
     const rows: string[] = [];
     const name = (node: ts.Node): string | undefined => {
-        if (ts.isVariableStatement(node))
+        if (typescript().isVariableStatement(node))
             return node.declarationList.declarations.map((d) => d.name.getText(sf)).join(', ');
-        if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node))
+        if (
+            typescript().isFunctionDeclaration(node) ||
+            typescript().isClassDeclaration(node) ||
+            typescript().isInterfaceDeclaration(node)
+        )
             return node.name?.getText(sf);
-        if (ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) return node.name.getText(sf);
+        if (typescript().isTypeAliasDeclaration(node) || typescript().isEnumDeclaration(node))
+            return node.name.getText(sf);
         return undefined;
     };
     const visit = (node: ts.Node) => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && TEST_CALLS.has(node.expression.text)) {
+        if (
+            typescript().isCallExpression(node) &&
+            typescript().isIdentifier(node.expression) &&
+            TEST_CALLS.has(node.expression.text)
+        ) {
             const title = node.arguments[0];
-            if (title && ts.isStringLiteralLike(title))
+            if (title && typescript().isStringLiteralLike(title))
                 rows.push(
                     `${String(lineOf(sf, node.getStart(sf))).padStart(4)}│ ${node.expression.text}('${title.text}')`,
                 );
         }
-        ts.forEachChild(node, visit);
+        typescript().forEachChild(node, visit);
     };
     for (const statement of sf.statements) {
-        if (ts.isImportDeclaration(statement)) continue;
+        if (typescript().isImportDeclaration(statement)) continue;
         const label = name(statement);
         if (label)
             rows.push(
-                `${String(lineOf(sf, statement.getStart(sf))).padStart(4)}│ ${ts.SyntaxKind[statement.kind].replace('Declaration', '').replace('Statement', '')} ${label}`,
+                `${String(lineOf(sf, statement.getStart(sf))).padStart(4)}│ ${typescript().SyntaxKind[statement.kind].replace('Declaration', '').replace('Statement', '')} ${label}`,
             );
         visit(statement);
     }
@@ -335,12 +355,12 @@ export function excerpt(file: string, code: string, line: number): Excerpt {
         if (lines.length <= WHOLE_FILE_LINES) return { startLine: 1, text: numbered(lines, 1), cut: false };
         return window(lines, line);
     }
-    const sf = ts.createSourceFile(
+    const sf = typescript().createSourceFile(
         file,
         code,
-        ts.ScriptTarget.Latest,
+        typescript().ScriptTarget.Latest,
         true,
-        file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+        file.endsWith('x') ? typescript().ScriptKind.TSX : typescript().ScriptKind.TS,
     );
     // The citation itself, not the line's indentation — so a one-line doc comment still counts as one.
     const text = lines[line - 1] ?? '';
@@ -360,8 +380,10 @@ export function excerpt(file: string, code: string, line: number): Excerpt {
     // the whole file. A short file is then quoted whole, bodies included; a long one as its outline.
     const fileLevel =
         documented &&
-        (ts.isImportDeclaration(inner) ||
-            (/\.(test|spec)\.tsx?$/.test(file) && ts.isSourceFile(inner.parent) && !isCallbackStatement(inner)));
+        (typescript().isImportDeclaration(inner) ||
+            (/\.(test|spec)\.tsx?$/.test(file) &&
+                typescript().isSourceFile(inner.parent) &&
+                !isCallbackStatement(inner)));
     if (fileLevel) {
         if (lines.length <= WHOLE_FILE_LINES) return { startLine: 1, text: numbered(lines, 1), cut: false };
         return outline(sf, lines, line);

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 /** The published bundle — the package's `test` script builds it first. */
-const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'cli.mjs');
+const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../skills/spec-tools/scripts/cli.js');
 /** A test that spawns git and the CLI in a throwaway repository: each can take seconds on a busy machine. */
 const TIMEOUT = 60_000;
 

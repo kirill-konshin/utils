@@ -28,7 +28,9 @@ One CLI, `spec-tools`, installed with `@kirill.konshin/lint` beside `spec-stewar
 
 In CI: `gates`, `evidence`, `diff`, `tier`, `scope`, `workers`, `report`, `verdict`, `comment`, `html`, for spec-verify. Locally: any of them, plus `audit --audit spec-steward`, which never runs in CI.
 
-Run them through the package manager (`yarn spec-tools gates`) or the bin (`node_modules/.bin/spec-tools`); they act on the repository of the current directory.
+spec-steward's commands run as `spec-tools steward <command>` — the `spec-steward` skill documents them.
+
+Run them through the package manager (`yarn spec-tools gates`), the bin (`node_modules/.bin/spec-tools`), or the file itself, `node <this skill's folder>/scripts/cli.js`, which needs no install; they act on the repository of the current directory.
 
 ## Setting a repository up
 

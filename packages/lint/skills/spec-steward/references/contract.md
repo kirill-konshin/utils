@@ -131,12 +131,12 @@ An explicit `--base <ref>` compares with the merge base of `<ref>` and `HEAD`. W
 
 | Command | Purpose | Output |
 | --- | --- | --- |
-| `spec-steward check [--base auto\|<ref>] [--binds <glob>]… [--file <f>] [--fix] [--strict] [--json]` | The corpus gate, run locally, in CI and by the hook | Findings ([below](#findings)) |
-| `spec-steward coverage [--out <file>] [--binds <glob>]…` | The [coverage report](#coverage-report) | Markdown, to the file or to stdout |
-| `spec-steward evidence --json [--binds <glob>]…` | The audits' [evidence model](#evidence-json), which `spec-tools scope` assembles each audit's evidence files from | JSON on stdout |
-| `spec-steward review`, `align`, `wire`, `hook` | Review files, cross-repository drift, wiring, the edit hook | As each command documents |
+| `spec-tools steward check [--base auto\|<ref>] [--binds <glob>]… [--file <f>] [--fix] [--strict] [--json]` | The corpus gate, run locally, in CI and by the hook | Findings ([below](#findings)) |
+| `spec-tools steward coverage [--out <file>] [--binds <glob>]…` | The [coverage report](#coverage-report) | Markdown, to the file or to stdout |
+| `spec-tools steward evidence --json [--binds <glob>]…` | The audits' [evidence model](#evidence-json), which `spec-tools scope` assembles each audit's evidence files from | JSON on stdout |
+| `spec-tools steward review`, `align`, `wire`, `hook` | Review files, cross-repository drift, wiring, the edit hook | As each command documents |
 
-`spec-steward` is the package's `bin`. A repository calls it from its root scripts and never imports steward's modules: the package's `exports` map does not expose them, so the CLI and its JSON are the interface.
+`spec-tools steward` runs through the package's one `bin`, `spec-tools`. A repository calls it from its root scripts and never imports steward's modules: the package's `exports` map does not expose them, so the CLI and its JSON are the interface.
 
 ### Findings
 
@@ -155,7 +155,7 @@ Exit 2 on an empty listing keeps a broken checkout from passing a scan that read
 
 ## Coverage report
 
-`spec-steward coverage` writes a Markdown report that is MDX-safe: `<`, `>`, `{`, `}` and `|` are escaped. It gates nothing: it exits 0, or 2 on an environment error. Statuses come from [bindings](#binding) and [markers](#markers) only. A pointer never changes a status.
+`spec-tools steward coverage` writes a Markdown report that is MDX-safe: `<`, `>`, `{`, `}` and `|` are escaped. It gates nothing: it exits 0, or 2 on an environment error. Statuses come from [bindings](#binding) and [markers](#markers) only. A pointer never changes a status.
 
 - **Headline.** Requirements and capabilities; Advisory requirements; Known gaps; REQUIRED requirements no test binds; REQUIRED scenarios no test binds; retired markers.
 - **Per capability.** One table: `| Requirement / Scenario | Spec | Bound by | Pointers | Status |`.
@@ -166,7 +166,7 @@ Exit 2 on an empty listing keeps a broken checkout from passing a scan that read
 
 ## Evidence JSON
 
-`spec-steward evidence --json` writes the evidence an audit reads, one entry per requirement:
+`spec-tools steward evidence --json` writes the evidence an audit reads, one entry per requirement:
 
 ```
 { version: 1, root, requirements: [{ id, capability, file, line, end, block, class: 'required'|'advisory',

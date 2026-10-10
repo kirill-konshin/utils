@@ -24,7 +24,7 @@ These run deterministically in CI. Do not re-derive them, and do not report what
 - `openspec validate` and `spec-tools gates` — the corpus gates: OpenSpec's structure check, then spec-steward's check and the change gates. What a citation is, how a test binds to a scenario, the markers, the size lines and the scenario ratchet are the `spec-steward` contract.
 - `spec-tools scope` — **this run's scope, its partition, and the evidence each part is judged from.** Nothing here is searched for; it is read.
 - `spec-tools report` — **the merge.** It looks every ERROR's quotes up at their `file:line` in the audited commit, tiers by the kinds below, takes the weakest part's coverage, computes the verdict and renders `spec-verify.md`. No reader judges twice.
-- `spec-steward coverage` — the coverage report: which requirements and scenarios a test binds, the ⚠️ Advisory requirements and the recorded known gaps. The audit does not read it.
+- `spec-tools steward coverage` — the coverage report: which requirements and scenarios a test binds, the ⚠️ Advisory requirements and the recorded known gaps. The audit does not read it.
 - Corpus quality — whether a rule sits in the right place, whether it is REQUIRED or ⚠️ Advisory, whether its evidence is the right kind — is the `spec-steward` skill's audit.
 
 **Why the split matters.** This skill is an LLM audit: one reader over the whole corpus samples, and two such runs over the same commit can reach different verdicts. Everything mechanically decidable was moved out of it and into code — including finding the evidence. What remains needs judgment — read in full, one worker per part, and graded so that only what you can demonstrate stops a pipeline.
@@ -44,7 +44,7 @@ Two inputs, both written by `spec-tools scope` and, in CI, handed to the audit j
 - `audit-scope.json` — the scope and its `parts`: for each, its number, the `files` its worker reads and the `requirementIds` it judges.
 - `audit-parts/<capability>.md`, one per capability in scope — **the evidence.** Each carries every requirement verbatim with its id and `file:line`, and under each: **Bound tests** — the tests bound to the requirement or to one of its scenarios, quoted with the files' own line numbers (the enclosing test, or a window marked as such); **Where its terms occur** — the lines of the sources, comments stripped, where the requirement's own terms occur, or the note that it names none; and the related requirements elsewhere that share its terms, each with its statement.
 
-You NEVER produce or regenerate these — no `spec-tools scope`, no `spec-steward coverage`, no `spec-tools report`: a worker's shell is `git` and nothing else. If a file is absent, say so in the coverage, grade every check that depends on it as not run, and — locally — tell the user to run `spec-tools scope` first.
+You NEVER produce or regenerate these — no `spec-tools scope`, no `spec-tools steward coverage`, no `spec-tools report`: a worker's shell is `git` and nothing else. If a file is absent, say so in the coverage, grade every check that depends on it as not run, and — locally — tell the user to run `spec-tools scope` first.
 
 **Read everything with Read / Glob / Grep — do not shell out.** A worker runs under `claude --print`, which cannot be prompted for permission: a command outside the job's `--allowedTools` stalls the run and no report is written. An evidence file longer than one Read returns is read in full with `offset`/`limit` — never sampled.
 

@@ -342,9 +342,9 @@ In the project root, `lint-prepare`:
 
 ### OpenSpec
 
-For a repository specified with [OpenSpec](https://github.com/Fission-AI/OpenSpec) the package ships two bins, three skills and a command:
+For a repository specified with [OpenSpec](https://github.com/Fission-AI/OpenSpec) the package ships one bin, `spec-tools` — a single self-contained file, `skills/spec-tools/scripts/cli.js` — three skills and a command:
 
-- `spec-steward` and its skill — the corpus gate (citations, binding, the scenario ratchet), the edit hook, corpus-quality audits and review rounds.
+- `spec-tools steward` and the `spec-steward` skill — the corpus gate (citations, binding, the scenario ratchet), the edit hook, corpus-quality audits and review rounds.
 - `spec-tools` and its skill — the change gates, the workflow-evidence gate, the requirement-level specification diff, the code-conformance audit, and the glue a CI pipeline runs around a headless AI review (verdict gate, merge-request comment, HTML reports).
 - `spec-verify` — the skill every audit worker loads.
 - `/spec-author` — the command that writes or edits a specification in place, the default direct-edit path.
@@ -354,7 +354,7 @@ Which to reach for:
 | Question | Tool | Outcome |
 | --- | --- | --- |
 | How do I write or change a rule? | `/spec-author` | The specification edited in place, with the code and tests that prove it |
-| Do citations resolve, is every new scenario bound, did a rule weaken? | `spec-steward check` (the gate, the edit hook) | Fails the merge request on an error |
+| Do citations resolve, is every new scenario bound, did a rule weaken? | `spec-tools steward check` (the gate, the edit hook) | Fails the merge request on an error |
 | Are these the right rules — placement, REQUIRED or ⚠️ ADVISORY, wording, evidence, duplicates, drift across repositories? | the `spec-steward` skill (audit on the `spec-tools` engine, review rounds, align) | A review file of proposals; the owner decides, steward applies; never a build failure |
 | Does the code do exactly what the rules say, and do the bound tests assert them? | the `spec-verify` skill, run by `spec-tools` | Graded, quote-proved findings; PASS / FAIL / INCOMPLETE gates CI |
 | Is the change finished, what did it change, how does CI run the audit? | `spec-tools` (gates, evidence, diff, tier, workers, verdict, comment, html) | Gates and reports for the pipeline |
@@ -363,13 +363,13 @@ Where each runs:
 
 | What | In CI | Locally |
 | --- | --- | --- |
-| `spec-steward check` | `spec-tools gates`, every merge request: an error fails it | the edit hook on every edit Claude makes, and `spec-tools gates` before handing back |
-| `spec-steward coverage`, `spec-steward evidence --json` | the coverage report, and the evidence `spec-tools scope` builds the spec-verify audit from | on demand |
+| `spec-tools steward check` | `spec-tools gates`, every merge request: an error fails it | the edit hook on every edit Claude makes, and `spec-tools gates` before handing back |
+| `spec-tools steward coverage`, `spec-tools steward evidence --json` | the coverage report, and the evidence `spec-tools scope` builds the spec-verify audit from | on demand |
 | spec-steward's corpus audit, review rounds, `align` | never — it is heavy and its outcome is the owner's | on the owner's request: `spec-tools audit --audit spec-steward [--context <decisions file>]`, then the review rounds, where the accepted answers are applied |
 | `spec-verify` | the reading jobs and the judge job: its verdict gates merge requests and the release | `spec-tools audit`, and `/spec-verify changed` before handing back a spec edit |
 | `spec-tools gates`, `evidence`, `diff` | their own jobs | before handing back |
 
-Specifications change only by hand, or when the steward skill applies the owner's accepted review answers; `spec-steward check --fix` makes the only mechanical repairs. No audit edits code or specifications.
+Specifications change only by hand, or when the steward skill applies the owner's accepted review answers; `spec-tools steward check --fix` makes the only mechanical repairs. No audit edits code or specifications.
 
 The audits share their principles: `spec-verify`'s checks 2–5 are spec-steward's criteria 10, 9, 11 and 5, worded identically — steward asks whether the rule should change, `spec-verify` whether the code or the rule has diverged.
 
@@ -437,7 +437,7 @@ Everything else — `prettier`, `listStaged`, extension lists (`tsExts`, …), `
 
 ### Build
 
-`tsdown` builds two things (`tsdown.config.ts`): the library — ESM and declarations from `src/*.ts`, one file per module, plus the CommonJS Yarn entry from `src/yarn.cts` — into `dist`, and the `spec-tools` CLI into one self-contained bundle in `spec-tools/dist`. `yarn typecheck` (`tsc --noEmit`) checks types; the build does not. Consumers load `dist`, and this monorepo builds lint first in its root `postinstall` before running `lint-prepare`.
+`tsdown` builds two things (`tsdown.config.ts`): the library — ESM and declarations from `src/*.ts`, one file per module, plus the CommonJS Yarn entry from `src/yarn.cts` — into `dist`, and the `spec-tools` CLI — spec-steward included — into one self-contained file, `skills/spec-tools/scripts/cli.js`, which the skills and CI jobs name. `yarn typecheck` (`tsc --noEmit`) checks types; the build does not. Consumers load `dist`, and this monorepo builds lint first in its root `postinstall` before running `lint-prepare`.
 
 ### Eslint
 

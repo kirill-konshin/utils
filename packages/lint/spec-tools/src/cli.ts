@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * `spec-tools <command>`: the specification tooling beside spec-steward's corpus gate — the change gates, the
- * workflow-evidence gate, the specification diff, the specification audit, and the AI-review glue a pipeline runs
- * around a headless review. Every command runs against the repository of the current directory.
+ * `spec-tools <command>`: the specification tooling — spec-steward's corpus gate and its other commands, the change
+ * gates, the workflow-evidence gate, the specification diff, the specification audit, and the AI-review glue a pipeline
+ * runs around a headless review. Every command runs against the repository of the current directory.
  *
+ *   spec-tools steward <command>                spec-steward: check, coverage, evidence, review, align, wire, hook
  *   spec-tools gates                            spec-steward's check against the merge base, then the change gates
  *   spec-tools evidence [--classify]            the workflow-evidence gate
  *   spec-tools diff [<base>]                    the specification diff, by requirement
@@ -47,10 +48,12 @@ async function main(): Promise<number> {
     switch (command) {
         case 'gates': {
             const { root } = await import('./repo');
-            const checked = (await import('./steward')).steward(['check', '--base', 'auto'], root());
+            const checked = await (await import('./steward/steward')).run(['check', '--base', 'auto'], root());
             const gates = (await import('./changeGates')).main();
             return Math.max(checked, gates);
         }
+        case 'steward':
+            return (await import('./steward/steward')).run(argv);
         case 'evidence':
             return (await import('./workflowEvidence')).cli(argv);
         case 'diff':
@@ -58,7 +61,7 @@ async function main(): Promise<number> {
             return 0;
         case 'changed': {
             const { root } = await import('./repo');
-            (await import('./steward')).writeEvidence(root());
+            (await import('./auditParts')).writeEvidence(root());
             process.stdout.write((await import('./auditChanged')).main());
             return 0;
         }
@@ -69,7 +72,7 @@ async function main(): Promise<number> {
         }
         case 'scope': {
             const { root } = await import('./repo');
-            (await import('./steward')).writeEvidence(root());
+            (await import('./auditParts')).writeEvidence(root());
             process.stdout.write((await import('./auditScope')).main(process.env, await auditOf()));
             return 0;
         }
