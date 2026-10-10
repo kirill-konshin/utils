@@ -92,10 +92,10 @@ describe('tier', () => {
     });
 
     test('sizes the audit job by its memory, capped by AUDIT_WORKERS, two workers unless raised', () => {
-        expect(tier({ AUDIT_JOB_MEMORY: '4Gi', AUDIT_WORKERS: '8' }, unreachable).AUDIT_SLOTS).toBe(6);
+        expect(tier({ AUDIT_JOB_MEMORY: '4Gi', AUDIT_WORKERS: '16' }, unreachable).AUDIT_SLOTS).toBe(13);
         expect(tier({ AUDIT_JOB_MEMORY: '4Gi' }, unreachable).AUDIT_SLOTS).toBe(2);
-        expect(workersFor({ AUDIT_WORKERS: '8' }, memoryOf('1536Mi'))).toBe(2);
-        expect(workersFor({ AUDIT_WORKERS: '8' }, memoryOf('512M'))).toBe(1);
+        expect(workersFor({ AUDIT_WORKERS: '8' }, memoryOf('1536Mi'))).toBe(5);
+        expect(workersFor({ AUDIT_WORKERS: '8' }, memoryOf('256M'))).toBe(1);
         expect(memoryOf('2G')).toBe(memoryOf('2Gi'));
         expect(() => memoryOf('lots')).toThrow('bad memory size');
     });

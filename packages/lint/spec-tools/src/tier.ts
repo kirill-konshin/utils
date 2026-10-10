@@ -52,10 +52,11 @@ export const EXPENSIVE_MODEL = 'claude-sonnet-5-5';
 export const EXPENSIVE_EFFORT = 'medium';
 
 /**
- * A headless worker's resident memory: about 500 MB, 590 MB at the most over 24 workers on the cheap tier with 72 KB
- * parts. Each pass logs the job's memory peak, from which it is re-measured.
+ * A headless worker's resident memory, with room to spare: eight Haiku 5.5 workers on 120–290 KB parts peaked at
+ * 1.41–1.55 GB together (about 190 MB each, 2026-10-10). Each pass logs the job's memory peak, from which it is
+ * re-measured.
  */
-export const WORKER_BYTES = 600 * 1024 ** 2;
+export const WORKER_BYTES = 300 * 1024 ** 2;
 /** Workers per reading job unless AUDIT_WORKERS says otherwise — conservative until the logged peaks show room. */
 export const DEFAULT_WORKERS = 2;
 /** A reading job's memory unless AUDIT_JOB_MEMORY says otherwise: the scope runs elsewhere and cannot measure it. */

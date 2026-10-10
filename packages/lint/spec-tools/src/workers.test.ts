@@ -135,8 +135,8 @@ describe('workers, the pieces', () => {
     test('in a container runs as many workers as its memory holds, two unless AUDIT_WORKERS raises it', () => {
         const gb = 1024 ** 3;
         expect(concurrency({}, 3 * gb)).toBe(2);
-        expect(concurrency({ AUDIT_WORKERS: '8' }, 3 * gb)).toBe(5);
-        expect(concurrency({ AUDIT_WORKERS: '8' }, 0.5 * gb)).toBe(1);
+        expect(concurrency({ AUDIT_WORKERS: '16' }, 3 * gb)).toBe(10);
+        expect(concurrency({ AUDIT_WORKERS: '8' }, 0.25 * gb)).toBe(1);
         expect(concurrency({ AUDIT_WORKERS: '4' }, null)).toBe(4);
         expect(concurrency({}, null)).toBe(0);
     });

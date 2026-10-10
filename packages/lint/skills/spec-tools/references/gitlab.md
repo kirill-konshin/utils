@@ -17,7 +17,24 @@ The jobs a GitLab repository runs around `spec-steward` and `spec-tools`. Names 
 
 ## Getting the tools into an AI job
 
-An AI job's image carries `claude` and Node but no workspace install. The job that computes the scope runs with the workspace installed and hands the package's `skills/` on as an artifact: the self-contained CLI, `skills/spec-tools/scripts/cli.js`, and the skills its workers read. The AI jobs `needs:` that job and call the file with `node`; they run no setup.
+An AI job needs Node and the Claude CLI, no workspace install. Pin the CLI rather than taking whatever an image carries: a model needs a CLI that knows it (its context window and its effort levels), and an older CLI fails a long worker with "Prompt is too long". Download Anthropic's release binary for the runner's platform, check it against the release manifest, and cache it per version:
+
+```yaml
+.claude-code: &claude-code
+    - |
+        set -e
+        platform="linux-$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')"
+        dir=".claude-code/$CLAUDE_CODE_VERSION/$platform"
+        if [ ! -x "$dir/claude" ]; then
+          base="https://downloads.claude.ai/claude-code-releases/$CLAUDE_CODE_VERSION"
+          sum=$(curl -fsSL "$base/manifest.json" | node -e "let s='';process.stdin.on('data',(d)=>(s+=d)).on('end',()=>console.log(JSON.parse(s).platforms[process.argv[1]].checksum))" "$platform")
+          mkdir -p "$dir" && curl -fsSL "$base/$platform/claude" -o "$dir/claude.download"
+          echo "$sum  $dir/claude.download" | sha256sum -c - && mv "$dir/claude.download" "$dir/claude" && chmod +x "$dir/claude"
+        fi
+        export PATH="$CI_PROJECT_DIR/$dir:$PATH"
+```
+
+Cache `.claude-code/` keyed on `CLAUDE_CODE_VERSION`, and gitignore it. The job that computes the scope runs with the workspace installed and hands the package's `skills/` on as an artifact: the self-contained CLI, `skills/spec-tools/scripts/cli.js`, and the skills its workers read. The AI jobs `needs:` that job and call the file with `node`.
 
 `spec-tools scope` and `changed` load `typescript`, so they run in a job with the workspace installed.
 
@@ -70,11 +87,12 @@ spec-coverage:
 # reading left short, verify every ERROR, gate.
 spec-verify:
     stage: review
-    image: <an image with claude and node>
+    image: <an image with node>
     needs: [spec-coverage]
     variables: { KUBERNETES_MEMORY_LIMIT: 8Gi, KUBERNETES_CPU_LIMIT: '4' } # AUDIT_JOB_MEMORY says the same
     allow_failure: { exit_codes: [3, 77] }
     script:
+        - *claude-code
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers || echo "the completion pass reads what the reading left short"
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers --complete
@@ -87,10 +105,11 @@ spec-verify:
 # Any other skill-driven review: headless, then its verdict.
 some-review:
     stage: review
-    image: <an image with claude and node>
+    image: <an image with node>
     needs: [spec-coverage]
     allow_failure: { exit_codes: [3, 77] }
     script:
+        - *claude-code
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js run some-review --verdict some-review.md --advisory
     artifacts: { when: always, paths: [some-review.md, claude.jsonl, 'job-log-*.md'] }
 

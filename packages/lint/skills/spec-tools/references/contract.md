@@ -57,7 +57,7 @@ Decided once, printed as dotenv lines (`AUDIT_RUN`, `AUDIT_SCOPE`, `AUDIT_GATING
 | merge-request  | a merge request touching none           | affected | cheap     | gating   |
 | default-branch | anything else                           | affected | expensive | gating   |
 
-Every run reads on the cheap model. `AUDIT_MODEL_CHEAP`, `AUDIT_EFFORT_CHEAP`, `AUDIT_MODEL_EXPENSIVE` and `AUDIT_EFFORT_EXPENSIVE` override the defaults. `AUDIT_SLOTS` is how many workers a reading job runs at once: as many as `AUDIT_JOB_MEMORY` (default 2 GiB) holds at 600 MB a worker, never more than `AUDIT_WORKERS` (default 2). A merge request whose open changes cannot be classified fails the command rather than reading as one that touches nothing.
+Every run reads on the cheap model. `AUDIT_MODEL_CHEAP`, `AUDIT_EFFORT_CHEAP`, `AUDIT_MODEL_EXPENSIVE` and `AUDIT_EFFORT_EXPENSIVE` override the defaults. `AUDIT_SLOTS` is how many workers a reading job runs at once: as many as `AUDIT_JOB_MEMORY` (default 2 GiB) holds at 300 MB a worker, never more than `AUDIT_WORKERS` (default 2). A merge request whose open changes cannot be classified fails the command rather than reading as one that touches nothing.
 
 ### Scope — `spec-tools scope`
 
@@ -70,7 +70,7 @@ Cases:
 
 ### Workers — `spec-tools workers [--complete|--verify]`
 
-One headless `claude --print` worker per part loads the `spec-verify` skill and writes its own findings file. In a parallel job (`CI_NODE_INDEX` of `CI_NODE_TOTAL`) it reads only its share: part p goes to job ((p − 1) mod total) + 1. `--complete` judges, as each part's next reader, exactly what the merge listed short; `--verify` puts every standing ERROR to one verifier that confirms it only when the divergence is real and critical. How many run at once follows the container's memory (600 MB a worker), never more than `AUDIT_WORKERS` (default 2), and each pass logs the job's memory peak against its limit; a worker past `AUDIT_WORKER_TIMEOUT` (20m) is killed and its part judged by the completion pass. A pass that changed any file outside the audit's outputs exits 1, naming the paths; a missing input exits 2.
+One headless `claude --print` worker per part loads the `spec-verify` skill and writes its own findings file. In a parallel job (`CI_NODE_INDEX` of `CI_NODE_TOTAL`) it reads only its share: part p goes to job ((p − 1) mod total) + 1. `--complete` judges, as each part's next reader, exactly what the merge listed short; `--verify` puts every standing ERROR to one verifier that confirms it only when the divergence is real and critical. How many run at once follows the container's memory (300 MB a worker), never more than `AUDIT_WORKERS` (default 2), and each pass logs the job's memory peak against its limit; a worker past `AUDIT_WORKER_TIMEOUT` (20m) is killed and its part judged by the completion pass. A pass that changed any file outside the audit's outputs exits 1, naming the paths; a missing input exits 2.
 
 ### Merge — `spec-tools report [--gate] [--worktree]`
 
