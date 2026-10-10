@@ -12,6 +12,7 @@ import {
     dedupe,
     exitCodeFor,
     type Finding,
+    findingsProblem,
     gitReader,
     grade,
     mergeCoverage,
@@ -436,6 +437,19 @@ describe('shortList and readerFiles — what the completion pass is handed', () 
             'audit-parts/findings/part-11-1.json',
             'audit-parts/findings/part-11-2.json',
         ]);
+    });
+});
+
+describe('findingsProblem — a finding the report cannot read makes its reader not run', () => {
+    test('passes findings that carry every field the report reads', () => {
+        expect(findingsProblem([error(), error({ tier: 'WARN', quotes: undefined })])).toBeUndefined();
+    });
+
+    test('names the first finding without a field, so the completion pass re-reads its part', () => {
+        const { detail: _detail, ...summarized } = error();
+        expect(findingsProblem([error(), { ...summarized, summary: 'does not attach' }])).toBe(
+            'finding 2 lacks `detail`',
+        );
     });
 });
 

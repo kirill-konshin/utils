@@ -87,6 +87,23 @@ export type Verdict = {
     readonly reason: string;
 };
 
+/** The fields the report reads from every finding; `tier` is a claim the grade replaces, `quotes` are optional. */
+const FINDING_FIELDS = ['kind', 'where', 'detail'] as const;
+
+/**
+ * What makes a reader's findings unusable: a finding without one of the fields the report reads. The reader then
+ * counts as not run, so the completion pass re-reads its part, rather than the report guessing at a field.
+ */
+export function findingsProblem(findings: readonly unknown[]): string | undefined {
+    for (const [index, finding] of findings.entries()) {
+        const absent = FINDING_FIELDS.filter(
+            (field) => typeof (finding as Record<string, unknown>)?.[field] !== 'string',
+        );
+        if (absent.length) return `finding ${index + 1} lacks ${absent.map((field) => `\`${field}\``).join(', ')}`;
+    }
+    return undefined;
+}
+
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 /**
@@ -523,6 +540,8 @@ export function main(read: Reader = commitReader): string {
                 }
                 if (!Array.isArray(parsed.findings) || typeof parsed.coverage !== 'object')
                     throw new Error('missing `findings` or `coverage`');
+                const problem = findingsProblem(parsed.findings);
+                if (problem) throw new Error(problem);
                 return { ...parsed, part: n, capabilities: parsed.capabilities ?? [] };
             } catch (error) {
                 problems.push(
