@@ -13,6 +13,8 @@ coverage
 code-coverage-results.md
 dist
 dist-*
+# the spec-tools bundle, built into the skill that names it
+packages/lint/skills/spec-tools/scripts
 node_modules
 npm-debug*
 out

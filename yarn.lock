@@ -5424,8 +5424,7 @@ __metadata:
       optional: true
   bin:
     lint-prepare: ./dist/lintPrepare.js
-    spec-steward: ./skills/spec-steward/scripts/steward.mjs
-    spec-tools: ./spec-tools/dist/cli.mjs
+    spec-tools: ./skills/spec-tools/scripts/cli.js
   languageName: unknown
   linkType: soft
 
