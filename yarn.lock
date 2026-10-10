@@ -5390,7 +5390,6 @@ __metadata:
     glob: "npm:^13.0.6"
     globals: "npm:^17.11.0"
     jsonc-eslint-parser: "npm:^3.3.0"
-    jsonrepair: "npm:^3.15.0"
     local-pkg: "npm:^1.2.1"
     marked: "npm:^18.0.5"
     path-scurry: "npm:^2.0.2"
@@ -16330,15 +16329,6 @@ __metadata:
     graceful-fs:
       optional: true
   checksum: 10/6022bcca984bb5ac57855f80d1c7013765c2db13624292d4652b83f9f4ae93486b82ba516ad5ea91d07cd2f6e2e579b42e422ec1d680e78605f4af25644b9797
-  languageName: node
-  linkType: hard
-
-"jsonrepair@npm:^3.15.0":
-  version: 3.15.0
-  resolution: "jsonrepair@npm:3.15.0"
-  bin:
-    jsonrepair: bin/cli.js
-  checksum: 10/1558dbdfc47263381f23757148abc8e96560d4b47b66e11fc9b955c4002a18f945d340575cc856f544d471e250a036710a95e9ae3fe1e7b6f20c9582f0cbd897
   languageName: node
   linkType: hard
 
