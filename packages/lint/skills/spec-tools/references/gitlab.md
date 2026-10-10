@@ -7,7 +7,7 @@ The jobs a GitLab repository runs around `spec-steward` and `spec-tools`. Names 
 - `openspec validate` and `spec-tools gates` are gates over repository state, not unit tests: each runs as a job of its own, never inside a unit suite. An error fails its job; a warning never does.
 - The diff, the coverage report and the merge-request comment are reports: they never fail a pipeline.
 - `workflow-evidence` runs on merge requests to the default branch, and on default-branch pushes, where a red holds the release.
-- The audit jobs accept exit 3 (`INCOMPLETE`) and 77 (an advisory `FAIL`) as allowed failures; a gating `FAIL` (exit 1) blocks.
+- The audit jobs accept exit 3 (`INCOMPLETE`) and 77 (`ADVISORY`, ERRORs at 80% confidence or lower, or a `FAIL` on an advisory run) as allowed failures; a gating `FAIL` (exit 1, an ERROR above 80%) blocks.
 - Report jobs depend on the audits with `dependencies:` and `when: always`, never `needs:` — a failed audit is exactly when its report matters.
 - The default-branch pipeline publishes the reports on Pages, a failing one included; a report a run did not produce is omitted.
 - The scheduled nightly sets `SPEC_AUDIT_NIGHTLY=true`, so `spec-tools tier` audits the corpus there.

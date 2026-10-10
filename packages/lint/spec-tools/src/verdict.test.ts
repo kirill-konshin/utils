@@ -20,26 +20,31 @@ describe('verdict', () => {
     test('reads a Markdown report on its first verdict line, and the merge data as its verdict field', () => {
         const d = dir();
         expect(verdictOf('r.md', 'FAIL (2 errors, 1 warning)\n\nbody')).toBe('FAIL');
+        expect(verdictOf('r.md', 'ADVISORY (1 errors, 0 warnings)')).toBe('ADVISORY');
         expect(verdictOf('r.md', 'no verdict here')).toBeNull();
         const data = path.join(d, 'spec-verify.yaml');
         fs.writeFileSync(data, toYaml({ verdict: 'INCOMPLETE (0 errors, 3 warnings)', findings: [] }));
         expect(verdictOf(data, fs.readFileSync(data, 'utf8'))).toBe('INCOMPLETE');
     });
 
-    test('carries PASS as 0, FAIL as 1 or 77 on an advisory run, INCOMPLETE as 3, and nothing as 1', () => {
+    test('carries PASS as 0, FAIL as 1 or 77 on an advisory run, ADVISORY as 77, INCOMPLETE as 3, and nothing as 1', () => {
         expect(exitFor('PASS', false)).toBe(0);
         expect(exitFor('FAIL', false)).toBe(1);
         expect(exitFor('FAIL', true)).toBe(77);
+        expect(exitFor('ADVISORY', false)).toBe(77);
         expect(exitFor('INCOMPLETE', true)).toBe(3);
         expect(exitFor(null, true)).toBe(1);
     });
 
-    test('computes a review report’s verdict itself: an ERROR counts only above 70%, an incomplete review is INCOMPLETE', () => {
+    test('computes a review report’s verdict itself: an ERROR counts above 70%, fails above 80%, an incomplete review is INCOMPLETE', () => {
         const complete = { complete: true };
         expect(reviewVerdict({ findings: [finding('ERROR', 70)], coverage: complete }).line).toBe(
             'PASS (0 errors, 1 warnings)',
         );
-        expect(reviewVerdict({ findings: [finding('ERROR', 71)], coverage: complete }).state).toBe('FAIL');
+        expect(reviewVerdict({ findings: [finding('ERROR', 71)], coverage: complete }).line).toBe(
+            'ADVISORY (1 errors, 0 warnings)',
+        );
+        expect(reviewVerdict({ findings: [finding('ERROR', 81)], coverage: complete }).state).toBe('FAIL');
         expect(reviewVerdict({ findings: [], coverage: { complete: false } }).state).toBe('INCOMPLETE');
     });
 

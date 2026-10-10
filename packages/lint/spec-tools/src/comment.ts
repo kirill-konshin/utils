@@ -24,7 +24,12 @@ export function verdictRow(text: string | undefined): { state: string; errors: n
     };
 }
 
-const MARKS: Record<string, string> = { PASS: '✅ OK', INCOMPLETE: '❌ Incomplete', FAIL: '❌ Failed' };
+const MARKS: Record<string, string> = {
+    PASS: '✅ OK',
+    INCOMPLETE: '❌ Incomplete',
+    ADVISORY: '⚠️ Advisory',
+    FAIL: '❌ Failed',
+};
 
 const read = (file: string) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : undefined);
 
@@ -53,7 +58,7 @@ export function comment(reviews: readonly string[], env: NodeJS.ProcessEnv = pro
         out.push(`Specification diff — ${diff.split('\n')[0]}: ${reports(DIFF_FILE.replace(/\.md$/, ''))}`, '');
     const gating = env.AUDIT_GATING || 'gating';
     out.push(
-        `This was ${gating === 'advisory' ? 'an advisory' : 'a gating'} run (${env.AUDIT_RUN || 'unknown'}, scope ${env.AUDIT_SCOPE || 'corpus'}, judged by ${env.AUDIT_MODEL_VERIFY || 'unknown'}). An ERROR is a demonstrated defect with a production effect that its judge confirmed with a confidence above 70%. ERROR findings fail a gating run and mark an advisory run failed without stopping the pipeline; an INCOMPLETE review — one that sampled or skipped a check — fails its job with exit code 3. WARN and INFO are published for triage.${id && url ? ` Pipeline [#${id}](${url}).` : ''}`,
+        `This was ${gating === 'advisory' ? 'an advisory' : 'a gating'} run (${env.AUDIT_RUN || 'unknown'}, scope ${env.AUDIT_SCOPE || 'corpus'}, judged by ${env.AUDIT_MODEL_VERIFY || 'unknown'}). An ERROR is a demonstrated defect with a production effect that its judge confirmed with a confidence above 70%. An ERROR above 80% fails a gating run (FAIL); ERRORs at 80% or lower are ADVISORY and, like any ERROR on an advisory run, mark the job failed (exit 77) without stopping the pipeline; an INCOMPLETE review — one that left part of its scope unjudged — fails its job with exit code 3. WARN and INFO are published for triage.${id && url ? ` Pipeline [#${id}](${url}).` : ''}`,
     );
     const text = out.join('\n') + '\n';
     fs.mkdirSync(path.dirname(COMMENT_FILE), { recursive: true });

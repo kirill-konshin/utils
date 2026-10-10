@@ -14,12 +14,14 @@ import {
     type Finding,
     gitReader,
     grade,
+    type Graded,
     mergeCoverage,
     partCoverage,
     type PartFindings,
     type PartReaders,
     quoteFound,
     type Reader,
+    readerClaims,
     readerFiles,
     render,
     scopeHeader,
@@ -126,15 +128,27 @@ describe('grade', () => {
             tier: 'WARN',
             regraded: expect.stringContaining('from the sources'),
         });
+        // Installed dependency code is not ours: its quote proves nothing, and is never looked up — the commit does not
+        // carry it, so a run in CI and a run on the working tree grade the finding alike.
+        const dependency = { file: 'node_modules/@x/sdk/dist/log.js', line: 21, text: 'return value;' };
+        expect(grade(error({ quotes: [error().quotes![0]!, dependency] }), 2, read)).toMatchObject({
+            tier: 'WARN',
+            regraded: expect.stringContaining('from the sources'),
+        });
+        expect(grade(error({ quotes: [...error().quotes!, dependency] }), 2, read).tier).toBe('ERROR');
     });
 
-    test('tiers by the contract: INFO-class kinds are INFO, a conflict WARN at most, ERROR-class kinds WARN at least, unknown kinds INFO', () => {
+    test('tiers by the contract: INFO-class kinds are INFO, a conflict WARN at most, a WARN or INFO never raised, unknown kinds INFO', () => {
         expect(grade(error({ kind: 'untested' }), 1, read)).toMatchObject({
             tier: 'INFO',
             regraded: 'untested is INFO-class',
         });
         expect(grade(error({ kind: 'spec-dup' }), 1, read)).toMatchObject({ tier: 'INFO' });
-        expect(grade(error({ tier: 'INFO' }), 1, read)).toMatchObject({ tier: 'WARN' });
+        // The merge never raises a tier: the reader's WARN or INFO stands.
+        for (const tier of ['INFO', 'WARN'] as const) {
+            const kept = grade(error({ tier }), 1, read);
+            expect([kept.tier, kept.regraded]).toEqual([tier, undefined]);
+        }
         // A conflict is a specification defect, the owner's to decide: WARN at most, however well proved.
         expect(grade(error({ kind: 'conflict' }), 1, read)).toMatchObject({
             tier: 'WARN',
@@ -190,15 +204,16 @@ describe('coverageEntry', () => {
 });
 
 describe('mergeCoverage and verdict', () => {
-    test('is the weakest part, and a missing part runs nothing', () => {
+    test("is the weakest part, a missing part runs nothing, and a reader's own claim is only a note", () => {
         const parts = new Map<number, PartReaders>([
             [1, [part(1)]],
             [2, [part(2, { coverage: { ...part(2).coverage, '5': 'sampled: long file' } })]],
             [3, [undefined]],
         ]);
         const merged = mergeCoverage(parts);
-        expect(merged['5']).toMatchObject({ status: 'not-run', parts: [2, 3] });
-        expect(merged['5']!.notes).toEqual(['part 2: long file', 'part 3: no findings file']);
+        expect(merged['5']).toMatchObject({ status: 'not-run', parts: [3] });
+        expect(merged['5']!.notes).toEqual(['part 3: no findings file']);
+        expect(merged['5']!.claims).toEqual(['part 2: sampled: long file']);
         expect(merged['1']).toMatchObject({ status: 'not-run', parts: [3] });
         expect(Object.keys(merged)).toEqual(['1', '2', '3', '4', '5']);
         expect(verdict([], merged).line).toBe('INCOMPLETE (0 errors, 0 warnings)');
@@ -223,11 +238,13 @@ describe('mergeCoverage and verdict', () => {
         });
     });
 
-    test('covers a part when any of its readers did, and only a part with no reader ran nothing', () => {
-        const sampled = part(2, { coverage: { ...part(2).coverage, '5': 'sampled: long file' } });
-        expect(partCoverage([sampled, part(2)], '5')).toEqual({ status: 'full', note: undefined });
-        expect(partCoverage([sampled, undefined], '5')).toEqual({ status: 'sampled', note: 'long file' });
-        expect(partCoverage([undefined, undefined], '5')).toEqual({ status: 'not-run', note: 'no findings file' });
+    test('covers a part any reader wrote a findings file for, whatever it claims; only a part with none ran nothing', () => {
+        // A claimed shortfall, real path or made up, is a note: no tool can prove it.
+        const sampled = part(2, { coverage: { ...part(2).coverage, '5': 'sampled: src/never/existed.ts' } });
+        expect(partCoverage([sampled, undefined])).toEqual({ status: 'full' });
+        expect(readerClaims([sampled, part(2)], '5')).toEqual(['sampled: src/never/existed.ts']);
+        expect(readerClaims([part(2)], '5')).toEqual([]);
+        expect(partCoverage([undefined, undefined])).toEqual({ status: 'not-run', note: 'no findings file' });
     });
 
     test('counts a defect two readers both found once, keeping the better-proved twin', () => {
@@ -240,9 +257,18 @@ describe('mergeCoverage and verdict', () => {
         ]);
     });
 
-    test('fails on an ERROR, passes when everything ran in full', () => {
+    test('fails on an ERROR above 80%, is ADVISORY on ERRORs at 80% or lower, passes when everything ran in full', () => {
         const full = mergeCoverage(new Map([[1, [part(1)]]]));
-        expect(verdict([grade(error(), 1, read)], full).line).toBe('FAIL (1 errors, 0 warnings)');
+        const at = (readerConfidence: number, judgeConfidence?: number) =>
+            ({ ...grade(error({ readerConfidence }), 1, read), judgeConfidence }) as Graded;
+        expect(verdict([at(90)], full).line).toBe('FAIL (1 errors, 0 warnings)');
+        // The judge's confidence decides when there is one.
+        expect(verdict([at(60, 85)], full).state).toBe('FAIL');
+        expect(verdict([at(90, 75)], full).line).toBe('ADVISORY (1 errors, 0 warnings)');
+        expect(verdict([at(80)], full).state).toBe('ADVISORY');
+        expect([exitCodeFor('FAIL'), exitCodeFor('ADVISORY'), exitCodeFor('INCOMPLETE'), exitCodeFor('PASS')]).toEqual([
+            1, 77, 3, 0,
+        ]);
         expect(verdict([grade(error({ kind: 'untested' }), 1, read)], full).line).toBe('PASS (0 errors, 0 warnings)');
     });
 });
@@ -321,7 +347,8 @@ describe('render and scopeHeader', () => {
         const findings = one.findings.map((f) => grade(f, 1, read));
         const md = render(['SCOPE 1 capabilities'], findings, mergeCoverage(parts), []);
         const lines = md.split('\n');
-        expect(lines[0]).toBe('FAIL (1 errors, 0 warnings)');
+        expect(lines[0]).toBe('ADVISORY (1 errors, 0 warnings)');
+        expect(md).toContain('## Advisory errors — confirmed above 70%, at 80% or lower');
         expect(lines[2]).toBe('SCOPE 1 capabilities');
         const errors = lines.filter((l) => l.startsWith('- `code-mismatch`'));
         expect(errors).toHaveLength(1);
@@ -332,29 +359,27 @@ describe('render and scopeHeader', () => {
         expect(md).not.toContain('Quotes');
     });
 
-    test('lists only the checks that fell short', () => {
-        const parts = new Map([
-            [
-                1,
-                [
-                    part(1, {
-                        coverage: {
-                            '1': 'full',
-                            '2': 'full',
-                            '3': 'full',
-                            '4': 'full',
-                            '5': 'sampled: one test unread',
-                        },
-                    }),
-                ],
-            ],
-        ]);
-        const md = render(['SCOPE all'], [], mergeCoverage(parts), []);
-        expect(md.split('\n')[0]).toBe('INCOMPLETE (0 errors, 0 warnings)');
+    test("lists the checks that fell short, and a reader's own claim as a note that changes no verdict", () => {
+        const claimed = part(1, { coverage: { ...part(1).coverage, '5': 'sampled: one test unread' } });
+        const md = render(['SCOPE all'], [], mergeCoverage(new Map([[1, [claimed]]])), []);
+        expect(md.split('\n')[0]).toBe('PASS (0 errors, 0 warnings)');
+        expect(md).not.toContain('Coverage short');
         expect(md).toMatch(
-            /## Coverage short\n\n- 5\. A rule whose tests satisfy the wording while failing to protect the intent: sampled — parts 1/,
+            /## Readers' coverage notes\n\n.*\n\n- 5\. A rule whose tests satisfy the wording while failing to protect the intent: part 1: sampled: one test unread/,
         );
-        expect(md).not.toMatch(/^- 1\. /m);
+        const short = render(
+            ['SCOPE all'],
+            [],
+            mergeCoverage(
+                new Map([
+                    [1, [claimed]],
+                    [2, [undefined]],
+                ]),
+            ),
+            [],
+        );
+        expect(short.split('\n')[0]).toBe('INCOMPLETE (0 errors, 0 warnings)');
+        expect(short).toMatch(/## Coverage short\n\n- 1\. Gap honesty: not-run — parts 2 — part 2: no findings file/);
     });
 
     test('states the whole-corpus scope and its part count', () => {
@@ -385,7 +410,7 @@ describe('shortList and readerFiles — what the completion pass is handed', () 
         [3, ['z#a']],
     ]);
 
-    test('lists the requirements no judged list names and the checks no reader ran in full, and leaves a covered part out', () => {
+    test('lists the requirements no judged list names and the checks no reader says it ran in full, and leaves a covered part out', () => {
         const parts = new Map<number, PartReaders>([
             [1, [reader()]],
             [
@@ -408,6 +433,7 @@ describe('shortList and readerFiles — what the completion pass is handed', () 
             [3, [undefined]],
         ]);
         expect(shortList(parts, expected)).toEqual([
+            // The completion pass reads a claimed skip once more, as before; only the verdict ignores the claim.
             { part: 2, requirementIds: ['y#a'], checks: { '5': 'sampled: y#a — test not opened' } },
             {
                 part: 3,

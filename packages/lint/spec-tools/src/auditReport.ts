@@ -28,6 +28,12 @@ export const VERDICT_FILE = /^verdict-(\d+)\.yaml$/;
 
 /** A finding is a sure ERROR only when the judge's confidence — or, unjudged, the reader's — is above this. */
 export const SURE = 70;
+/** An ERROR fails the run only when that confidence is above this; ERRORs at `SURE` to this exit 77, advisory. */
+export const BLOCKING = 80;
+
+/** The confidence an ERROR stands at: the judge's, else the reader's. */
+export const confidenceOfError = (f: { judgeConfidence?: number; readerConfidence?: number }): number =>
+    f.judgeConfidence ?? f.readerConfidence ?? 0;
 
 export const ERROR_CLASS = ['code-mismatch', 'undeclared-gap'] as const;
 /** Kinds that are a defect in the specification, the owner's to decide: WARN at most (spec-verify rules, check 2). */
@@ -122,8 +128,12 @@ export function quoteFound(quote: Quote, lines: readonly string[] | undefined): 
 
 export type Reader = (file: string) => readonly string[] | undefined;
 
-/** The audit's own artifacts are not evidence: a quote must come from a specification or a source. */
-export const isGenerated = (file: string) => file.startsWith(`${AUDIT_DIR}/`);
+/**
+ * What is not the repository's own: the audit's artifacts, and installed dependency code, which the audit does not
+ * judge — a dependency's defect is its own repository's, caught by tests. A quote from either proves nothing, and is
+ * never looked up: an ERROR needs both sides quoted from the repository's specifications and sources.
+ */
+export const isForeign = (file: string) => file.startsWith(`${AUDIT_DIR}/`) || /(^|\/)node_modules\//.test(file);
 
 /** Files as a commit carries them: `git show <ref>:<file>` — what no worker's edit of the tree can reach. */
 export const gitReader =
@@ -155,7 +165,7 @@ export const worktreeReader: Reader = (file) => {
 
 /**
  * The tier a finding earns: INFO-class kinds are INFO however the worker graded them; WARN-class kinds (a
- * specification defect) are WARN at most; an ERROR-class
+ * specification defect) are WARN at most; a WARN or INFO the worker gave stands, never raised; an ERROR-class
  * kind is ERROR only when the worker claimed it and at least two of its quotes — both sides — are
  * found at their lines, and WARN otherwise, saying why; and a finding against an ⚠️ Advisory
  * requirement is at most WARN. A kind the contract does not name is recorded as INFO with the
@@ -192,15 +202,9 @@ function gradeKind(finding: Finding, part: number, read: Reader): Graded {
     if (!(ERROR_CLASS as readonly string[]).includes(kind)) {
         return { ...finding, tier: 'INFO', part, regraded: `kind \`${kind}\` is not in the contract's list` };
     }
-    if (finding.tier !== 'ERROR') {
-        return {
-            ...finding,
-            tier: 'WARN',
-            part,
-            regraded: finding.tier === 'WARN' ? undefined : 'ERROR-class kinds are WARN at least',
-        };
-    }
-    const quotes = (finding.quotes ?? []).filter((q) => !isGenerated(q.file));
+    // The reader's WARN or INFO stands: the merge never raises a tier.
+    if (finding.tier !== 'ERROR') return { ...finding, part };
+    const quotes = (finding.quotes ?? []).filter((q) => !isForeign(q.file));
     const missing = quotes.filter((q) => !quoteFound(q, read(q.file)));
     if (quotes.length < 2) {
         return {
@@ -221,24 +225,28 @@ function gradeKind(finding: Finding, part: number, read: Reader): Graded {
     return { ...finding, tier: 'ERROR', part };
 }
 
-export type Merged = Record<string, { status: Status; parts: number[]; notes: string[] }>;
+/** Per check: its status, the parts that fell short with why, and what readers claimed — notes, never a status. */
+export type Merged = Record<string, { status: Status; parts: number[]; notes: string[]; claims: string[] }>;
 
 const rank: Record<Status, number> = { full: 0, sampled: 1, 'not-run': 2 };
 
 /**
- * A part's coverage of a check is the best any of its readers achieved — two readers judge the same
- * evidence independently, so the part is covered when either judged it all. A part none of whose
- * readers reported ran nothing.
+ * A part's coverage of a check, from mechanical signals only: a part with a valid findings file ran the check; a part
+ * none of whose readers wrote one ran nothing. What a reader says of its own coverage ("sampled: …", "not-run: …") is
+ * a claim no tool can prove — a path it names may not exist, or may have been there to read — so it is kept as a note
+ * (`readerClaims`) and never makes a check fall short. Requirements missing from the judged lists do (`mergeCoverage`).
  */
-export function partCoverage(
-    readers: readonly (PartFindings | undefined)[],
-    check: string,
-): { status: Status; note?: string } {
-    const present = readers.filter((r): r is PartFindings => r !== undefined);
-    if (present.length === 0) return { status: 'not-run', note: 'no findings file' };
-    return present
+export function partCoverage(readers: readonly (PartFindings | undefined)[]): { status: Status; note?: string } {
+    return readers.some((r) => r !== undefined) ? { status: 'full' } : { status: 'not-run', note: 'no findings file' };
+}
+
+/** What a part's readers claimed of their own coverage of a check, when they claimed less than full. */
+export function readerClaims(readers: readonly (PartFindings | undefined)[], check: string): string[] {
+    return readers
+        .filter((r): r is PartFindings => r !== undefined)
         .map((r) => coverageEntry(r.coverage?.[check]))
-        .reduce((best, e) => (rank[e.status] < rank[best.status] ? e : best));
+        .filter((e) => e.status !== 'full')
+        .map((e) => `${e.status}${e.note ? `: ${e.note}` : ''}`);
 }
 
 /**
@@ -263,13 +271,13 @@ export function mergeCoverage(
     expected?: ReadonlyMap<number, readonly string[]>,
 ): Merged {
     const merged: Merged = Object.fromEntries(
-        Object.keys(CHECKS).map((c) => [c, { status: 'full', parts: [], notes: [] }]),
+        Object.keys(CHECKS).map((c) => [c, { status: 'full', parts: [], notes: [], claims: [] }]),
     );
     for (const [n, readers] of [...parts].sort(([a], [b]) => a - b)) {
         const ids = expected?.get(n) ?? [];
         const missed = ids.length ? unjudged(readers, ids) : [];
         for (const check of Object.keys(CHECKS)) {
-            let entry = partCoverage(readers, check);
+            let entry = partCoverage(readers);
             if (missed.length && entry.status === 'full') {
                 const shown = missed
                     .slice(0, 5)
@@ -281,6 +289,7 @@ export function mergeCoverage(
                 };
             }
             const slot = merged[check]!;
+            for (const claim of readerClaims(readers, check)) slot.claims.push(`part ${n}: ${claim}`);
             if (entry.status !== 'full') {
                 slot.parts.push(n);
                 if (entry.note) slot.notes.push(`part ${n}: ${entry.note}`);
@@ -293,7 +302,8 @@ export function mergeCoverage(
 
 /**
  * What a pass left for the completion pass, per part: the requirements no reader's judged list names, and
- * the checks no reader ran in full, each with the reader's own note. A part with no findings file is
+ * the checks no reader says it ran in full, each with the reader's own note — read once more, though a reader's claim
+ * changes no verdict. A part with no findings file is
  * short on everything — the completion pass then judges the whole part once, which is how a killed
  * worker is recovered without re-running the parts that finished.
  */
@@ -312,9 +322,13 @@ export function shortList(
         const ids = expected.get(n) ?? [];
         const requirementIds = ids.length ? unjudged(readers, ids) : [];
         const checks: Record<string, string> = {};
+        const present = readers.filter((r) => r !== undefined).length;
         for (const check of Object.keys(CHECKS)) {
-            const entry = partCoverage(readers, check);
+            const entry = partCoverage(readers);
+            // What every reader says it skipped is read once more by the completion pass; it changes no verdict.
+            const claims = readerClaims(readers, check);
             if (entry.status !== 'full') checks[check] = `${entry.status}${entry.note ? `: ${entry.note}` : ''}`;
+            else if (claims.length && claims.length === present) checks[check] = claims[0]!;
         }
         if (requirementIds.length || Object.keys(checks).length) out.push({ part: n, requirementIds, checks });
     }
@@ -418,19 +432,25 @@ export function readVerdicts(problems: string[]): Map<number, Verdict> {
     return out;
 }
 
+/**
+ * The verdict: FAIL when an ERROR stands above `BLOCKING`; ADVISORY when ERRORs stand, none above it; INCOMPLETE when
+ * none stands but a check fell short; PASS otherwise.
+ */
 export function verdict(findings: readonly Graded[], coverage: Merged) {
-    const errors = findings.filter((f) => f.tier === 'ERROR').length;
+    const standing = findings.filter((f) => f.tier === 'ERROR');
+    const errors = standing.length;
     const warnings = findings.filter((f) => f.tier === 'WARN').length;
     const incomplete = Object.values(coverage).some((c) => c.status !== 'full');
-    const state = errors > 0 ? 'FAIL' : incomplete ? 'INCOMPLETE' : 'PASS';
+    const blocking = standing.some((f) => confidenceOfError(f) > BLOCKING);
+    const state = blocking ? 'FAIL' : errors > 0 ? 'ADVISORY' : incomplete ? 'INCOMPLETE' : 'PASS';
     return { state, errors, warnings, line: `${state} (${errors} errors, ${warnings} warnings)` };
 }
 
 /**
- * The exit code a verdict earns when the report gates a run: 0 on PASS, 1 on FAIL, 3 on INCOMPLETE — an
- * allowed failure, so the job is marked failed and the pipeline continues.
+ * The exit code a verdict earns when the report gates a run: 0 on PASS, 1 on FAIL, 77 on ADVISORY, 3 on INCOMPLETE —
+ * 77 and 3 are allowed failures, so the job is marked failed and the pipeline continues.
  */
-export const exitCodeFor = (state: string): number => (state === 'FAIL' ? 1 : state === 'INCOMPLETE' ? 3 : 0);
+export const exitCodeFor = (state: string): number => ({ FAIL: 1, ADVISORY: 77, INCOMPLETE: 3 })[state] ?? 0;
 
 const cell = (s: string) => normalize(s).replace(/\|/g, '\\|');
 const order: Record<Tier, number> = { ERROR: 0, WARN: 1, INFO: 2 };
@@ -490,12 +510,19 @@ export function render(
     const out = [v.line, '', ...scopeHeader, ''];
     if (problems.length) out.push("## Problems with the workers' output", '', ...problems.map((p) => `- ${p}`), '');
     const sections = [
-        ['ERROR', `Errors — demonstrated, with a production effect, confirmed above ${SURE}%`],
-        ['WARN', 'Warnings — suspected, without a production effect, or not confirmed'],
+        [
+            `Errors that fail the run — confirmed above ${BLOCKING}%`,
+            (f: Graded) => f.tier === 'ERROR' && confidenceOfError(f) > BLOCKING,
+        ],
+        [
+            `Advisory errors — confirmed above ${SURE}%, at ${BLOCKING}% or lower`,
+            (f: Graded) => f.tier === 'ERROR' && confidenceOfError(f) <= BLOCKING,
+        ],
+        ['Warnings — suspected, without a production effect, or not confirmed', (f: Graded) => f.tier === 'WARN'],
     ] as const;
-    for (const [tier, title] of sections) {
+    for (const [title, belongs] of sections) {
         const items = findings
-            .filter((f) => f.tier === tier)
+            .filter(belongs)
             .sort((a, b) => a.kind.localeCompare(b.kind) || a.where.localeCompare(b.where));
         if (items.length) out.push(`## ${title}`, '', ...items.map(findingLine), '');
     }
@@ -511,6 +538,17 @@ export function render(
                 `- ${c}. ${name}: ${m.status} — parts ${m.parts.join(', ')}${m.notes.length ? ` — ${m.notes.join('; ')}` : ''}`,
             );
         }
+        out.push('');
+    }
+    const claims = Object.entries(CHECKS).filter(([c]) => coverage[c]!.claims.length);
+    if (claims.length) {
+        out.push(
+            "## Readers' coverage notes",
+            '',
+            'What readers said they did not read. A note, not a shortfall: it changes no verdict.',
+            '',
+        );
+        for (const [c, name] of claims) out.push(`- ${c}. ${name}: ${coverage[c]!.claims.join('; ')}`);
         out.push('');
     }
     return out.join('\n');

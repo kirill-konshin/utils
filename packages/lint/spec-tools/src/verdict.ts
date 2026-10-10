@@ -12,10 +12,10 @@
  */
 import * as fs from 'node:fs';
 
-import { SURE } from './auditReport';
+import { BLOCKING, SURE } from './auditReport';
 import { readData } from './data';
 
-const STATE = /^(PASS|FAIL|INCOMPLETE)\S*/m;
+const STATE = /^(PASS|FAIL|ADVISORY|INCOMPLETE)\S*/m;
 
 /** A finding of a skill-driven review, as its report carries it. */
 export type ReviewFinding = {
@@ -35,12 +35,16 @@ export type ReviewReport = {
 export const tierOf = (f: ReviewFinding): ReviewFinding['tier'] =>
     f.tier === 'ERROR' && f.readerConfidence <= SURE ? 'WARN' : f.tier;
 
-/** A review report's verdict, from its findings and coverage alone. */
+/**
+ * A review report's verdict, from its findings and coverage alone: FAIL when an ERROR stands above `BLOCKING`,
+ * ADVISORY when ERRORs stand and none is above it, INCOMPLETE when the coverage says so, PASS otherwise.
+ */
 export function reviewVerdict(report: ReviewReport): { state: string; errors: number; warnings: number; line: string } {
     const tiers = report.findings.map(tierOf);
     const errors = tiers.filter((t) => t === 'ERROR').length;
     const warnings = tiers.filter((t) => t === 'WARN').length;
-    const state = errors > 0 ? 'FAIL' : report.coverage.complete ? 'PASS' : 'INCOMPLETE';
+    const blocking = report.findings.some((f) => tierOf(f) === 'ERROR' && f.readerConfidence > BLOCKING);
+    const state = blocking ? 'FAIL' : errors > 0 ? 'ADVISORY' : report.coverage.complete ? 'PASS' : 'INCOMPLETE';
     return { state, errors, warnings, line: `${state} (${errors} errors, ${warnings} warnings)` };
 }
 
@@ -84,10 +88,11 @@ export function verdictOf(file: string, text: string): string | null {
     return STATE.exec(text)?.[0] ?? null;
 }
 
-/** The exit code a verdict carries. */
+/** The exit code a verdict carries: an ADVISORY verdict, or a FAIL on an advisory run, exits 77. */
 export function exitFor(verdict: string | null, advisory: boolean): number {
     if (verdict?.startsWith('PASS')) return 0;
     if (verdict?.startsWith('INCOMPLETE')) return 3;
+    if (verdict?.startsWith('ADVISORY')) return 77;
     if (verdict?.startsWith('FAIL')) return advisory ? 77 : 1;
     return 1;
 }
@@ -111,7 +116,11 @@ export function gate(file: string, advisory: boolean): number {
     console.log(`verdict: ${verdict}`);
     const code = exitFor(verdict, advisory);
     if (code === 77)
-        console.error(`ERROR findings in ${file}; an advisory run: the job fails, the pipeline continues.`);
+        console.error(
+            verdict.startsWith('ADVISORY')
+                ? `ERROR findings in ${file}, none above ${BLOCKING}%: advisory — the job fails, the pipeline continues.`
+                : `ERROR findings in ${file}; an advisory run: the job fails, the pipeline continues.`,
+        );
     else if (code === 1) console.error(`ERROR findings in ${file} — see it in this job's artifacts.`);
     else if (code === 3)
         console.error(`INCOMPLETE: the review did not cover its whole scope — see the coverage in ${file}.`);

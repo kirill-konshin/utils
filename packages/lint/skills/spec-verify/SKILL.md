@@ -74,7 +74,7 @@ coverage:
     '1': 'full'
     '2': 'full'
     '3': 'full'
-    '4': 'sampled: src/refunds.ts — the window at lines 40–70 was not read'
+    '4': 'full'
     '5': 'full'
 judged:
     - 'billing/refunds#requirement-a-refund-is-applied-once'
@@ -87,9 +87,9 @@ How to write each key:
 - `kind`, `tier`, `where`, `file`: double-quoted strings. `tier` is `ERROR`, `WARN` or `INFO`.
 - `readerConfidence`, `line`, `part`, `reader`: plain integers. Each finding has a `readerConfidence`.
 - `detail`: a literal block (`|`), one or two sentences. The report shows its first sentence.
-- `quotes[].text`: a stripped literal block (`|-`), copied from the source line without its line-number prefix. An ERROR has at least two quotes: one from the specification and one from the code. A quote from `.spec-audit/` does not count. WARN and INFO findings have no quotes.
-- `coverage`: one string per check, `"1"` to `"5"`: `"full"`, or `"sampled: <the source you could not read>"`, or `"not-run: <why>"`.
-- `judged`: every requirement id of the part that you judged. A missing id makes the check sampled.
+- `quotes[].text`: a stripped literal block (`|-`), copied from the source line without its line-number prefix. An ERROR has at least two quotes: one from the specification and one from the code. A quote from `.spec-audit/` or from installed dependency code (`node_modules/`) does not count: the audit judges the repository's own code. WARN and INFO findings have no quotes.
+- `coverage`: one string per check, `"1"` to `"5"`: `"full"`. Write `"sampled: <the source>"` only when a source was not available after you tried to read it. The tool keeps it as a note; it does not change the verdict.
+- `judged`: every requirement id of the part that you judged. A missing id leaves the run short until the completion pass judges it.
 - Every path you name exists. Do not write a bare file name.
 
 ## Interactive use — `/spec-verify`

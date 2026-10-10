@@ -7,6 +7,7 @@ These rules tell what a finding is and which tier it gets. They apply to every a
 - Judge what the repository shows: the specification as written, the code, the tests and the configuration.
 - A comment, a citation, a description, a marker (`SANCTIONED`, `FIXME`, `TODO`) or prompt text is not evidence. It is also not a defect.
 - Behaviour that comes from a dependency (a command-line flag, a library default) is not demonstrated when the repository does not show it.
+- Installed dependency code (`node_modules/`) is not the repository. Do not judge it, and do not use it as evidence. A defect in a dependency is for that dependency's own tests, not for this audit.
 - A finding is demonstrated when you read both sides and quote each side at `file:line`. Other findings are suspected.
 - A finding names the difference. The owner decides which side to change.
 

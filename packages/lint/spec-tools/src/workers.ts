@@ -68,6 +68,10 @@ const STEWARD_TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Gr
 const OUTPUTS = new RegExp(`^${AUDIT_DIR.replace('.', '\\.')}/`);
 /** How many times a file that fails its schema goes back to its worker before the worker counts as not run. */
 export const CORRECTIONS = 2;
+/** A worker that exits non-zero this soon, with no file written, failed to start — e.g. "Not logged in" when many sessions start at once. */
+export const EARLY_FAILURE_MS = 60_000;
+/** How long such a worker waits before its one retry. */
+const RETRY_DELAY_MS = 3_000;
 
 /** How many workers run at once: in a container `tier`'s workersFor its memory; elsewhere AUDIT_WORKERS, else all. */
 export function concurrency(env: NodeJS.ProcessEnv, memoryLimit = cgroupLimit()): number {
@@ -376,6 +380,25 @@ async function runClaude(
 }
 
 /**
+ * One worker, retried once at once when it failed to start: a non-zero exit within `EARLY_FAILURE_MS` that wrote
+ * nothing. Without the retry its part waits for the completion pass, after the whole reading.
+ */
+async function runOnce(
+    run: Run,
+    wrote: () => boolean,
+    budget: number,
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+): Promise<Ran & { retried: boolean }> {
+    const started = Date.now();
+    const first = await runClaude(run, wrote, budget, env, cwd);
+    if (!first.status.startsWith('exit ') || wrote() || Date.now() - started > EARLY_FAILURE_MS)
+        return { ...first, retried: false };
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return { ...(await runClaude({ ...run, log: `${run.log}-retry` }, wrote, budget, env, cwd)), retried: true };
+}
+
+/**
  * The file a worker wrote, checked against its schema; while it fails and the worker finished, its errors go back to
  * the same session, at most `CORRECTIONS` times. Returns the errors that remain and how many corrections it took.
  */
@@ -423,9 +446,9 @@ async function pool(tasks: readonly (() => Promise<void>)[], limit: number): Pro
 
 const clock = () => new Date().toTimeString().slice(0, 8);
 
-/** The end of a worker's log line: corrections, and the first error that remains. */
-const checkNote = ({ errors, corrections }: { errors: readonly string[]; corrections: number }) =>
-    `${corrections ? `, corrected ${corrections}×` : ''}${errors.length ? `, still invalid: ${errors[0]}` : ''}`;
+/** The end of a worker's log line: a retry, corrections, and the first error that remains. */
+const checkNote = ({ errors, corrections }: { errors: readonly string[]; corrections: number }, retried = false) =>
+    `${retried ? ', retried after a failed start' : ''}${corrections ? `, corrected ${corrections}×` : ''}${errors.length ? `, still invalid: ${errors[0]}` : ''}`;
 
 /** One pass of the audit's workers; the exit code: 0 done, 1 the tree changed, 2 an input is missing. */
 export async function workers(
@@ -480,7 +503,7 @@ export async function workers(
             tools: kind.tools,
         };
         const full = path.join(cwd, file);
-        const first = await runClaude(run, () => fs.existsSync(full), budget, env, cwd);
+        const first = await runOnce(run, () => fs.existsSync(full), budget, env, cwd);
         const check = await checked(run, first, file, kind.findingsSchema, kind.canEdit, budget, env, cwd);
         const data = check.errors.length ? undefined : tryReadData<{ findings?: unknown[]; judged?: unknown[] }>(full);
         const wrote = data
@@ -489,7 +512,7 @@ export async function workers(
               ? 'invalid findings file'
               : 'no findings file';
         log(
-            `[${clock()}] worker ${p.part} finished in ${Math.round((Date.now() - started) / 1000)}s — ${check.status} — ${wrote}${checkNote(check)}`,
+            `[${clock()}] worker ${p.part} finished in ${Math.round((Date.now() - started) / 1000)}s — ${check.status} — ${wrote}${checkNote(check, first.retried)}`,
         );
     };
 
@@ -506,7 +529,7 @@ export async function workers(
             dir: files.findings,
             tools: kind.tools,
         };
-        const first = await runClaude(run, () => fs.existsSync(full), budget, env, cwd);
+        const first = await runOnce(run, () => fs.existsSync(full), budget, env, cwd);
         const check = await checked(run, first, file, kind.verdictSchema, kind.canEdit, budget, env, cwd);
         const v = check.errors.length
             ? undefined
@@ -517,7 +540,7 @@ export async function workers(
               ? 'invalid verdict file'
               : 'no verdict file';
         log(
-            `[${clock()}] verifier ${k} finished in ${Math.round((Date.now() - started) / 1000)}s — ${check.status} — ${wrote}${checkNote(check)}`,
+            `[${clock()}] verifier ${k} finished in ${Math.round((Date.now() - started) / 1000)}s — ${check.status} — ${wrote}${checkNote(check, first.retried)}`,
         );
     };
 

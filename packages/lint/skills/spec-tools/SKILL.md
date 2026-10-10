@@ -45,7 +45,7 @@ Run them through the package manager (`yarn spec-tools gates`), the bin (`node_m
 
 - `gates` — spec-steward's findings come first (the `spec-steward` skill says what each kind asks), then one line per change gate with what violates it and a hint.
 - `evidence` — an open change carries deltas, or is synced but not archived: archive it before the branch merges.
-- `report --gate` / `verdict` — exit 1 is a confirmed ERROR on a gating run, 77 the same on an advisory run, 3 `INCOMPLETE` (the report names the check that fell short). An ERROR stands only when its judge confirmed it above 70% confidence. Summarize `.spec-audit/spec-verify.md` as the `spec-verify` skill's _Interactive use_ says.
+- `report --gate` / `verdict` — exit 1 is `FAIL`, an ERROR above 80% confidence on a gating run; 77 is `ADVISORY` (ERRORs at 71–80%) or any `FAIL` on an advisory run; 3 is `INCOMPLETE`, a part with no valid findings file or requirements nobody judged (the report names them). An ERROR stands only when its judge confirmed it above 70% confidence. A reader's own coverage claims are notes and change no verdict. Summarize `.spec-audit/spec-verify.md` as the `spec-verify` skill's _Interactive use_ says.
 - `workers` exit 1 — a worker changed a file outside `.spec-audit/`; the paths are listed.
 - `workers` log line `still invalid: …` — a worker's YAML file failed its schema after two corrections; the part counts as not read, and the completion pass reads it again.
 

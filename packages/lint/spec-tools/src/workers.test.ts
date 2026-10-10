@@ -15,11 +15,13 @@ const TIMEOUT = 60_000;
 /**
  * The stand-in `claude`: it writes the findings file its brief names and streams a result event with a session id. With
  * `STUB_BAD` set, its first file lacks every finding field, and only a correction (`--resume`) writes a valid one; with
- * `STUB_BAD=always`, every correction fails too.
+ * `STUB_BAD=always`, every correction fails too. With `STUB_FAIL_START=<marker>`, the first start fails at once, as a
+ * session that could not log in does.
  */
 const STUB = [
     '#!/usr/bin/env bash',
     'if [ "$1" = "--resume" ]; then prompt="$4"; else prompt="$2"; fi',
+    'if [ -n "$STUB_FAIL_START" ] && [ ! -e "$STUB_FAIL_START" ]; then touch "$STUB_FAIL_START"; echo \'{"type":"result","subtype":"error","result":"Not logged in"}\'; exit 1; fi',
     'file=$(sed -n \'s/^- findings file to write (Write tool, overwrite, nothing else): //p\' <<<"$prompt")',
     '[ -z "$file" ] && file=$(sed -n \'s/^The file \\(.*\\) has these errors:$/\\1/p\' <<<"$prompt")',
     'if [ -n "$STUB_BAD" ] && { [ "$1" != "--resume" ] || [ "$STUB_BAD" = always ]; }; then',
@@ -146,6 +148,22 @@ describe('workers, the reading', () => {
             const { code, out } = await read(1, { STUB_BAD: 'always' });
             expect(code).toBe(0);
             expect(out).toContain('invalid findings file, corrected 2×, still invalid: findings[0].tier: missing');
+        },
+        TIMEOUT,
+    );
+
+    test(
+        'retries a reader that failed to start once, at once, instead of leaving its part to the completion pass',
+        async () => {
+            const repo = repository(1);
+            const { code, written, out } = await read(
+                1,
+                { STUB_FAIL_START: path.join(repo.dir, 'bin', 'failed-once') },
+                repo,
+            );
+            expect(code).toBe(0);
+            expect(written).toEqual([1]);
+            expect(out).toContain('— ok — 0 findings, judged 0, retried after a failed start');
         },
         TIMEOUT,
     );
