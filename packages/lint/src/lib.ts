@@ -38,6 +38,8 @@ export const GLOBAL_IGNORES = [
     '**/.nx',
     '**/.turbo',
     '**/.yarn',
+    // The spec-tools bundle: built, not source, and lint-prepare links it into the consumer's `.agents` and `.claude`.
+    '**/skills/spec-tools/scripts/cli.js',
 ];
 
 const LINT_DEBUG = Boolean(process.env.LINT_DEBUG);

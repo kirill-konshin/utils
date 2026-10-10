@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { Linter } from 'eslint';
+import { ESLint, type Linter } from 'eslint';
 import { test } from 'vitest';
 
 import {
@@ -133,4 +133,13 @@ test('every block function returns a non-empty array of config objects', async (
             assert.ok(config && typeof config === 'object', `${name} entries should be config objects`);
         }
     }
+});
+
+test('the spec-tools bundle lint-prepare links into the agent dirs is never linted', async () => {
+    await inTempDir({ '.keep': '' }, async (cwd) => {
+        const eslint = new ESLint({ cwd, overrideConfigFile: true, overrideConfig: baseConfig() });
+        for (const dir of ['.agents', '.claude'])
+            assert.ok(await eslint.isPathIgnored(`${dir}/skills/spec-tools/scripts/cli.js`), dir);
+        assert.ok(!(await eslint.isPathIgnored('.agents/skills/own/scripts/run.js')));
+    });
 });
