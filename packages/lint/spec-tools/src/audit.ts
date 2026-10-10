@@ -1,7 +1,7 @@
 /**
  * `spec-tools audit`: the CI sequence — the evidence model, scope, then the passes and merges in the order `workers.ts`
  * describes — run by default from a DETACHED worktree of HEAD, so what is judged is exactly the commit CI judges: an
- * uncommitted edit, or a stale `audit-parts/findings/` in the working tree, cannot leak into the run, and every ERROR's
+ * uncommitted edit, or a stale `.spec-audit/` in the working tree, cannot leak into the run, and every ERROR's
  * quotes are re-proved against HEAD. The install is the working tree's (`node_modules` is linked in), and the run's
  * outputs — evidence model, scope, evidence, findings, the merged report — come back to the working tree.
  * `--here` runs on the working tree instead, uncommitted edits included, and re-proves quotes against it.
@@ -12,19 +12,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { AUDIT_FILES, type AuditName, EVIDENCE_FILE, PARTS_DIR } from './files';
+import { AUDIT_DIR, type AuditName } from './files';
 import { git, root } from './repo';
 
-/** What a run produces and brings back to the working tree. */
-const outputs = (audit: AuditName) => [
-    ...new Set([
-        EVIDENCE_FILE,
-        PARTS_DIR,
-        AUDIT_FILES[audit].scope,
-        AUDIT_FILES[audit].report,
-        AUDIT_FILES[audit].data,
-    ]),
-];
+/** What a run produces and brings back to the working tree: the audit's folder. */
+const outputs = [AUDIT_DIR];
 
 /** This CLI as it was started — the build or the source under a loader alike — run in `cwd`; its exit code. */
 const self = (args: readonly string[], cwd: string): number =>
@@ -88,7 +80,7 @@ export function audit(argv: readonly string[], audit: AuditName = 'spec-verify')
         const code = sequence(tree, false, dry, audit, context);
         // A dry run proved the tree and leaves the working tree's last run alone.
         if (!dry)
-            for (const out of outputs(audit)) {
+            for (const out of outputs) {
                 if (!fs.existsSync(path.join(tree, out))) continue;
                 fs.rmSync(path.join(top, out), { recursive: true, force: true });
                 fs.cpSync(path.join(tree, out), path.join(top, out), { recursive: true });

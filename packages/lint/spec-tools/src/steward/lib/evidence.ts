@@ -105,7 +105,7 @@ function citationsOf(r: Requirement, citations: Citation[]) {
     return citations.filter((c) => c.anchor && c.resolves && anchors.has(`${c.target}#${c.anchor}`));
 }
 
-/** The audit's evidence model for one repository, `spec-evidence.json`. */
+/** The audit's evidence model for one repository, `.spec-audit/evidence.yaml`. */
 export function evidenceModel(corpus: Corpus, citations: Citation[], sources: Source[]) {
     const everywhere = allRequirements(corpus).map((requirement) => ({ corpus, requirement }));
 

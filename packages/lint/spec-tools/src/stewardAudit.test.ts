@@ -5,7 +5,8 @@ import * as path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import type { EvidenceModel } from './auditParts';
-import { AUDIT_FILES, findingsFile } from './files';
+import { readData, toYaml } from './data';
+import { AUDIT_FILES, findingsFile, verdictFile } from './files';
 import { merge, quoteAt, type StewardData, sweepUnits } from './stewardAudit';
 import { workers } from './workers';
 
@@ -40,14 +41,14 @@ function repository() {
     const ids = ['billing#requirement-refunds-are-idempotent', 'billing#requirement-invoices-are-numbered'];
     write(
         FILES.scope,
-        JSON.stringify({
+        toYaml({
             scope: 'all',
             readers: 1,
             parts: [
                 {
                     part: 1,
                     capabilities: ['billing'],
-                    files: ['audit-parts/billing.md'],
+                    files: ['.spec-audit/parts/billing.yaml'],
                     findings: [findingsFile(1, 1, 'spec-steward')],
                     requirementIds: ids,
                     bytes: 1,
@@ -85,7 +86,7 @@ const finding = (over: Record<string, unknown> = {}) => ({
     proposed: 'Reclassify → ADVISORY',
     themeKey: 'unverifiable-absolute',
     needsHumanIntent: false,
-    confidence: 'high',
+    readerConfidence: 80,
     ...over,
 });
 
@@ -133,7 +134,7 @@ describe('spec-steward on the shared engine', () => {
             const same = { themeKey: 'vague-obligation' };
             write(
                 findingsFile(1, 1, 'spec-steward'),
-                JSON.stringify({
+                toYaml({
                     findings: [
                         finding(),
                         finding({ line: 9, quote: 'not on that line' }),
@@ -145,7 +146,7 @@ describe('spec-steward on the shared engine', () => {
             );
             write(
                 findingsFile(2, 1, 'spec-steward'),
-                JSON.stringify({
+                toYaml({
                     findings: [
                         finding({ file: 'AGENTS.md', line: 1, quote: '# Agents', layer: 'AGENTS', ...same }),
                         finding({
@@ -159,9 +160,12 @@ describe('spec-steward on the shared engine', () => {
                     ],
                 }),
             );
-            write(`${FILES.findings}/verdict-1.json`, JSON.stringify({ verdict: 'drop', reason: 'style only' }));
+            write(
+                verdictFile(1, 'spec-steward'),
+                toYaml({ verdict: 'drop', reason: 'style only', judgeConfidence: 90 }),
+            );
             const summary = merge(reader(dir), dir);
-            const data = JSON.parse(fs.readFileSync(path.join(dir, FILES.data), 'utf8')) as StewardData;
+            const data = readData<StewardData>(path.join(dir, FILES.data));
             expect(data.dropped.map((d) => [d.droppedBy, d.line])).toEqual([
                 ['facts', 9],
                 ['verifier', 5],
@@ -172,9 +176,11 @@ describe('spec-steward on the shared engine', () => {
             expect(data.findings.map((f) => f.area)).toEqual(['billing', 'placement']);
             expect(data.findings.find((f) => f.file === 'AGENTS.md')?.criteria).toEqual([6, 2]);
             expect(summary).toMatch(
-                /^REVIEW 2 item\(s\) \(0 theme\(s\)\), 2 dropped, 1 part\(s\) short → spec-review\.md$/,
+                /^REVIEW 2 item\(s\) \(0 theme\(s\)\), 2 dropped, 1 part\(s\) short → \.spec-audit\/spec-review\.yaml$/,
             );
-            expect(fs.readFileSync(path.join(dir, FILES.report), 'utf8')).toMatch(/^## billing/m);
+            expect(fs.readFileSync(path.join(dir, FILES.report), 'utf8')).toMatch(
+                /^R-001:\n {2}title: Refunds are idempotent\n {2}area: billing$/m,
+            );
         },
         TIMEOUT,
     );
@@ -200,9 +206,9 @@ describe('spec-steward on the shared engine', () => {
                 log: (line) => lines.push(line),
             });
             expect(code).toBe(0);
-            expect(fs.readdirSync(path.join(dir, FILES.findings)).filter((f) => f.endsWith('-1.json'))).toEqual([
-                'part-1-1.json',
-                'part-2-1.json',
+            expect(fs.readdirSync(path.join(dir, FILES.findings)).filter((f) => f.endsWith('-1.yaml'))).toEqual([
+                'part-1-1.yaml',
+                'part-2-1.yaml',
             ]);
             expect(lines.join('\n')).toContain('2 parts');
         },

@@ -21,9 +21,10 @@ import {
     specMovesSince,
 } from './changeGates';
 import { diffBase } from './ci';
+import { DIFF_FILE } from './files';
 import { root } from './repo';
 
-export const DIFF_FILE = 'spec-diff.md';
+export { DIFF_FILE };
 
 export type SpecDiff = {
     readonly added: readonly RequirementBlock[];
@@ -132,6 +133,7 @@ export function main(argv: readonly string[] = [], env = process.env): string {
         base,
         capabilityMoves(specMovesSince(base)),
     );
+    fs.mkdirSync(path.dirname(path.join(root(), DIFF_FILE)), { recursive: true });
     fs.writeFileSync(path.join(root(), DIFF_FILE), text);
     return text;
 }

@@ -2,6 +2,10 @@
 
 What `spec-tools` does in every repository that runs it. It ships with `@kirill.konshin/lint`, so a repository is held to the version it pins. The tests beside the source (`spec-tools/src/*.test.ts`) prove the cases below. The corpus gate's own contract — citations, binding, markers, size lines, the scenario ratchet — is spec-steward's [`contract.md`](../../spec-steward/references/contract.md); how a pipeline wires the commands is [`gitlab.md`](gitlab.md).
 
+## Files
+
+Every file the tools and the audits write is under one folder at the repository root, `.spec-audit/`: one `.gitignore` line, one CI artifacts path. Every intermediate file is YAML — the evidence, the scope, the findings, the verdicts, the merges, the coverage data, the steward review. Markdown is rendered only at the end, for people: `spec-verify.md`, a skill review's `<report>.md`, `coverage.md`, `spec-diff.md` and `mr-comment.md`, each with its `.html` from `spec-tools html`.
+
 ## Bases
 
 Every pipeline variable is read in one module (`ci.ts`); GitLab CI's today. The **gate base** is spec-steward's: a merge request's diff base, none in any other pipeline, locally the merge base with `origin/HEAD` (or `origin/main`). The **diff base** of the diff, the focused check and the audit's affected set is a merge request's diff base, else the merge base with its target branch, else a push's tip before it (`HEAD^` on a branch's first push), else `HEAD`.
@@ -31,7 +35,7 @@ Cases:
 
 ## Diff — `spec-tools diff [<base>]`
 
-The specification change against the diff base (or the given ref), by `### Requirement:` heading, each block in full: a heading only the head has is ADDED, only the base has is REMOVED, a block that differs beyond whitespace is MODIFIED, a removed and an added heading with the same body in one file are one RENAMED; a capability whose file moved verbatim is MOVED and counts as no change. Written to `spec-diff.md` and printed; it always exits 0.
+The specification change against the diff base (or the given ref), by `### Requirement:` heading, each block in full: a heading only the head has is ADDED, only the base has is REMOVED, a block that differs beyond whitespace is MODIFIED, a removed and an added heading with the same body in one file are one RENAMED; a capability whose file moved verbatim is MOVED and counts as no change. Written to `.spec-audit/spec-diff.md` and printed; it always exits 0.
 
 Cases:
 
@@ -41,7 +45,7 @@ Cases:
 
 ## Changed — `spec-tools changed`
 
-The author's pre-hand-back check: every requirement a hunk of the diff overlaps (a deletion at its line included), once, plus the requirements an unsynced touched delta names, what the changed files bind or cite, and their related requirements — each with its bound tests, where its own terms occur in the comment-stripped sources, and its related requirements, quoted in full. Written to `audit-parts/changed.md` from spec-steward's evidence model (`spec-evidence.json`, written first).
+The author's pre-hand-back check: every requirement a hunk of the diff overlaps (a deletion at its line included), once, plus the requirements an unsynced touched delta names, what the changed files bind or cite, and their related requirements — each with its bound tests, where its own terms occur in the comment-stripped sources, and its related requirements, quoted in full. Written to `.spec-audit/parts/changed.yaml` from spec-steward's evidence model (`.spec-audit/evidence.yaml`, written first).
 
 ## The audit
 
@@ -61,7 +65,7 @@ Every run reads on the cheap model. `AUDIT_MODEL_CHEAP`, `AUDIT_EFFORT_CHEAP`, `
 
 ### Scope — `spec-tools scope`
 
-The corpus on the nightly, or wherever there is no merge-request target; otherwise the affected set — what `changed` names — judged with cross-capability checks against the corpus its evidence quotes. The evidence is assembled mechanically first: per capability, every requirement verbatim, its bound tests at their real lines, where its terms occur, its related requirements; citations are not evidence and are left out. The scope is cut into `AUDIT_JOBS` × `AUDIT_SLOTS` parts — one round of workers across the pipeline's reading jobs (`AUDIT_JOBS`, its own count, default 1) — balanced by load, none larger than one cheap reader holds, a capability larger than that cut between its requirements; only a scope larger than a round holds opens more parts. The cut is a function of the evidence and those two numbers. Written to `audit-scope.json` and `audit-parts/`.
+The corpus on the nightly, or wherever there is no merge-request target; otherwise the affected set — what `changed` names — judged with cross-capability checks against the corpus its evidence quotes. The evidence is assembled mechanically first: per capability, every requirement verbatim, its bound tests at their real lines, where its terms occur, its related requirements; citations are not evidence and are left out. The scope is cut into `AUDIT_JOBS` × `AUDIT_SLOTS` parts — one round of workers across the pipeline's reading jobs (`AUDIT_JOBS`, its own count, default 1) — balanced by load, none larger than one cheap reader holds, a capability larger than that cut between its requirements; only a scope larger than a round holds opens more parts. The cut is a function of the evidence and those two numbers. Written to `.spec-audit/scope.yaml`, `.spec-audit/evidence.yaml` and `.spec-audit/parts/` (one YAML evidence file per capability or slice, and `units.yaml`).
 
 Cases:
 
@@ -70,11 +74,11 @@ Cases:
 
 ### Workers — `spec-tools workers [--complete|--verify]`
 
-One headless `claude --print` worker per part loads the `spec-verify` skill and writes its own findings file. In a parallel job (`CI_NODE_INDEX` of `CI_NODE_TOTAL`) it reads only its share: part p goes to job ((p − 1) mod total) + 1. `--complete` judges, as each part's next reader, exactly what the merge listed short; `--verify` puts every standing ERROR to one verifier that confirms it only when the divergence is real and critical. How many run at once follows the container's memory (300 MB a worker), never more than `AUDIT_WORKERS` (default 2), and each pass logs the job's memory peak against its limit; a worker past `AUDIT_WORKER_TIMEOUT` (20m) is killed and its part judged by the completion pass. A pass that changed any file outside the audit's outputs exits 1, naming the paths; a missing input exits 2.
+One headless `claude --print` worker per part loads the `spec-verify` skill, reads the judging rules (`references/rules/`), and writes its own YAML findings file, `.spec-audit/parts/findings/part-<n>-<reader>.yaml`. When a worker stops, its file is parsed and checked against its schema; on errors the worker's own session is resumed (`claude --resume <session>`) with the error list, at most twice, and a file still invalid counts as not written — the reader as not run, the verdict as missing. In a parallel job (`CI_NODE_INDEX` of `CI_NODE_TOTAL`) it reads only its share: part p goes to job ((p − 1) mod total) + 1. `--complete` judges, as each part's next reader, exactly what the merge listed short; `--verify` puts every standing ERROR to one judge, which loads no skill: its brief inlines the common and judge rules, and it answers `confirmed` or `warn` with a reason, a production scenario and `judgeConfidence` (0–100). A judge never raises a tier. How many run at once follows the container's memory (300 MB a worker), never more than `AUDIT_WORKERS` (default 2), and each pass logs the job's memory peak against its limit; a worker past `AUDIT_WORKER_TIMEOUT` (20m) is killed and its part judged by the completion pass. A pass that changed any file outside the audit's outputs exits 1, naming the paths; a missing input exits 2.
 
 ### Merge — `spec-tools report [--gate] [--worktree]`
 
-Nothing is judged twice. Every ERROR's quotes are looked up at their `file:line` in the audited commit (`HEAD`, or the working tree with `--worktree`); a quote not found, or a verifier's `warn`, makes it WARN with the reason; one the verifier never reached stands on its quotes and says so. Kinds are tiered by the fixed list in the `spec-verify` skill, an unknown kind is INFO, and a finding against an ⚠️ Advisory requirement is at most WARN. A requirement of a part that no reader's judged list names was not judged, whatever coverage the reader claimed. Written to `spec-verify.md` (its first line the verdict) and `spec-verify.json`.
+Nothing is judged twice. Every ERROR's quotes are looked up at their `file:line` in the audited commit (`HEAD`, or the working tree with `--worktree`); a quote not found makes it WARN with the reason. An ERROR stays ERROR only when its judge answered `confirmed` with `judgeConfidence` above 70 (`SURE`); any other answer makes it WARN with the reason. An ERROR no judge reached stands only when its `readerConfidence` is above 70, and says so. Kinds are tiered by a fixed list: `code-mismatch` and `undeclared-gap` can be ERROR, `conflict` is WARN at most, `spec-dup` and `untested` are INFO, an unknown kind is INFO; a finding against an ⚠️ Advisory requirement is at most WARN. A requirement of a part that no reader's judged list names was not judged, whatever coverage the reader claimed. Written to `.spec-audit/spec-verify.yaml` (the data, its `verdict` field the verdict) and `.spec-audit/spec-verify.md` (for people, its first line the verdict); each finding shows both confidences and the judge's production scenario.
 
 The verdict: `PASS` when every requirement in scope was judged, every check ran in full and no ERROR stands; `FAIL` when an ERROR stands; `INCOMPLETE` when none stands but a check was sampled or skipped — the report names it. `--gate` exits 0, 1 or 3.
 
@@ -90,7 +94,7 @@ The same sequence — scope, reading, merge, completion, merge, verification, ga
 
 ### spec-steward's corpus-quality audit — `--audit spec-steward`
 
-`scope`, `workers`, `report` and `audit` take `--audit spec-steward` to run spec-steward's audit on the same engine, one repository per run, locally — no pipeline runs it. `workers` and `audit` take `--context <file>`: its text — facts established and the owner's earlier decisions — goes into every worker's and verifier's brief, and a finding or verdict that would reverse one says so. Its scope is the same parts plus one unit per sweep of `skills/spec-steward/sweeps.json`, each reading the files its globs match or the evidence's tests or citations; its workers follow `skills/spec-steward/references/worker.md`; its verification puts every finding, not only ERRORs, to a skeptic that keeps, revises or drops it. Its merge drops a finding whose quote is not at its line, folds duplicates (one file, line and theme key), offers three or more findings sharing a theme key as a theme, lists the requirements no worker judged as short, writes `audit-parts/steward/review.json` and renders `spec-review.md` with `spec-tools steward review render`. It never gates: the review file is the owner's to answer.
+`scope`, `workers`, `report` and `audit` take `--audit spec-steward` to run spec-steward's audit on the same engine, one repository per run, locally — no pipeline runs it. `workers` and `audit` take `--context <file>`: its text — facts established and the owner's earlier decisions — goes into every worker's and verifier's brief, and a finding or verdict that would reverse one says so. Its scope is the same parts plus one unit per sweep of `skills/spec-steward/sweeps.json`, each reading the files its globs match or the evidence's tests or citations; its workers follow `skills/spec-steward/references/worker.md` and the `common` and `spec-steward` judging rules; its verification puts every finding, not only ERRORs, to a judge that keeps, revises or drops it with a `judgeConfidence`. Its merge drops a finding whose quote is not at its line, folds duplicates (one file, line and theme key), offers three or more findings sharing a theme key as a theme, lists the requirements no worker judged as short, writes `.spec-audit/steward/review-data.yaml` and renders the YAML review `.spec-audit/spec-review.yaml` with `spec-tools steward review render`, items at 70% confidence or lower last, under a comment saying so. It never gates: the review file is the owner's to answer.
 
 Cases:
 
@@ -100,12 +104,13 @@ Cases:
 
 ## Review glue
 
-- `spec-tools run <skill> [--verdict <file>] [--advisory]` — one skill-driven review, headless, on `AUDIT_MODEL`; the stream kept as `claude.jsonl`, the final result as the job log (`job-log-<job>.md`); exits with Claude's status, then gates `--verdict` if given.
-- `spec-tools verdict <file> [--log <file>] [--advisory]` — the report's verdict (a Markdown first line, or `.verdict` of a JSON report) as an exit code: 0 `PASS`, 1 `FAIL`, 77 `FAIL` on an advisory run (`--advisory` or `AUDIT_GATING=advisory`), 3 `INCOMPLETE`, 1 no verdict. A report the skill printed but did not write is recovered from the job log when it carries a verdict line.
-- `spec-tools comment <name>=<report.md>...` — the merge-request comment: one row per review from its verdict line, links into the job's artifacts, the coverage report and the diff beneath; written to `mr-comment.md`.
+- `spec-tools run <skill> [--verdict <report.yaml>] [--advisory]` — one skill-driven review, headless, on `AUDIT_MODEL`; the stream kept as `.spec-audit/claude.jsonl`, the final result as the job log (`.spec-audit/job-log-<job>.md`). The skill writes its report as YAML (`findings[tier, where, detail, readerConfidence, fields]`, `coverage{complete, notes}`); the report is checked and, on errors, sent back to the same session at most twice. Exits with Claude's status, then gates `--verdict` if given.
+- `spec-tools verdict <file> [--advisory]` — the verdict as an exit code: 0 `PASS`, 1 `FAIL`, 77 `FAIL` on an advisory run (`--advisory` or `AUDIT_GATING=advisory`), 3 `INCOMPLETE`, 1 no verdict or no report. For the spec-verify data it reads `verdict`; for a skill's YAML report it computes the verdict itself, never taking it from the model — an ERROR counts only when its `readerConfidence` is above 70, and `coverage.complete: false` is `INCOMPLETE` — and renders the Markdown report beside it (`<report>.md`, its first line the verdict).
+- `spec-tools comment <name>=<report.md>...` — the merge-request comment: one row per review from its verdict line, links into the job's artifacts, the coverage report and the diff beneath; written to `.spec-audit/mr-comment.md`.
 - `spec-tools html <file.md>...` — each report as self-contained HTML beside it.
 
 Cases:
 
 - **WHEN** a review's report says `FAIL` on an advisory run **THEN** `verdict` exits 77
-- **WHEN** the report is missing and the job log carries `PASS (0 errors, 2 warnings)` **THEN** the report is written from the log and `verdict` exits 0
+- **WHEN** a skill's report holds one ERROR at 70% confidence and nothing else **THEN** `verdict` computes `PASS` and exits 0
+- **WHEN** a review wrote no report **THEN** `verdict` exits 1

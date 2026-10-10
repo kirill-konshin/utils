@@ -49,7 +49,7 @@ export type Tier = {
 export const CHEAP_MODEL = 'claude-haiku-5-5';
 export const CHEAP_EFFORT = 'high';
 export const EXPENSIVE_MODEL = 'claude-sonnet-5-5';
-export const EXPENSIVE_EFFORT = 'medium';
+export const EXPENSIVE_EFFORT = 'high';
 
 /**
  * A headless worker's resident memory, with room to spare: eight Haiku 5.5 workers on 120–290 KB parts peaked at

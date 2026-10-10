@@ -21,7 +21,9 @@ If you cannot name a failure, the rule is not a REQUIRED contract.
 | Kind | Meaning | Evidence |
 | --- | --- | --- |
 | **REQUIRED** | An invariant whose violation is a real defect — behavioural, API, compatibility, security, data. | The cheapest rung that catches the failure (ladder below). The requirement names that failure and that rung; a test is one rung, not the only one. |
-| **⚠️ ADVISORY** | Design guidance that matters but cannot reasonably be proven mechanically. | Review judgement. Never a gate, never a reason to write a test. |
+| **⚠️ ADVISORY** | Guidance whose violation has no production effect, or that cannot reasonably be proven mechanically: design direction, implementation detail kept in the specification, development-only and local-only behaviour, demo agents, internal CI and developer tools, prompt wording. | Review judgement. Never a gate, never a reason to write a test. |
+
+A REQUIRED requirement is one whose violation has a production effect, as the [common judging rules](../../spec-tools/references/rules/common.md#production-effect) define it: a broken flow, a contract or invariant violation, a sensitive-data leak, or a performance problem.
 
 A REQUIRED requirement stating an absolute names its exceptions, or has none; one with neither is listed for the owner's review.
 
@@ -63,6 +65,16 @@ A requirement describes one coherent area of behaviour a reader can hold in thei
 A scenario adds precision — one concrete case, preferably Given/When/Then — or it is not written; a scenario that restates its requirement is noise. A requirement may carry a single scenario. That is not a smell, and no case is padded in to avoid it; OpenSpec's strict validation needs at least one.
 
 New and edited text uses EARS for requirement statements — When <trigger>, the <system> SHALL <response>; While <state>, the <system> SHALL …; If <condition>, then the <system> SHALL …; or The <system> SHALL … — and Given/When/Then for scenarios, with Given only where a precondition matters. The RFC 2119 keyword stays in capitals: OpenSpec's strict validation fails a requirement whose body has no SHALL or MUST. Untouched text is not rewritten for syntax alone.
+
+New and edited text is also written in a light subset of ASD-STE100:
+
+- One obligation per sentence.
+- At most 25 words per sentence.
+- One term for one concept, and the same term each time.
+- Active voice: the system or the component is the subject.
+- No vague words in a REQUIRED statement (thin, safe, lean, at parity, needed): name the measurable condition.
+
+Untouched text is not rewritten for this subset alone.
 
 ## Changing a rule
 

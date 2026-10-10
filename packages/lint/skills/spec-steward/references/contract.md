@@ -55,7 +55,7 @@ There are exactly two markers. Each stands on a line of its own: the Advisory li
 
 | Marker | Meaning |
 | --- | --- |
-| `**⚠️ Advisory:** <why review is its evidence>` | The requirement is ADVISORY. It keeps its RFC 2119 keywords and is exempt from the scenario ratchet and from `absolute-unproven`. Coverage reports it as `advisory`, and the evidence JSON classes it `advisory`. Marking an existing requirement Advisory is reported as `weakened` ("newly marked advisory"). It qualifies the whole requirement, so a requirement that mixes a contract with guidance is split. |
+| `**⚠️ Advisory:** <why review is its evidence>` | The requirement is ADVISORY. It keeps its RFC 2119 keywords and is exempt from the scenario ratchet and from `absolute-unproven`. Coverage reports it as `advisory`, and the evidence model classes it `advisory`. Marking an existing requirement Advisory is reported as `weakened` ("newly marked advisory"). It qualifies the whole requirement, so a requirement that mixes a contract with guidance is split. |
 | `**⚠️ Known gap (<tracker>):** <what is missing>` | Behaviour the requirement describes is knowingly absent or incomplete, or a REQUIRED rule lacks the evidence that would catch its failure. `<tracker>` is required text: a ticket key (`PROJ-123`), a tickets-page id, or an open `openspec/changes/<name>` folder. Steward checks only that it is present: any non-empty text inside the parentheses counts and is not validated, so a placeholder counts until it is replaced. In the statement, the line records the gap and exempts nothing, unless it names scenarios of its requirement by title after `exempts`, each in quotes (`exempts scenario 'A'`, `exempts scenarios 'A' and 'B'`; double quotes, curly quotes, `_…_` and `*…*` are read too). Exactly the named scenarios are then exempt from the scenario ratchet. Coverage lists every gap with its tracker. |
 
 Retired spellings are `**⚠️ Unenforced:**` and `**⚠️ Known gap:**` without a tracker. Each is reported as `marker-hygiene` and grants no exemption. So is a marker inside a line rather than on a line of its own, and an Advisory or Known gap line inside a scenario. A misspelt marker (wrong case, missing emoji or bold) is reported as `marker-hygiene`, and `--fix` normalises it.
@@ -132,8 +132,8 @@ An explicit `--base <ref>` compares with the merge base of `<ref>` and `HEAD`. W
 | Command | Purpose | Output |
 | --- | --- | --- |
 | `spec-tools steward check [--base auto\|<ref>] [--binds <glob>]… [--file <f>] [--fix] [--strict] [--json]` | The corpus gate, run locally, in CI and by the hook | Findings ([below](#findings)) |
-| `spec-tools steward coverage [--out <file>] [--binds <glob>]…` | The [coverage report](#coverage-report) | Markdown, to the file or to stdout |
-| `spec-tools steward evidence --json [--binds <glob>]…` | The audits' [evidence model](#evidence-json), which `spec-tools scope` assembles each audit's evidence files from | JSON on stdout |
+| `spec-tools steward coverage [--out <file>] [--binds <glob>]…` | The [coverage report](#coverage-report) | `.spec-audit/coverage.yaml`, and the Markdown at `--out` (default `.spec-audit/coverage.md`) |
+| `spec-tools steward evidence --json [--binds <glob>]…` | The audits' [evidence model](#evidence-model), which `spec-tools scope` writes to `.spec-audit/evidence.yaml` and cuts into each audit's evidence files | JSON on stdout |
 | `spec-tools steward review`, `align`, `wire`, `hook` | Review files, cross-repository drift, wiring, the edit hook | As each command documents |
 
 `spec-tools steward` runs through the package's one `bin`, `spec-tools`. A repository calls it from its root scripts and never imports steward's modules: the package's `exports` map does not expose them, so the CLI and its JSON are the interface.
@@ -155,7 +155,7 @@ Exit 2 on an empty listing keeps a broken checkout from passing a scan that read
 
 ## Coverage report
 
-`spec-tools steward coverage` writes a Markdown report that is MDX-safe: `<`, `>`, `{`, `}` and `|` are escaped. It gates nothing: it exits 0, or 2 on an environment error. Statuses come from [bindings](#binding) and [markers](#markers) only. A pointer never changes a status.
+`spec-tools steward coverage` writes the coverage as data, `.spec-audit/coverage.yaml` (totals, each requirement and scenario with its status, bindings and pointers, the known gaps, the retired markers), and as a Markdown report for people that is MDX-safe: `<`, `>`, `{`, `}` and `|` are escaped. It gates nothing: it exits 0, or 2 on an environment error. Statuses come from [bindings](#binding) and [markers](#markers) only. A pointer never changes a status.
 
 - **Headline.** Requirements and capabilities; Advisory requirements; Known gaps; REQUIRED requirements no test binds; REQUIRED scenarios no test binds; retired markers.
 - **Per capability.** One table: `| Requirement / Scenario | Spec | Bound by | Pointers | Status |`.
@@ -164,9 +164,9 @@ Exit 2 on an empty listing keeps a broken checkout from passing a scan that read
 - **Pointers.** The code and document citations of the requirement and its scenarios.
 - **Closing sections.** "Known gaps" (tracker, requirement, text) and "Retired markers".
 
-## Evidence JSON
+## Evidence model
 
-`spec-tools steward evidence --json` writes the evidence an audit reads, one entry per requirement:
+`spec-tools steward evidence --json` prints the evidence an audit reads, one entry per requirement. `spec-tools scope` writes the same model as `.spec-audit/evidence.yaml`:
 
 ```
 { version: 1, root, requirements: [{ id, capability, file, line, end, block, class: 'required'|'advisory',

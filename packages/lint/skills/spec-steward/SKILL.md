@@ -1,16 +1,17 @@
 ---
 name: spec-steward
-description: Guard, audit and repair an OpenSpec specification corpus — whether these are the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (review rounds where the owner answers items with ⬜ / ✅ / ❌), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-tools steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the `spec-verify` skill does. Writing a rule is the `/spec-author` command.
+description: Guard, audit and repair an OpenSpec specification corpus — whether these are the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (the YAML review `.spec-audit/spec-review.yaml`, where the owner answers each item's `decision` with ✅ / ❌ / a comment), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-tools steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the `spec-verify` skill does. Writing a rule is the `/spec-author` command.
 ---
 
 # Spec steward
 
-Procedures for an OpenSpec corpus. Four things live elsewhere and are not repeated here:
+Procedures for an OpenSpec corpus. Five things live elsewhere and are not repeated here:
 
 - the hard constraints for editing specs — the scoped rule `.agents/rules/openspec.md`
 - where any guidance belongs — `.agents/rules/agent.md`
 - the specification model (REQUIRED versus ⚠️ ADVISORY, Known gaps, the evidence ladder, what is not evidence, how requirements and scenarios are written) — [references/model.md](references/model.md)
-- what the gate checks and emits (citations, binding, markers, size lines, the scenario ratchet, base resolution, exit codes, the coverage report, the evidence JSON) — [references/contract.md](references/contract.md)
+- what the gate checks and emits (citations, binding, markers, size lines, the scenario ratchet, base resolution, exit codes, the coverage report, the evidence data) — [references/contract.md](references/contract.md)
+- what the audit judges and how sure a finding must be — the judging rules, [`common.md`](../spec-tools/references/rules/common.md) and [`spec-steward.md`](../spec-tools/references/rules/spec-steward.md)
 
 `steward` below means `spec-tools steward`, through the `spec-tools` bin `@kirill.konshin/lint` installs; where the bin is absent, `node <the spec-tools skill's folder>/scripts/cli.js steward`. The file is self-contained and needs Node ≥ 20 and git. Every command takes `--root NAME=path` (repeatable, for several repositories) and `--specs <dir>` (default `openspec/specs`).
 
@@ -49,19 +50,23 @@ The exact rule behind each kind is in [contract.md](references/contract.md#kinds
 
 ## Audit
 
-Local only, on the owner's request — CI runs this skill's `check` (inside `spec-tools gates`), `coverage` and `evidence`, never the audit. Corpus-wide or affected-set, for corpus quality: placement, REQUIRED versus ⚠️ ADVISORY, evidence. It runs on the engine `spec-verify` runs on — `spec-tools audit --audit spec-steward` — with this skill's [worker contract](references/worker.md) and [sweeps](sweeps.json). Pass the owner's earlier decisions with `--context <file>`. The procedure around it is [references/audit.md](references/audit.md). The output is a review file in the format of [references/review-format.md](references/review-format.md), and nothing in the specs or the code changes until the owner answers it.
+Local only, on the owner's request — CI runs this skill's `check` (inside `spec-tools gates`), `coverage` and `evidence`, never the audit. Corpus-wide or affected-set, for corpus quality: placement, REQUIRED versus ⚠️ ADVISORY, evidence. It runs on the engine `spec-verify` runs on — `spec-tools audit --audit spec-steward` — with this skill's [worker contract](references/worker.md) and [sweeps](sweeps.json). Pass the owner's earlier decisions with `--context <file>`. The procedure around it is [references/audit.md](references/audit.md). The output is the YAML review file `.spec-audit/spec-review.yaml`, in the format of [references/review-format.md](references/review-format.md). Nothing in the specs or the code changes until the owner answers it.
 
 ## Apply
 
-The owner answers each item in the review file. [references/apply.md](references/apply.md) processes the answers round by round:
+The owner answers each item in the review file, in its `decision`. [references/apply.md](references/apply.md) processes the answers round by round:
 
 - apply ✅
 - respect ❌
-- investigate a bare comment
-- re-audit what changed
-- append new items
+- examine a comment again
+- audit again what changed
+- add new items
 
-`steward review status` shows what is open.
+`steward review status <review.yaml>` shows what is open.
+
+## Language
+
+Write review items, finding details, verdict reasons and messages to the owner in ASD-STE100 ([common rules](../spec-tools/references/rules/common.md#language)).
 
 ## Align
 

@@ -12,7 +12,6 @@ import {
     dedupe,
     exitCodeFor,
     type Finding,
-    findingsProblem,
     gitReader,
     grade,
     mergeCoverage,
@@ -29,6 +28,7 @@ import {
     unjudged,
     verdict,
 } from './auditReport';
+import { checkData, READER_FINDINGS, toYaml } from './data';
 
 /**
  * The report is a function of the workers' JSON and the sources — tested here as such.
@@ -44,6 +44,7 @@ const error = (over: Partial<Finding> = {}): Finding => ({
     tier: 'ERROR',
     where: '<x>#requirement-a / apps/mcp/src/x.ts:2',
     detail: 'does not attach',
+    readerConfidence: 80,
     quotes: [
         { file: 'openspec/specs/<x>/spec.md', line: 3, text: 'The client SHALL attach the headers' },
         { file: 'apps/mcp/src/x.ts', line: 3, text: 'return nothing;' },
@@ -114,23 +115,32 @@ describe('grade', () => {
         });
         expect(grade(error({ quotes: [error().quotes![0]!] }), 2, read)).toMatchObject({ tier: 'WARN' });
         const generated = error({
-            quotes: [error().quotes![0]!, { file: 'audit-parts/web/state.md', line: 1, text: 'None of them occurs' }],
+            quotes: [
+                error().quotes![0]!,
+                { file: '.spec-audit/parts/web/state.yaml', line: 1, text: 'None of them occurs' },
+            ],
         });
         expect(
-            grade(generated, 2, (f) => (f.startsWith('audit-parts/') ? ['None of them occurs'] : read(f))),
+            grade(generated, 2, (f) => (f.startsWith('.spec-audit/') ? ['None of them occurs'] : read(f))),
         ).toMatchObject({
             tier: 'WARN',
             regraded: expect.stringContaining('from the sources'),
         });
     });
 
-    test('tiers by the contract: INFO-class kinds are INFO, ERROR-class kinds are WARN at least, unknown kinds are INFO', () => {
+    test('tiers by the contract: INFO-class kinds are INFO, a conflict WARN at most, ERROR-class kinds WARN at least, unknown kinds INFO', () => {
         expect(grade(error({ kind: 'untested' }), 1, read)).toMatchObject({
             tier: 'INFO',
             regraded: 'untested is INFO-class',
         });
         expect(grade(error({ kind: 'spec-dup' }), 1, read)).toMatchObject({ tier: 'INFO' });
         expect(grade(error({ tier: 'INFO' }), 1, read)).toMatchObject({ tier: 'WARN' });
+        // A conflict is a specification defect, the owner's to decide: WARN at most, however well proved.
+        expect(grade(error({ kind: 'conflict' }), 1, read)).toMatchObject({
+            tier: 'WARN',
+            regraded: 'conflict is a specification defect: WARN at most',
+        });
+        expect(grade(error({ kind: 'conflict', tier: 'INFO' }), 1, read)).toMatchObject({ tier: 'INFO' });
         // The kinds the contract deleted are no longer graded as theirs: unknown, so INFO.
         for (const kind of ['vibes', 'mis-citation', 'bad-citation', 'uncited', 'stranded-rule'])
             expect(grade(error({ kind }), 1, read)).toMatchObject({
@@ -146,7 +156,7 @@ describe('grade', () => {
         // The verifier would have confirmed it; the cap stands, and nothing fails.
         const [after] = applyVerdicts(
             [capped],
-            new Map([[1, { verdict: 'confirmed', reason: 'real and critical' }]]),
+            new Map([[1, { verdict: 'confirmed', reason: 'real and critical', judgeConfidence: 95 }]]),
             true,
         );
         expect(after!.tier).toBe('WARN');
@@ -237,61 +247,65 @@ describe('mergeCoverage and verdict', () => {
     });
 });
 
-describe('applyVerdicts — the verification pass over the ERRORs', () => {
+describe('applyVerdicts — the judge over the ERRORs', () => {
     const graded = (over: Partial<Finding> = {}) => grade(error(over), 1, read);
+    const verdictOf = (verdict: 'confirmed' | 'warn', judgeConfidence: number, reason = 'r') => ({
+        verdict,
+        reason,
+        judgeConfidence,
+        ...(verdict === 'confirmed' ? { scenario: 'an operator applies it and the write lands on another queue' } : {}),
+    });
 
-    test('keeps a confirmed ERROR with the reason, and lowers an unconfirmed one to WARN with the reason', () => {
-        const kept = graded();
-        const lowered = graded({ where: '<x>#requirement-b / apps/mcp/src/x.ts:2' });
+    test('keeps an ERROR the judge confirms above 70%, with its reason, scenario and confidence', () => {
+        const [kept] = applyVerdicts(
+            [graded()],
+            new Map([[1, verdictOf('confirmed', 85, 'the write lands elsewhere')]]),
+            true,
+        );
+        expect(kept).toMatchObject({
+            tier: 'ERROR',
+            verified: 'confirmed — the write lands elsewhere',
+            judgeConfidence: 85,
+            scenario: expect.stringContaining('another queue'),
+        });
+    });
+
+    test('lowers an ERROR the judge confirms at 70% or less, or does not confirm, to WARN with the reason', () => {
         const out = applyVerdicts(
-            [kept, lowered],
+            [graded(), graded({ where: '<x>#requirement-b / apps/mcp/src/x.ts:2' })],
             new Map([
-                [
-                    1,
-                    {
-                        verdict: 'confirmed',
-                        reason: 'the code returns nothing where the rule says attach',
-                    },
-                ],
-                [
-                    2,
-                    {
-                        verdict: 'warn',
-                        reason: 'the requirement is vague on what attaching means',
-                    },
-                ],
+                [1, verdictOf('confirmed', 70, 'maybe')],
+                [2, verdictOf('warn', 90, 'no production effect')],
             ]),
             true,
         );
         expect(out.map((f) => [f.tier, f.verified])).toEqual([
-            ['ERROR', 'confirmed — the code returns nothing where the rule says attach'],
-            ['WARN', 'not confirmed — the requirement is vague on what attaching means'],
+            ['WARN', 'confirmed, but the judge is only 70% sure — maybe'],
+            ['WARN', 'not confirmed — no production effect'],
         ]);
     });
 
-    test('answers each ERROR with the verdict at its position, however the verifier restated the finding', () => {
+    test('answers each ERROR with the verdict at its position; the judge never touches a WARN', () => {
         const first = graded();
         const second = graded({ where: '<x>#requirement-b / apps/mcp/src/x.ts:2' });
         const warn = graded({ tier: 'WARN', where: '<x>#requirement-c' });
-        const out = applyVerdicts(
-            [first, warn, second],
-            new Map([[2, { verdict: 'warn', reason: 'not critical' }]]),
-            true,
-        );
+        const out = applyVerdicts([first, warn, second], new Map([[2, verdictOf('warn', 90, 'not critical')]]), true);
         expect(out.map((f) => f.tier)).toEqual(['ERROR', 'WARN', 'WARN']);
         expect(out[2]!.verified).toBe('not confirmed — not critical');
-        expect(out[0]!.verified).toContain('unverified');
+        expect(out[1]).toEqual(warn);
     });
 
-    test('lets an ERROR the pass never reached stand on its quotes and says so, and changes nothing when the pass did not run', () => {
-        const f = graded();
-        expect(applyVerdicts([f], new Map(), true)[0]).toMatchObject({
+    test('lets an ERROR the pass never reached stand only when the reader is more than 70% sure, and changes nothing without the pass', () => {
+        expect(applyVerdicts([graded()], new Map(), true)[0]).toMatchObject({
             tier: 'ERROR',
-            verified: expect.stringContaining('unverified'),
+            verified: expect.stringContaining('the reader is 80% sure'),
         });
+        expect(applyVerdicts([graded({ readerConfidence: 60 })], new Map(), true)[0]).toMatchObject({
+            tier: 'WARN',
+            verified: expect.stringContaining('only 60% sure'),
+        });
+        const f = graded();
         expect(applyVerdicts([f], new Map(), false)[0]).toEqual(f);
-        const warn = graded({ tier: 'WARN' });
-        expect(applyVerdicts([warn], new Map([[1, { verdict: 'warn', reason: 'x' }]]), true)[0]).toEqual(warn);
     });
 });
 
@@ -424,32 +438,39 @@ describe('shortList and readerFiles — what the completion pass is handed', () 
 
     test('reads the listed files first, then any further reader file of the same part, never another part', () => {
         const present = [
-            'audit-parts/findings/part-1-1.json',
-            'audit-parts/findings/part-1-2.json',
-            'audit-parts/findings/part-11-2.json',
-            'audit-parts/findings/worker-1.jsonl',
+            '.spec-audit/parts/findings/part-1-1.yaml',
+            '.spec-audit/parts/findings/part-1-2.yaml',
+            '.spec-audit/parts/findings/part-11-2.yaml',
+            '.spec-audit/parts/findings/worker-1.jsonl',
         ];
-        expect(readerFiles(['audit-parts/findings/part-1-1.json'], present, 1)).toEqual([
-            'audit-parts/findings/part-1-1.json',
-            'audit-parts/findings/part-1-2.json',
+        expect(readerFiles(['.spec-audit/parts/findings/part-1-1.yaml'], present, 1)).toEqual([
+            '.spec-audit/parts/findings/part-1-1.yaml',
+            '.spec-audit/parts/findings/part-1-2.yaml',
         ]);
-        expect(readerFiles(['audit-parts/findings/part-11-1.json'], present, 11)).toEqual([
-            'audit-parts/findings/part-11-1.json',
-            'audit-parts/findings/part-11-2.json',
+        expect(readerFiles(['.spec-audit/parts/findings/part-11-1.yaml'], present, 11)).toEqual([
+            '.spec-audit/parts/findings/part-11-1.yaml',
+            '.spec-audit/parts/findings/part-11-2.yaml',
         ]);
     });
 });
 
-describe('findingsProblem — a finding the report cannot read makes its reader not run', () => {
+describe('the reader findings schema — a file the report cannot read makes its reader not run', () => {
+    const file = (findings: unknown[]) => toYaml({ findings, coverage: { '1': 'full' }, judged: ['a'] });
+
     test('passes findings that carry every field the report reads', () => {
-        expect(findingsProblem([error(), error({ tier: 'WARN', quotes: undefined })])).toBeUndefined();
+        expect(checkData(file([error(), error({ tier: 'WARN', quotes: undefined })]), READER_FINDINGS)).toEqual([]);
     });
 
-    test('names the first finding without a field, so the completion pass re-reads its part', () => {
-        const { detail: _detail, ...summarized } = error();
-        expect(findingsProblem([error(), { ...summarized, summary: 'does not attach' }])).toBe(
-            'finding 2 lacks `detail`',
-        );
+    test('names each missing or wrong field, so the worker corrects it, or the completion pass re-reads its part', () => {
+        const { detail: _detail, readerConfidence: _confidence, ...summarized } = error();
+        expect(checkData(file([error(), { ...summarized, summary: 'does not attach' }]), READER_FINDINGS)).toEqual([
+            'findings[1].detail: missing',
+            'findings[1].readerConfidence: missing',
+        ]);
+        expect(checkData(file([error({ readerConfidence: 101 })]), READER_FINDINGS)).toEqual([
+            'findings[0].readerConfidence: must be an integer from 0 to 100',
+        ]);
+        expect(checkData('findings: [\n  - x', READER_FINDINGS)[0]).toMatch(/^line \d+: not valid YAML/);
     });
 });
 
@@ -471,28 +492,24 @@ describe('unitOf', () => {
 const skills = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills');
 const skill = (file: string) => fs.readFileSync(path.join(skills, file), 'utf8');
 
-/** spec-verify's checks that are spec-steward criteria: check number, its name, the criterion it is. */
-const shared = [
-    ...skill('spec-verify/SKILL.md').matchAll(/^(\d)\. \*\*(.+?)\.\*\* \(spec-steward criterion (\d+)\)/gm),
-].map(([, check, name, criterion]) => ({ check: check!, name: name!, criterion: criterion! }));
+const rules = (name: string) => skill(`spec-tools/references/rules/${name}.md`);
+
+/** spec-verify's checks that are spec-steward items: check number, the item it is. */
+const SHARED: Record<string, string> = { '2': '10', '3': '9', '4': '11', '5': '5' };
+const shared = Object.entries(SHARED).map(([check, criterion]) => ({ check, name: CHECKS[check]!, criterion }));
 
 describe('the audits share their criteria', () => {
-    test('spec-verify names checks 2–5 by spec-steward criteria 10, 9, 11 and 5', () => {
-        expect(shared.map(({ check, criterion }) => [check, criterion])).toEqual([
-            ['2', '10'],
-            ['3', '9'],
-            ['4', '11'],
-            ['5', '5'],
-        ]);
+    test('the spec-verify rules head one section with each check name the merged report uses', () => {
+        const headings = [...rules('spec-verify').matchAll(/^## (.+)$/gm)].map(([, heading]) => heading);
+        expect(Object.values(CHECKS).filter((name) => !headings.includes(name))).toEqual([]);
     });
 
-    test('each shared check is worded exactly as its criterion, in the skill and in the merged report', () => {
-        const criteria = skill('spec-steward/references/criteria.md');
-        for (const { check, name, criterion } of shared) {
-            expect(criteria).toMatch(
+    test('each shared check is worded exactly as its spec-steward item', () => {
+        const steward = rules('spec-steward');
+        for (const { name, criterion } of shared) {
+            expect(steward).toMatch(
                 new RegExp(`^${criterion}\\. ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`, 'm'),
             );
-            expect(CHECKS[check]).toBe(name);
         }
     });
 });

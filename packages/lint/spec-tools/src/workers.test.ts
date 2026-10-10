@@ -5,11 +5,31 @@ import * as path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import type { Part } from './auditScope';
-import { findingsFile } from './files';
+import { toYaml } from './data';
+import { findingsFile, SCOPE_FILE } from './files';
 import { concurrency, duration, memoryLine, shareOf, treeChanges, workers } from './workers';
 
 /** A test that spawns git and workers in a throwaway repository: each can take seconds on a busy machine. */
 const TIMEOUT = 60_000;
+
+/**
+ * The stand-in `claude`: it writes the findings file its brief names and streams a result event with a session id. With
+ * `STUB_BAD` set, its first file lacks every finding field, and only a correction (`--resume`) writes a valid one; with
+ * `STUB_BAD=always`, every correction fails too.
+ */
+const STUB = [
+    '#!/usr/bin/env bash',
+    'if [ "$1" = "--resume" ]; then prompt="$4"; else prompt="$2"; fi',
+    'file=$(sed -n \'s/^- findings file to write (Write tool, overwrite, nothing else): //p\' <<<"$prompt")',
+    '[ -z "$file" ] && file=$(sed -n \'s/^The file \\(.*\\) has these errors:$/\\1/p\' <<<"$prompt")',
+    'if [ -n "$STUB_BAD" ] && { [ "$1" != "--resume" ] || [ "$STUB_BAD" = always ]; }; then',
+    '  printf "findings:\\n  - kind: x\\ncoverage: {}\\njudged: []\\n" > "$file"',
+    'else',
+    '  printf "findings: []\\ncoverage: {}\\njudged: []\\n" > "$file"',
+    'fi',
+    'echo \'{"type":"result","subtype":"success","session_id":"session-1"}\'',
+    '',
+].join('\n');
 
 /**
  * A repository holding a scope of `parts` parts, and a stand-in `claude` on the PATH that writes the findings file its
@@ -23,23 +43,18 @@ const repository = (parts: number) => {
         parts: Array.from({ length: parts }, (_, i) => ({
             part: i + 1,
             capabilities: [`cap-${i + 1}`],
-            files: [`audit-parts/cap-${i + 1}.md`],
+            files: [`.spec-audit/parts/cap-${i + 1}.yaml`],
             findings: [findingsFile(i + 1, 1)],
             requirementIds: [`cap-${i + 1}#requirement-r`],
             bytes: 1024,
             requirements: 1,
         })),
     };
-    fs.writeFileSync(path.join(dir, 'audit-scope.json'), JSON.stringify(scope));
+    fs.mkdirSync(path.join(dir, '.spec-audit'), { recursive: true });
+    fs.writeFileSync(path.join(dir, SCOPE_FILE), toYaml(scope));
     const bin = path.join(dir, 'bin');
     fs.mkdirSync(bin);
-    fs.writeFileSync(
-        path.join(bin, 'claude'),
-        '#!/usr/bin/env bash\n' +
-            'file=$(sed -n \'s/^- findings file to write (Write tool, overwrite, nothing else): //p\' <<<"$2")\n' +
-            'echo \'{"findings":[],"coverage":{},"judged":[]}\' > "$file"\n',
-        { mode: 0o755 },
-    );
+    fs.writeFileSync(path.join(bin, 'claude'), STUB, { mode: 0o755 });
     execFileSync('git', ['init', '-q'], { cwd: dir });
     fs.writeFileSync(path.join(dir, '.gitignore'), 'bin/\n');
     return { dir, bin };
@@ -53,8 +68,8 @@ const read = async (parts: number, env: Record<string, string> = {}, { dir, bin 
         log: (line) => lines.push(line),
     });
     const written = fs
-        .readdirSync(path.join(dir, 'audit-parts', 'findings'))
-        .filter((f) => /^part-\d+-1\.json$/.test(f))
+        .readdirSync(path.join(dir, '.spec-audit', 'parts', 'findings'))
+        .filter((f) => /^part-\d+-1\.yaml$/.test(f))
         .map((f) => Number(f.split('-')[1]))
         .sort((a, b) => a - b);
     return { code, written, out: lines.join('\n') };
@@ -108,8 +123,29 @@ describe('workers, the reading', () => {
         'refuses to start without a scope',
         async () => {
             const { dir } = repository(1);
-            fs.rmSync(path.join(dir, 'audit-scope.json'));
+            fs.rmSync(path.join(dir, SCOPE_FILE));
             expect(await workers('read', { cwd: dir, log: () => {} })).toBe(2);
+        },
+        TIMEOUT,
+    );
+
+    test(
+        'sends a findings file that fails its schema back to the same session, which corrects it',
+        async () => {
+            const { code, written, out } = await read(1, { STUB_BAD: '1' });
+            expect(code).toBe(0);
+            expect(written).toEqual([1]);
+            expect(out).toContain('0 findings, judged 0, corrected 1×');
+        },
+        TIMEOUT,
+    );
+
+    test(
+        'after two failed corrections the reader counts as not run, and the log says why',
+        async () => {
+            const { code, out } = await read(1, { STUB_BAD: 'always' });
+            expect(code).toBe(0);
+            expect(out).toContain('invalid findings file, corrected 2×, still invalid: findings[0].tier: missing');
         },
         TIMEOUT,
     );
@@ -158,8 +194,8 @@ describe('workers, the pieces', () => {
         const before = new Map([['a.ts', '1']]);
         const after = new Map([
             ['a.ts', '2'],
-            ['audit-parts/findings/part-1-1.json', 'x'],
-            ['spec-verify.md', 'y'],
+            ['.spec-audit/parts/findings/part-1-1.yaml', 'x'],
+            ['.spec-audit/spec-verify.md', 'y'],
         ]);
         expect(treeChanges(before, after)).toEqual(['a.ts']);
     });

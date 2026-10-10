@@ -5,7 +5,7 @@
  *
  *   spec-tools steward check     [--base auto|<ref>] [--binds <glob>]... [--file f] [--fix] [--strict] [--json]
  *                                [--max-words P,F] [--max-obligations P,F]   the corpus gate (also local and the hook)
- *   spec-tools steward coverage  [--out file] [--binds <glob>]...           the coverage report, MDX-safe Markdown
+ *   spec-tools steward coverage  [--out file] [--binds <glob>]...           the coverage data and report (.spec-audit/)
  *   spec-tools steward evidence  --json [--binds <glob>]...                  the audits' evidence model on stdout
  *   spec-tools steward review    render|status|verify|lint ...               the review-file engine
  *   spec-tools steward align     --root A=path --root B=path [--json]        wording drift of shared rules across repos
@@ -20,6 +20,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { writeData } from '../data';
+import { COVERAGE_DATA, COVERAGE_REPORT } from '../files';
 import type { Finding } from './lib/checks';
 import {
     applyFixes,
@@ -223,16 +225,18 @@ async function main(argv: string[], cwd: string) {
     if (cmd === 'coverage') {
         const root = oneRoot(roots, cmd);
         assertScannable(root);
-        const { markdown, totals } = coverageReport(
+        const { markdown, totals, data } = coverageReport(
             loadCorpus(root.path, root),
             scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path) }),
         );
-        if (typeof opts.out === 'string') {
-            fs.writeFileSync(path.resolve(opts.out), markdown);
-            process.stderr.write(
-                `wrote ${opts.out} — ${totals.requirements} requirements, ${totals.unboundRequirements} REQUIRED unbound, ${totals.gaps} known gaps\n`,
-            );
-        } else process.stdout.write(markdown);
+        // The data for tools, and the report for people beside it, under the audit folder unless --out names the report.
+        const out = path.resolve(root.path, typeof opts.out === 'string' ? opts.out : COVERAGE_REPORT);
+        writeData(path.join(root.path, COVERAGE_DATA), data);
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        fs.writeFileSync(out, markdown);
+        process.stderr.write(
+            `wrote ${path.relative(root.path, out)} and ${COVERAGE_DATA} — ${totals.requirements} requirements, ${totals.unboundRequirements} REQUIRED unbound, ${totals.gaps} known gaps\n`,
+        );
         return 0;
     }
 

@@ -1,12 +1,10 @@
 /**
  * The verdict gate of an AI review. A headless `claude --print` exits 0 whether the review passed or found violations,
  * so the report's own verdict is the only signal that the REVIEW passed — without this a review job is a publisher, not
- * a gate. A Markdown report carries its verdict on its first line; a JSON report (`spec-verify.json`) as `.verdict`.
- *
- * A skill that prints its report and also writes it occasionally finishes the report in the conversation and skips
- * the write. The printed report is the same content by the skill's own contract, so when the file is missing but the
- * job log carries a graded verdict, the log IS the report: it is kept under the expected name with the verdict on the
- * first line, and gated as usual. A log with no verdict at all fails — that review did not complete.
+ * a gate. The spec-verify merge's data (`.spec-audit/spec-verify.yaml`) carries its verdict as `verdict`. A
+ * skill-driven review writes a review report (`data.ts` `REVIEW_REPORT`), and its verdict is computed here, mechanically,
+ * never taken from the model: an ERROR counts only when the reader's confidence is above `SURE`, and the review is
+ * INCOMPLETE when its coverage says so. The Markdown report for people is rendered beside it.
  *
  * Exit codes: 0 PASS; 1 FAIL on a gating run, or no verdict; 77 FAIL on an advisory run (the job fails, a pipeline that
  * allows 77 continues); 3 INCOMPLETE — no ERROR stands but a check was sampled or skipped, so the review cannot say what
@@ -14,14 +12,74 @@
  */
 import * as fs from 'node:fs';
 
-export const VERDICT_LINE = /(PASS|FAIL|INCOMPLETE) \(\d+ errors?, \d+ warnings?\)/;
+import { SURE } from './auditReport';
+import { readData } from './data';
+
 const STATE = /^(PASS|FAIL|INCOMPLETE)\S*/m;
 
-/** The verdict a report states, or null when it states none. */
+/** A finding of a skill-driven review, as its report carries it. */
+export type ReviewFinding = {
+    readonly tier: 'ERROR' | 'WARN' | 'INFO';
+    readonly where: string;
+    readonly detail: string;
+    readonly readerConfidence: number;
+    readonly fields?: Readonly<Record<string, string>>;
+};
+export type ReviewReport = {
+    readonly title?: string;
+    readonly findings: readonly ReviewFinding[];
+    readonly coverage: { readonly complete: boolean; readonly notes?: string };
+};
+
+/** The tier a review finding stands at: an ERROR the reader is not sure of is a WARN. */
+export const tierOf = (f: ReviewFinding): ReviewFinding['tier'] =>
+    f.tier === 'ERROR' && f.readerConfidence <= SURE ? 'WARN' : f.tier;
+
+/** A review report's verdict, from its findings and coverage alone. */
+export function reviewVerdict(report: ReviewReport): { state: string; errors: number; warnings: number; line: string } {
+    const tiers = report.findings.map(tierOf);
+    const errors = tiers.filter((t) => t === 'ERROR').length;
+    const warnings = tiers.filter((t) => t === 'WARN').length;
+    const state = errors > 0 ? 'FAIL' : report.coverage.complete ? 'PASS' : 'INCOMPLETE';
+    return { state, errors, warnings, line: `${state} (${errors} errors, ${warnings} warnings)` };
+}
+
+const cell = (s: string) =>
+    String(s ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\|/g, '\\|');
+
+/** The Markdown report for people: the verdict line first, then one table row per finding, ERRORs first. */
+export function renderReview(report: ReviewReport): string {
+    const v = reviewVerdict(report);
+    const extra = [...new Set(report.findings.flatMap((f) => Object.keys(f.fields ?? {})))];
+    const order = { ERROR: 0, WARN: 1, INFO: 2 } as const;
+    const rows = [...report.findings].sort((a, b) => order[tierOf(a)] - order[tierOf(b)]);
+    const out = [v.line, ''];
+    if (report.title) out.push(`# ${report.title}`, '');
+    if (rows.length) {
+        out.push(
+            `| Tier | Where | ${extra.map((k) => `${k} | `).join('')}What it does | Confidence |`,
+            `| --- | --- | ${extra.map(() => '--- | ').join('')}--- | --- |`,
+            ...rows.map(
+                (f) =>
+                    `| ${tierOf(f)}${tierOf(f) !== f.tier ? ` (was ${f.tier})` : ''} | \`${cell(f.where)}\` | ${extra.map((k) => `${cell(f.fields?.[k] ?? '')} | `).join('')}${cell(f.detail)} | ${f.readerConfidence}% |`,
+            ),
+            '',
+        );
+    } else out.push('_No findings._', '');
+    out.push('## Coverage', '', report.coverage.complete ? 'Complete.' : 'Not complete.', '');
+    if (report.coverage.notes) out.push(report.coverage.notes.trim(), '');
+    return out.join('\n');
+}
+
+/** The verdict a report states or earns, or null when it has none. */
 export function verdictOf(file: string, text: string): string | null {
-    if (file.endsWith('.json')) {
-        const verdict = (JSON.parse(text) as { verdict?: unknown }).verdict;
-        return typeof verdict === 'string' ? (STATE.exec(verdict)?.[0] ?? null) : null;
+    if (/\.ya?ml$/.test(file)) {
+        const data = readData<{ verdict?: unknown } & Partial<ReviewReport>>(file);
+        if (typeof data.verdict === 'string') return STATE.exec(data.verdict)?.[0] ?? null;
+        return Array.isArray(data.findings) && data.coverage ? reviewVerdict(data as ReviewReport).state : null;
     }
     return STATE.exec(text)?.[0] ?? null;
 }
@@ -34,23 +92,20 @@ export function exitFor(verdict: string | null, advisory: boolean): number {
     return 1;
 }
 
-/** `spec-tools verdict <report> [--log <job log>] [--advisory]`. */
-export function gate(file: string, log: string, advisory: boolean): number {
+/** `spec-tools verdict <report> [--advisory]`: a review report's Markdown is rendered beside it, then gated. */
+export function gate(file: string, advisory: boolean): number {
     if (!fs.existsSync(file)) {
-        const recovered = fs.existsSync(log) ? VERDICT_LINE.exec(fs.readFileSync(log, 'utf8'))?.[0] : undefined;
-        if (!recovered) {
-            console.error(
-                `ERROR: ${file} was not written and ${log} carries no verdict — the review did not complete.`,
-            );
-            return 1;
-        }
-        console.warn(`WARNING: ${file} was not written by the skill; recovering the report from ${log}.`);
-        const note = '_Recovered from the streamed result: the skill printed its report but skipped the write._';
-        fs.writeFileSync(file, `${recovered}\n\n${note}\n\n${fs.readFileSync(log, 'utf8')}`);
+        console.error(`ERROR: ${file} was not written — the review did not complete.`);
+        return 1;
+    }
+    if (/\.ya?ml$/.test(file)) {
+        const data = readData<Partial<ReviewReport> & { verdict?: unknown }>(file);
+        if (typeof data.verdict !== 'string' && Array.isArray(data.findings) && data.coverage)
+            fs.writeFileSync(file.replace(/\.ya?ml$/, '.md'), renderReview(data as ReviewReport));
     }
     const verdict = verdictOf(file, fs.readFileSync(file, 'utf8'));
     if (!verdict) {
-        console.error(`ERROR: no verdict line (PASS / FAIL / INCOMPLETE) found in ${file}.`);
+        console.error(`ERROR: no verdict (PASS / FAIL / INCOMPLETE) found in ${file}.`);
         return 1;
     }
     console.log(`verdict: ${verdict}`);

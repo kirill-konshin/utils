@@ -23,7 +23,7 @@ import { git, root } from './repo';
  * contradicts a sibling is caught by the author, not by the next audit. Deterministic; the judging is the
  * audit skill's focused mode over the one file this writes. The diff base is `diffBase`'s.
  */
-export const CHANGED_FILE = `${PARTS_DIR}/changed.md`;
+export const CHANGED_FILE = `${PARTS_DIR}/changed.yaml`;
 
 export type Hunk = { readonly file: string; readonly start: number; readonly count: number };
 

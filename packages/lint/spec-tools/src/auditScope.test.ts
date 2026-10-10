@@ -6,7 +6,7 @@ import { modeFor, partition, renderScope } from './auditScope';
 /** An evidence file of a capability, whole unless a slice number is given. */
 const evidence = (capability: string, bytes: number, requirements = 1, slice?: number) => ({
     capability,
-    file: `audit-parts/${capability}${slice ? `.${slice}` : ''}.md`,
+    file: `.spec-audit/parts/${capability}${slice ? `.${slice}` : ''}.yaml`,
     bytes,
     requirements,
     requirementIds: Array.from({ length: requirements }, (_, i) => `${capability}#requirement-${slice ?? 0}-${i}`),
@@ -30,8 +30,8 @@ describe('partition', () => {
             {
                 part: 1,
                 capabilities: ['b', 'a'],
-                files: ['audit-parts/b.md', 'audit-parts/a.md'],
-                findings: ['audit-parts/findings/part-1-1.json'],
+                files: ['.spec-audit/parts/b.yaml', '.spec-audit/parts/a.yaml'],
+                findings: ['.spec-audit/parts/findings/part-1-1.yaml'],
                 requirementIds: [...evidence('b', 0, 30).requirementIds, ...evidence('a', 0, 20).requirementIds],
                 bytes: 50 * 1024,
                 requirements: 50,
@@ -61,9 +61,9 @@ describe('partition', () => {
         ]);
         // Heaviest first by load — the slices, dense in requirements, before the larger single file.
         expect(parts.map((p) => p.files)).toEqual([
-            ['audit-parts/big.1.md', 'audit-parts/small.md'],
-            ['audit-parts/big.2.md'],
-            ['audit-parts/huge.md'],
+            ['.spec-audit/parts/big.1.yaml', '.spec-audit/parts/small.yaml'],
+            ['.spec-audit/parts/big.2.yaml'],
+            ['.spec-audit/parts/huge.yaml'],
         ]);
         expect(parts[0]!.capabilities).toEqual(['big', 'small']);
     });

@@ -9,13 +9,14 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { jsonrepair } from 'jsonrepair';
 
 import type { EvidenceModel } from './auditParts';
 import type { ShortPart } from './auditReport';
-import type { Part, ScopeJson } from './auditScope';
-import { AUDIT_FILES, findingsFile } from './files';
+import type { Part, ScopeData } from './auditScope';
+import { checkData, parseData, readData, STEWARD_FINDINGS, STEWARD_VERDICT, toYaml, writeData } from './data';
+import { AUDIT_FILES, findingsFile, verdictFile } from './files';
 import { git, root } from './repo';
+import { KEY_STYLE, readRules, rulesText } from './rules';
 import { SKILLS_DIR } from './skillsDir';
 import { render as renderReview } from './steward/lib/review';
 import { globToRegExp } from './steward/lib/util';
@@ -47,11 +48,16 @@ export type StewardFinding = {
     readonly themeKey?: string;
     readonly needsHumanIntent?: boolean;
     readonly reversesPastDecision?: string;
-    readonly confidence?: string;
+    readonly readerConfidence?: number;
 };
 
 /** A finding the merge carries: where it came from, and the review file's fields. */
-export type Candidate = StewardFinding & { readonly part: number; readonly repo: string; readonly area: string };
+export type Candidate = StewardFinding & {
+    readonly part: number;
+    readonly repo: string;
+    readonly area: string;
+    readonly judgeConfidence?: number;
+};
 
 type FindingsFile = {
     findings?: StewardFinding[];
@@ -60,7 +66,12 @@ type FindingsFile = {
     notes?: string[];
 };
 
-type Verdict = { verdict: 'keep' | 'revise' | 'drop'; reason: string; revised?: Partial<StewardFinding> };
+type Verdict = {
+    verdict: 'keep' | 'revise' | 'drop';
+    reason: string;
+    revised?: Partial<StewardFinding>;
+    judgeConfidence: number;
+};
 
 export type Theme = {
     readonly key: string;
@@ -113,21 +124,22 @@ export function sweepUnits(model: EvidenceModel, after: number, cwd: string = ro
     });
 }
 
+const PLACEMENT = (repo: string) => path.relative(repo, path.join(SKILLS_DIR, '../rules/agent.md'));
 const LOAD_SKILL = (repo: string) =>
-    `First, load the skill: use the Skill tool with skill "spec-steward" (or Read ${path.relative(repo, path.join(SKILLS_DIR, 'spec-steward/SKILL.md'))} if that fails), then Read its references/worker.md, references/model.md and references/criteria.md, and the placement guide ${path.relative(repo, path.join(SKILLS_DIR, '../rules/agent.md'))}, in full. worker.md is your contract: follow it exactly.`;
+    `First, load the skill: use the Skill tool with skill "spec-steward" (or Read ${path.relative(repo, path.join(SKILLS_DIR, 'spec-steward/SKILL.md'))} if that fails). Read its references/worker.md (the findings file) and references/model.md (how a specification is written), and the placement guide ${PLACEMENT(repo)}. ${readRules(repo, 'spec-steward')}`;
 const TOOL_RULE =
-    'Tool rule: only Skill, Read, Glob, Grep, Write and the read-only git commands — no ls/cat/find, no shell validation of your JSON; other commands are denied here and only cost a turn.';
+    'Tool rule: use only Skill, Read, Glob, Grep, Write and the read-only git commands. Other commands are denied here and only cost a turn.';
 
 const unitLine = (p: Part) =>
     p.sweep
-        ? `- sweep: ${p.sweep.title} — ${p.sweep.focus}\n- files to read (Grep within a large one): ${p.files.join(', ') || '(none found — say so in notes)'}`
-        : `- capabilities: ${p.capabilities.join(', ')}\n- evidence files to read in full, then the specifications they name: ${p.files.join(', ')}\n- requirementIds (judged must cover exactly these):\n${p.requirementIds.join('\n')}`;
+        ? `- sweep: ${p.sweep.title} — ${p.sweep.focus}\n- files to read: ${p.files.join(', ') || '(none found — say so in notes)'}`
+        : `- capabilities: ${p.capabilities.join(', ')}\n- evidence files, then the specifications they name: ${p.files.join(', ')}\n- requirementIds (judged names exactly these):\n${p.requirementIds.join('\n')}`;
 
 /** The reading brief: one unit, judged against every criterion. */
 export const brief = (
     p: Part,
     repo: string,
-): string => `You are a worker for spec-steward's corpus-quality audit in repo ${repo}.
+): string => `You are a reader for spec-steward's corpus-quality audit in repo ${repo}.
 
 ${LOAD_SKILL(repo)}
 
@@ -137,13 +149,17 @@ Your assignment:
 - findings file to write (Write tool, overwrite, nothing else): ${p.findings[0]}
 ${unitLine(p)}
 
-${TOOL_RULE} Write the findings file exactly at the path above, then return one line: the path and your count of findings.
+${TOOL_RULE}
+
+${KEY_STYLE}
+
+Write the findings file at the path above. Then return one line: the path and your count of findings.
 `;
 
 /** The completion brief: what the first pass left — requirements no judged list names, or a unit that wrote nothing. */
 export const briefComplete = (p: Part, short: ShortPart, reader: number, file: string, repo: string): string => {
     const ids = short.requirementIds.length ? short.requirementIds.join('\n') : '(the whole unit)';
-    return `You are a completion worker for spec-steward's corpus-quality audit in repo ${repo}. The first pass over part ${p.part} was left short; judge exactly what it left, and nothing else.
+    return `You are a completion reader for spec-steward's corpus-quality audit in repo ${repo}. The first pass over part ${p.part} did not finish. Judge only what it left.
 
 ${LOAD_SKILL(repo)}
 
@@ -152,14 +168,18 @@ Your assignment:
 - reader: ${reader}
 - findings file to write (Write tool, overwrite, nothing else): ${file}
 ${unitLine(p)}
-- left unjudged — judge each against every criterion:
+- left unjudged — judge each against every item to report:
 ${ids}
 
-Your judged list names exactly what you judged here. ${TOOL_RULE} Write the findings file exactly at the path above, then return one line: the path and your count of findings.
+Your judged list names only what you judged here. ${TOOL_RULE}
+
+${KEY_STYLE}
+
+Write the findings file at the path above. Then return one line: the path and your count of findings.
 `;
 };
 
-/** The verifier's brief: one finding, the skeptic's questions, the verdict file. */
+/** The judge's brief: one finding, its rules inlined, the verdict file. */
 export const briefVerify = (f: Candidate, file: string, repo: string): string => {
     const { quote, ruleName, criteria, layer, whatsWrong, proposed, evidence, themeKey, needsHumanIntent } = f;
     const finding = {
@@ -174,23 +194,28 @@ export const briefVerify = (f: Candidate, file: string, repo: string): string =>
         evidence,
         themeKey,
         needsHumanIntent,
+        readerConfidence: f.readerConfidence,
     };
-    return `You are the skeptic verifying ONE finding of spec-steward's corpus-quality audit in repo ${repo}. Its quote was found at its line mechanically. Judge it by spec-steward's references/model.md and references/criteria.md and the placement guide ${path.relative(repo, path.join(SKILLS_DIR, '../rules/agent.md'))}, reading with Read and Grep only.
+    return `You are the judge for ONE finding of spec-steward's corpus-quality audit in repo ${repo}. The tool found its quote at its line.
+
+These are your judging rules. The placement guide is ${PLACEMENT(repo)}. Read with Read and Grep only.
+
+${rulesText('common')}
+
+${rulesText('spec-steward')}
 
 The finding:
-${JSON.stringify(finding, null, 2)}
+${toYaml(finding)}
+Write this YAML to ${file} with the Write tool, and nothing else:
+verdict: "keep", "revise" or "drop"
+reason: |
+  one or two sentences
+revised:
+  only the fields you change, when the verdict is revise
+judgeConfidence: an integer from 0 to 100
 
-- It silently decides an intent that is genuinely ambiguous → revise: needsHumanIntent true, the options in proposed.
-- It is a style preference, an ordinary implementation bug, or speculation → drop.
-- Its proposed verification would catch no real failure (compliance theatre) → revise or drop.
-- It moves an internal contract out of the specification only because it is not user-facing → revise.
-- Its target layer contradicts the placement guide → revise.
-- It reverses a past owner decision without saying so → revise reversesPastDecision.
-- A claim about code, tests, tooling or CI is false → revise it, or drop when the finding rests on it.
-Default to keep when the finding is concrete, grounded and its proposal sound; sharpen wording where it helps the owner decide.
+${KEY_STYLE}
 
-Write exactly this JSON with the Write tool to ${file} and nothing else:
-{"verdict": "keep" | "revise" | "drop", "reason": "<one sentence>", "revised": {<only the fields you change>}}
 Then return one line: the path and the verdict.
 `;
 };
@@ -214,12 +239,12 @@ export function quoteAt(quote: string, lines: readonly string[] | undefined, lin
 const areaOf = (file: string, unit: Part | undefined) =>
     /^openspec\/specs\/(.+)\/spec\.md$/.exec(file)?.[1] ?? unit?.sweep?.key ?? `part-${unit?.part ?? '?'}`;
 
-const readJson = <T>(file: string): T | undefined => {
-    try {
-        return JSON.parse(jsonrepair(fs.readFileSync(file, 'utf8'))) as T;
-    } catch {
-        return undefined;
-    }
+/** A model-written file that passes its schema, or undefined with the reason. */
+const readChecked = <T>(file: string, schema: Parameters<typeof checkData>[1]): { data?: T; problem?: string } => {
+    if (!fs.existsSync(file)) return { problem: 'not written' };
+    const text = fs.readFileSync(file, 'utf8');
+    const errors = checkData(text, schema);
+    return errors.length ? { problem: errors.slice(0, 3).join('; ') } : { data: parseData<T>(text) };
 };
 
 const words = (key: string) => key.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
@@ -230,7 +255,8 @@ const words = (key: string) => key.replace(/-/g, ' ').replace(/^./, (c) => c.toU
  * file; returns the one-line summary.
  */
 export function merge(read: (file: string) => readonly string[] | undefined, cwd: string = root()): string {
-    const scope = readJson<ScopeJson>(path.join(cwd, FILES.scope));
+    const scopePath = path.join(cwd, FILES.scope);
+    const scope = fs.existsSync(scopePath) ? readData<ScopeData>(scopePath) : undefined;
     if (!scope) throw new Error(`${FILES.scope} is missing — run spec-tools scope --audit spec-steward first`);
     const repo = path.basename(cwd);
     const dir = path.join(cwd, FILES.findings);
@@ -241,13 +267,13 @@ export function merge(read: (file: string) => readonly string[] | undefined, cwd
     const short: ShortPart[] = [];
     const dropped: (Candidate & { droppedBy: string; reason: string })[] = [];
     for (const unit of scope.parts) {
-        const files = present.filter((f) => new RegExp(`^part-${unit.part}-\\d+\\.json$`).test(f)).sort();
+        const files = present.filter((f) => new RegExp(`^part-${unit.part}-\\d+\\.yaml$`).test(f)).sort();
         const judged = new Set<string>();
         for (const name of files) {
-            const data = readJson<FindingsFile>(path.join(dir, name));
+            const { data, problem } = readChecked<FindingsFile>(path.join(dir, name), STEWARD_FINDINGS);
             if (!data) {
                 notes.push(
-                    `\`${FILES.findings}/${name}\` is not valid JSON — its part is judged again by the completion pass.`,
+                    `\`${FILES.findings}/${name}\` is not valid (${problem}) — its part is judged again by the completion pass.`,
                 );
                 continue;
             }
@@ -272,12 +298,23 @@ export function merge(read: (file: string) => readonly string[] | undefined, cwd
     // The verifiers answer by position in the candidate list the previous merge wrote, which this one reproduces.
     const kept: Candidate[] = [];
     candidates.forEach((c, i) => {
-        const verdict = readJson<Verdict>(path.join(dir, `verdict-${i + 1}.json`));
+        const verdict = readChecked<Verdict>(path.join(cwd, verdictFile(i + 1, 'spec-steward')), STEWARD_VERDICT).data;
         if (verdict?.verdict === 'drop') dropped.push({ ...c, droppedBy: 'verifier', reason: verdict.reason });
-        else
+        else {
+            const judged = verdict ? { ...c, judgeConfidence: verdict.judgeConfidence } : c;
             kept.push(
-                verdict?.verdict === 'revise' ? { ...c, ...verdict.revised, part: c.part, repo, area: c.area } : c,
+                verdict?.verdict === 'revise'
+                    ? {
+                          ...judged,
+                          ...verdict.revised,
+                          part: c.part,
+                          repo,
+                          area: c.area,
+                          judgeConfidence: verdict.judgeConfidence,
+                      }
+                    : judged,
             );
+        }
     });
     const unique = new Map<string, Candidate>();
     for (const c of kept) {
@@ -325,8 +362,7 @@ export function merge(read: (file: string) => readonly string[] | undefined, cwd
         short,
         notes,
     };
-    fs.mkdirSync(path.dirname(path.join(cwd, FILES.data)), { recursive: true });
-    fs.writeFileSync(path.join(cwd, FILES.data), JSON.stringify(data, null, 2) + '\n');
-    fs.writeFileSync(path.join(cwd, FILES.report), renderReview(data).markdown.trimEnd() + '\n');
+    writeData(path.join(cwd, FILES.data), data);
+    fs.writeFileSync(path.join(cwd, FILES.report), renderReview(data).yaml.trimEnd() + '\n');
     return `${summary} → ${FILES.report}`;
 }

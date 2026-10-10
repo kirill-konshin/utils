@@ -1,9 +1,9 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { affectedScope } from './auditChanged';
 import { type EvidenceFile, loadEvidence, PART_BYTES, requirementsOf, writeParts } from './auditParts';
 import { diffBase, isNightly, mergeRequest } from './ci';
+import { writeData } from './data';
 import { AUDIT_FILES, type AuditName, findingsFile, PARTS_DIR } from './files';
 import { root } from './repo';
 import { sweepUnits } from './stewardAudit';
@@ -18,7 +18,7 @@ import { sweepUnits } from './stewardAudit';
  * else the nightly input or the absence of a merge-request target means the corpus. The scope is cut
  * into parts no larger than one reader holds in full, from evidence files the same run writes from
  * spec-steward's evidence model — see `auditParts.ts` — so the audit reads and never searches. The cut is
- * computed once, into `audit-scope.json`, and every reading job takes its share of that file.
+ * computed once, into `.spec-audit/scope.yaml`, and every reading job takes its share of that file.
  */
 
 export type ScopeKind = 'all' | 'affected';
@@ -51,7 +51,7 @@ export type Part = {
     readonly capabilities: readonly string[];
     /** The evidence files the part's readers read. */
     readonly files: readonly string[];
-    /** Where each reader writes its findings: `audit-parts/findings/part-<n>-<reader>.json`. */
+    /** Where each reader writes its findings: `.spec-audit/parts/findings/part-<n>-<reader>.yaml`. */
     readonly findings: readonly string[];
     /** Every requirement in the part, by id — what a reader's judged list is checked against. */
     readonly requirementIds: readonly string[];
@@ -135,8 +135,8 @@ export function renderScope(parts: readonly Part[], kind: ScopeKind = 'all', det
     return lines.join('\n') + '\n';
 }
 
-/** What `audit-scope.json` holds: the parts, with the files each worker reads. */
-export type ScopeJson = {
+/** What the scope file holds: the parts, with the files each worker reads. */
+export type ScopeData = {
     readonly scope: ScopeKind;
     /** The affected set's diff base and capabilities; absent for the corpus. */
     readonly base?: string;
@@ -166,14 +166,12 @@ export function main(env: NodeJS.ProcessEnv = process.env, audit: AuditName = 's
         ? `The affected set against \`${affected.base}\`: ${affected.requirements.length} requirements in ${affected.capabilities.length} capabilities — the ones the diff changed or a touched delta names, the ones whose bound tests or own terms the changed files contain, the ones the changed code cites, and the requirements related to these — with cross-capability checks against the corpus the evidence quotes.`
         : undefined;
     const report = renderScope(parts, kind, detail);
-    const json: ScopeJson = {
+    const data: ScopeData = {
         scope: kind,
         ...(affected ? { base: affected.base, capabilities: affected.capabilities } : {}),
         readers: READERS_PER_PART,
         parts,
     };
-    const file = path.join(root(), AUDIT_FILES[audit].scope);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(json, null, 2) + '\n');
+    writeData(path.join(root(), AUDIT_FILES[audit].scope), data);
     return report;
 }

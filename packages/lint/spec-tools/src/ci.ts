@@ -3,6 +3,7 @@
  * from. GitLab CI's variables today; another CI is one more branch here, never a read anywhere else. The gate base is
  * spec-steward's own resolver, so the corpus gate and the change gates always judge against the same commit.
  */
+import { jobLogFile } from './files';
 import { git, root } from './repo';
 import { resolveBase } from './steward/lib/git';
 
@@ -43,7 +44,7 @@ export function mergeRequest(env: Env = process.env): { readonly draft: boolean;
 }
 
 /** Where a headless audit's streamed result is kept for the job log and the verdict gate: one file per job. */
-export const jobLog = (env: Env = process.env): string => `job-log-${env.CI_JOB_NAME ?? 'local'}.md`;
+export const jobLog = (env: Env = process.env): string => jobLogFile(env.CI_JOB_NAME ?? 'local');
 
 /** What a merge-request comment links to: this job's artifacts and this pipeline, or nothing outside CI. */
 export function pipeline(env: Env = process.env): {

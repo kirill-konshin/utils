@@ -84,7 +84,6 @@
     "@types/eslint-plugin-jsx-a11y": "^6.10.1",
     "@types/eslint-plugin-promise": "^7.3.0",
     "github-markdown-css": "^5.9.0",
-    "jsonrepair": "^3.15.0",
     "marked": "^18.0.5",
     "tsdown": "^0.23.0",
     "vitest": "^4.1.10"

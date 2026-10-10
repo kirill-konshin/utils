@@ -40,6 +40,8 @@ Cache `.claude-code/` keyed on `CLAUDE_CODE_VERSION`, and gitignore it. The job 
 
 ## Jobs
 
+Every job writes under `.spec-audit/` and publishes that one folder; the repository ignores it with one `.gitignore` line, `.spec-audit/`. Jobs that hand files on through `dependencies:` or `needs:` merge their `.spec-audit/` folders.
+
 ```yaml
 openspec:
     stage: review
@@ -60,31 +62,25 @@ spec-diff:
     stage: review
     rules: [if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH]
     script: [yarn spec-tools diff]
-    artifacts: { when: always, paths: [spec-diff.md] }
+    artifacts: { when: always, paths: [.spec-audit/] }
 
 # The run class, the coverage report and the audit's inputs, handed on as artifacts — with the package's skills/,
 # which hold the CLI the AI jobs run.
 spec-coverage:
     stage: review
     script:
-        - yarn spec-tools tier | tee audit-tier.env
-        - set -a && . ./audit-tier.env && set +a
-        - yarn spec-tools steward coverage --out spec-coverage.md
+        - mkdir -p .spec-audit
+        - yarn spec-tools tier | tee .spec-audit/tier.env
+        - set -a && . ./.spec-audit/tier.env && set +a
+        - yarn spec-tools steward coverage
         - yarn spec-tools scope
     artifacts:
         when: always
-        reports: { dotenv: audit-tier.env }
-        paths:
-            [
-                audit-tier.env,
-                spec-coverage.md,
-                audit-scope.json,
-                audit-parts/,
-                node_modules/@kirill.konshin/lint/skills/,
-            ]
+        reports: { dotenv: .spec-audit/tier.env }
+        paths: [.spec-audit/, node_modules/@kirill.konshin/lint/skills/]
 
 # The audit, in one job: read (a failed reading leaves its parts to the completion pass), merge, complete what the
-# reading left short, verify every ERROR, gate.
+# reading left short, judge every ERROR, gate.
 spec-verify:
     stage: review
     image: <an image with node>
@@ -99,10 +95,10 @@ spec-verify:
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers --verify
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
-        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js verdict spec-verify.json
-    artifacts: { when: always, paths: [spec-verify.md, spec-verify.json, audit-parts/findings/] }
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js verdict .spec-audit/spec-verify.yaml
+    artifacts: { when: always, paths: [.spec-audit/] }
 
-# Any other skill-driven review: headless, then its verdict.
+# Any other skill-driven review: headless, its YAML report checked, then its verdict computed and its Markdown rendered.
 some-review:
     stage: review
     image: <an image with node>
@@ -110,8 +106,8 @@ some-review:
     allow_failure: { exit_codes: [3, 77] }
     script:
         - *claude-code
-        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js run some-review --verdict some-review.md --advisory
-    artifacts: { when: always, paths: [some-review.md, claude.jsonl, 'job-log-*.md'] }
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js run some-review --verdict .spec-audit/some-review.yaml --advisory
+    artifacts: { when: always, paths: [.spec-audit/] }
 
 render-reviews:
     stage: deploy
@@ -122,11 +118,13 @@ render-reviews:
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
           when: always
     script:
-        - yarn spec-tools html spec-verify.md some-review.md spec-coverage.md spec-diff.md
-        - yarn spec-tools comment spec-verify=spec-verify.md some-review=some-review.md
+        - yarn spec-tools html .spec-audit/spec-verify.md .spec-audit/some-review.md .spec-audit/coverage.md .spec-audit/spec-diff.md
+        - yarn spec-tools comment spec-verify=.spec-audit/spec-verify.md some-review=.spec-audit/some-review.md
         # Posting needs a token that may write notes; CI_JOB_TOKEN cannot.
-        - '[ -z "$CI_MERGE_REQUEST_IID" ] || glab api --method POST "projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes" -f "body=$(cat mr-comment.md)"'
-    artifacts: { when: always, paths: ['*.md', '*.html'] }
+        - '[ -z "$CI_MERGE_REQUEST_IID" ] || glab api --method POST "projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes" -f "body=$(cat .spec-audit/mr-comment.md)"'
+    artifacts: { when: always, paths: [.spec-audit/] }
 ```
 
 A release job that must wait for the audit `needs:` the judge (`spec-verify`), so a gating `FAIL` on the default branch holds it.
+
+A skill-driven review writes `.spec-audit/<review>.yaml` in the shape `spec-tools run` checks (`findings[tier, where, detail, readerConfidence, fields]`, `coverage{complete, notes}`). `verdict` computes its state from that file, never from the model's words, and writes `.spec-audit/<review>.md` beside it for the comment and the HTML.

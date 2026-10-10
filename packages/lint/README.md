@@ -356,7 +356,7 @@ Which to reach for:
 | How do I write or change a rule? | `/spec-author` | The specification edited in place, with the code and tests that prove it |
 | Do citations resolve, is every new scenario bound, did a rule weaken? | `spec-tools steward check` (the gate, the edit hook) | Fails the merge request on an error |
 | Are these the right rules — placement, REQUIRED or ⚠️ ADVISORY, wording, evidence, duplicates, drift across repositories? | the `spec-steward` skill (audit on the `spec-tools` engine, review rounds, align) | A review file of proposals; the owner decides, steward applies; never a build failure |
-| Does the code do exactly what the rules say, and do the bound tests assert them? | the `spec-verify` skill, run by `spec-tools` | Graded, quote-proved findings; PASS / FAIL / INCOMPLETE gates CI |
+| Does the code satisfy the intent of the rules, and do the bound tests assert them? | the `spec-verify` skill, run by `spec-tools` | Graded, quote-proved findings; PASS / FAIL / INCOMPLETE gates CI |
 | Is the change finished, what did it change, how does CI run the audit? | `spec-tools` (gates, evidence, diff, tier, workers, verdict, comment, html) | Gates and reports for the pipeline |
 
 Where each runs:
@@ -371,7 +371,7 @@ Where each runs:
 
 Specifications change only by hand, or when the steward skill applies the owner's accepted review answers; `spec-tools steward check --fix` makes the only mechanical repairs. No audit edits code or specifications.
 
-The audits share their principles: `spec-verify`'s checks 2–5 are spec-steward's criteria 10, 9, 11 and 5, worded identically — steward asks whether the rule should change, `spec-verify` whether the code or the rule has diverged.
+The audits share one set of judging rules, `skills/spec-tools/references/rules/`: an ERROR is a demonstrated defect with a production effect (a broken flow, a contract or invariant violation, a sensitive-data leak, a performance problem), and it stands only when its judge confirms it above 70% confidence. `spec-verify`'s checks 2–5 are spec-steward's items 10, 9, 11 and 5, worded identically — steward asks whether the rule should change, `spec-verify` whether the code or the rule has diverged. Every file the tools write is under `.spec-audit/`, as YAML; Markdown only as the final report.
 
 Setup and the GitLab pipeline are in the `spec-tools` skill.
 

@@ -58,7 +58,7 @@ export default defineConfig([
         dts: false,
         // One file: the skills and a CI job name it, so no chunk may sit beside it.
         outputOptions: { codeSplitting: false },
-        deps: { neverBundle: ['typescript'], alwaysBundle: ['jsonrepair', 'marked', 'github-markdown-css'] },
+        deps: { neverBundle: ['typescript'], alwaysBundle: ['marked', 'github-markdown-css', 'yaml'] },
         plugins: [raw],
     },
 ]);

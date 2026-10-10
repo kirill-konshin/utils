@@ -16,18 +16,21 @@ describe('comment', () => {
     });
 
     test("writes one row per review, linked to this job's artifacts, with the coverage and the diff beneath", () => {
-        fs.writeFileSync('spec-verify.md', 'PASS (0 errors, 2 warnings)\n');
-        fs.writeFileSync('spec-coverage.md', '# coverage\n');
-        fs.writeFileSync('spec-diff.md', 'SPEC DIFF 1 changed\n');
-        const text = comment(['spec-verify=spec-verify.md', 'other=other.md'], {
+        fs.mkdirSync('.spec-audit');
+        fs.writeFileSync('.spec-audit/spec-verify.md', 'PASS (0 errors, 2 warnings)\n');
+        fs.writeFileSync('.spec-audit/coverage.md', '# coverage\n');
+        fs.writeFileSync('.spec-audit/spec-diff.md', 'SPEC DIFF 1 changed\n');
+        const text = comment(['spec-verify=.spec-audit/spec-verify.md', 'other=.spec-audit/other.md'], {
             CI_JOB_URL: 'https://ci/job/1',
             AUDIT_GATING: 'advisory',
         });
-        expect(text).toContain('| spec-verify | ✅ OK | 0 | 2 | [md](https://ci/job/1/artifacts/file/spec-verify.md)');
+        expect(text).toContain(
+            '| spec-verify | ✅ OK | 0 | 2 | [md](https://ci/job/1/artifacts/file/.spec-audit/spec-verify.md)',
+        );
         expect(text).toContain('| other | ⚠️ NOT RUN | 0 | 0 |');
-        expect(text).toContain('Coverage: [md](https://ci/job/1/artifacts/file/spec-coverage.md)');
+        expect(text).toContain('Coverage: [md](https://ci/job/1/artifacts/file/.spec-audit/coverage.md)');
         expect(text).toContain('Specification diff — SPEC DIFF 1 changed');
         expect(text).toContain('This was an advisory run');
-        expect(fs.readFileSync('mr-comment.md', 'utf8')).toBe(text);
+        expect(fs.readFileSync('.spec-audit/mr-comment.md', 'utf8')).toBe(text);
     });
 });

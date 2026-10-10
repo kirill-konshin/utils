@@ -18,7 +18,7 @@ How a specification is written is the spec-steward model, [`references/model.md`
 
 4. **If the user chose a change folder**: `openspec new change <name>`, set `skip_specs: true` in its `.openspec.yaml`, write `proposal.md`, `design.md` and `tasks.md`. The behaviour still lands as a direct edit — the folder carries the plan, never deltas. Set `skip_specs` yourself when the change is plainly simple (a bugfix, a small feature); ask when in doubt. The folder is archived inside the merge or pull request, on the user's word.
 
-5. **Write it.** Name the observable failure the rule prevents and the cheapest evidence that catches it; if there is none, mark the requirement `**⚠️ Advisory:** <why review is its evidence>`, and record what is knowingly missing as `**⚠️ Known gap (<tracker>):** <what is missing>`. Write a new or edited statement in EARS (`When <trigger>, the <system> SHALL <response>`, `While <state>, …`, `If <condition>, then …`, or `The <system> SHALL …`), keeping the RFC 2119 keyword in capitals, and each new or edited scenario in Given/When/Then, one case each, Given only where a precondition matters; leave untouched text as it is. Scenario names are unique within the file:
+5. **Write it.** Name the observable failure the rule prevents and the cheapest evidence that catches it; if there is none, mark the requirement `**⚠️ Advisory:** <why review is its evidence>`, and record what is knowingly missing as `**⚠️ Known gap (<tracker>):** <what is missing>`. Write a new or edited statement in EARS (`When <trigger>, the <system> SHALL <response>`, `While <state>, …`, `If <condition>, then …`, or `The <system> SHALL …`), keeping the RFC 2119 keyword in capitals, and each new or edited scenario in Given/When/Then, one case each, Given only where a precondition matters; leave untouched text as it is. Write new and edited text in the model's light ASD-STE100 subset: one obligation per sentence, at most 25 words per sentence, one term for one concept, active voice, no vague word in a REQUIRED statement. Scenario names are unique within the file:
 
     ```markdown
     ### Requirement: <name>
@@ -36,4 +36,4 @@ How a specification is written is the spec-steward model, [`references/model.md`
 
 6. **Verify**: run the checks the root `AGENTS.md` lists; where it lists none, `openspec validate --strict --all` and `spec-tools gates`.
 
-7. **Hand back.** Say what changed and show the `spec-tools diff` first line. Do not commit, push, or archive; end with the decisions the user has to make.
+7. **Hand back.** Say what changed, in ASD-STE100, and show the `spec-tools diff` first line. Do not commit, push, or archive; end with the decisions the user has to make.

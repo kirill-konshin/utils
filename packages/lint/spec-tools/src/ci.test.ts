@@ -18,7 +18,7 @@ describe('ci', () => {
         expect(mergeRequest({})).toBeNull();
         expect(mergeRequest({ CI_MERGE_REQUEST_IID: '7', CI_MERGE_REQUEST_DRAFT: 'true' })).toEqual({ draft: true });
         expect(isNightly({ SPEC_AUDIT_NIGHTLY: 'true' })).toBe(true);
-        expect(jobLog({ CI_JOB_NAME: 'review' })).toBe('job-log-review.md');
+        expect(jobLog({ CI_JOB_NAME: 'review' })).toBe('.spec-audit/job-log-review.md');
         expect(pipeline({ CI_JOB_URL: 'https://ci/job/1' }).artifacts).toBe('https://ci/job/1/artifacts/file');
     });
 });

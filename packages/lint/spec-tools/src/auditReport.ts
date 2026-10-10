@@ -1,31 +1,37 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { jsonrepair } from 'jsonrepair';
 
 import type { UnitEntry } from './auditParts';
-import type { ScopeJson } from './auditScope';
-import { FINDINGS_DIR, PARTS_DIR, REPORT_FILE, REPORT_JSON, SCOPE_JSON, UNITS_FILE, VERIFIED_MARKER } from './files';
+import type { ScopeData } from './auditScope';
+import { checkData, JUDGE_VERDICT, parseData, readData, READER_FINDINGS, tryReadData, writeData } from './data';
+import { AUDIT_DIR, FINDINGS_DIR, REPORT_DATA, REPORT_FILE, SCOPE_FILE, UNITS_FILE, VERIFIED_MARKER } from './files';
 import { root } from './repo';
 
 /**
  * The specification audit's report, merged mechanically from what each worker judged. A worker
- * writes its part's findings as JSON; nothing here judges again. What this does is what needs no
+ * writes its part's findings as YAML; nothing here judges again. What this does is what needs no
  * judgment: every ERROR's quotes are looked up at their `file:line` in the audited commit — `HEAD`,
  * which no worker can edit, or the working tree with `--worktree` when the working tree is what
  * `spec-tools audit --here` audits — and a finding whose quotes are not there is WARN; kinds are tiered
- * by the contract's list, and a finding against an ⚠️ Advisory requirement is at most WARN;
- * coverage is the weakest part's; the verdict follows from those; and the Markdown CI and the reader
- * consume is rendered from it. The JSON files stay beside the report for debugging.
+ * by the contract's list, and a finding against an ⚠️ Advisory requirement is at most WARN; the judge's
+ * verdict keeps an ERROR only when it confirms it with a confidence above `SURE`; coverage is the weakest
+ * part's; the verdict follows from those; and the Markdown CI and the reader consume is rendered from it.
+ * The YAML files stay beside the report for debugging.
  * Usage: spec-tools report [--gate] [--worktree]
  */
 
-/** One merge of a run, as it stood after the pass before it: `audit-parts/findings/merge-<n>.json`. */
-export const MERGE_FILE = /^merge-\d+\.json$/;
-/** One verifier's answer over one ERROR: `audit-parts/findings/verdict-<k>.json`. */
-export const VERDICT_FILE = /^verdict-(\d+)\.json$/;
+/** One merge of a run, as it stood after the pass before it: `.spec-audit/parts/findings/merge-<n>.yaml`. */
+export const MERGE_FILE = /^merge-\d+\.yaml$/;
+/** One verifier's answer over one ERROR: `.spec-audit/parts/findings/verdict-<k>.yaml`. */
+export const VERDICT_FILE = /^verdict-(\d+)\.yaml$/;
 
-export const ERROR_CLASS = ['code-mismatch', 'conflict', 'undeclared-gap'] as const;
+/** A finding is a sure ERROR only when the judge's confidence — or, unjudged, the reader's — is above this. */
+export const SURE = 70;
+
+export const ERROR_CLASS = ['code-mismatch', 'undeclared-gap'] as const;
+/** Kinds that are a defect in the specification, the owner's to decide: WARN at most (spec-verify rules, check 2). */
+export const WARN_CLASS = ['conflict'] as const;
 export const INFO_CLASS = ['spec-dup', 'untested'] as const;
 
 /** The checks every reader runs over every requirement of its part — the `spec-verify` skill's numbering. */
@@ -44,6 +50,8 @@ export type Finding = {
     readonly tier: Tier;
     readonly where: string;
     readonly detail: string;
+    /** How sure the reader is that the finding is an ERROR — the defect and its production effect — from 0 to 100. */
+    readonly readerConfidence?: number;
     readonly quotes?: readonly Quote[];
 };
 export type Status = 'full' | 'sampled' | 'not-run';
@@ -78,31 +86,19 @@ export type Graded = Finding & {
     readonly regraded?: string;
     /** The verification pass's answer on an ERROR: confirmed, not confirmed with the verifier's reason, or never reached. */
     readonly verified?: string;
+    /** How sure the judge is that the finding is an ERROR, from 0 to 100. */
+    readonly judgeConfidence?: number;
+    /** The production scenario the judge wrote when it confirmed the ERROR. */
+    readonly scenario?: string;
 };
 
-/** What a verifier writes: the finding it judged, named the way the merge matches defects, and its answer. */
-/** A verifier's answer, `verdict-<k>.json`: it answers the k-th ERROR, so it names nothing but its verdict. */
+/** A verifier's answer, `verdict-<k>.yaml`: it answers the k-th ERROR, so it names nothing but its verdict. */
 export type Verdict = {
     readonly verdict: 'confirmed' | 'warn';
     readonly reason: string;
+    readonly scenario?: string;
+    readonly judgeConfidence: number;
 };
-
-/** The fields the report reads from every finding; `tier` is a claim the grade replaces, `quotes` are optional. */
-const FINDING_FIELDS = ['kind', 'where', 'detail'] as const;
-
-/**
- * What makes a reader's findings unusable: a finding without one of the fields the report reads. The reader then
- * counts as not run, so the completion pass re-reads its part, rather than the report guessing at a field.
- */
-export function findingsProblem(findings: readonly unknown[]): string | undefined {
-    for (const [index, finding] of findings.entries()) {
-        const absent = FINDING_FIELDS.filter(
-            (field) => typeof (finding as Record<string, unknown>)?.[field] !== 'string',
-        );
-        if (absent.length) return `finding ${index + 1} lacks ${absent.map((field) => `\`${field}\``).join(', ')}`;
-    }
-    return undefined;
-}
 
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 
@@ -127,8 +123,7 @@ export function quoteFound(quote: Quote, lines: readonly string[] | undefined): 
 export type Reader = (file: string) => readonly string[] | undefined;
 
 /** The audit's own artifacts are not evidence: a quote must come from a specification or a source. */
-export const isGenerated = (file: string) =>
-    file.startsWith(`${PARTS_DIR}/`) || /^(spec-verify|spec-review|spec-coverage|audit-scope)\.(md|json)$/.test(file);
+export const isGenerated = (file: string) => file.startsWith(`${AUDIT_DIR}/`);
 
 /** Files as a commit carries them: `git show <ref>:<file>` — what no worker's edit of the tree can reach. */
 export const gitReader =
@@ -159,7 +154,8 @@ export const worktreeReader: Reader = (file) => {
 };
 
 /**
- * The tier a finding earns: INFO-class kinds are INFO however the worker graded them; an ERROR-class
+ * The tier a finding earns: INFO-class kinds are INFO however the worker graded them; WARN-class kinds (a
+ * specification defect) are WARN at most; an ERROR-class
  * kind is ERROR only when the worker claimed it and at least two of its quotes — both sides — are
  * found at their lines, and WARN otherwise, saying why; and a finding against an ⚠️ Advisory
  * requirement is at most WARN. A kind the contract does not name is recorded as INFO with the
@@ -183,6 +179,14 @@ function gradeKind(finding: Finding, part: number, read: Reader): Graded {
             tier: 'INFO',
             part,
             regraded: finding.tier === 'INFO' ? undefined : `${kind} is INFO-class`,
+        };
+    }
+    if ((WARN_CLASS as readonly string[]).includes(kind)) {
+        return {
+            ...finding,
+            tier: finding.tier === 'INFO' ? 'INFO' : 'WARN',
+            part,
+            regraded: finding.tier === 'ERROR' ? `${kind} is a specification defect: WARN at most` : undefined,
         };
     }
     if (!(ERROR_CLASS as readonly string[]).includes(kind)) {
@@ -318,12 +322,12 @@ export function shortList(
 }
 
 /**
- * The findings files a part has: the ones the scope lists, then any further `part-<n>-<reader>.json`
+ * The findings files a part has: the ones the scope lists, then any further `part-<n>-<reader>.yaml`
  * present — a completion worker writes the part's next reader number, and the merge reads it the
  * way it reads a second independent reader.
  */
 export function readerFiles(listed: readonly string[], present: readonly string[], part: number): string[] {
-    const own = new RegExp(`(^|/)part-${part}-\\d+\\.json$`);
+    const own = new RegExp(`(^|/)part-${part}-\\d+\\.yaml$`);
     const extra = present.filter((f) => own.test(f) && !listed.includes(f)).sort();
     return [...listed, ...extra];
 }
@@ -349,20 +353,15 @@ export function dedupe(findings: readonly Graded[]): Graded[] {
     return kept;
 }
 
-/** Two findings are the same defect when they share a kind and a `where`, or a kind and a quoted `file:line`. */
-const sameDefect = (a: Graded, b: Graded) =>
-    a.kind === b.kind &&
-    (normalize(a.where) === normalize(b.where) ||
-        (a.quotes ?? []).some((q) => (b.quotes ?? []).some((p) => p.file === q.file && p.line === q.line)));
-
 /**
- * The verification pass's answers, applied. An ERROR the workers demonstrated is put to one more reader
- * over that finding alone, which confirms it only when the divergence is real and critical — an obvious
- * code defect, or a statement that would steer an agent wrongly — and otherwise lowers it to WARN with
- * its reason. One the pass never reached (no verdict written although the pass ran) stands on its quotes
- * and says so; without the pass, nothing changes. WARN and INFO are never touched. A verdict answers the ERROR
- * at its position: `verdict-<k>.json` is the k-th ERROR of the merge the verification pass started from, and the
- * merge after it, over the same findings files, lists the same ERRORs in the same order.
+ * The verification pass's answers, applied. An ERROR the workers demonstrated is put to one more reader over that
+ * finding alone — the judge — which confirms it only when the defect is real and has a production effect, and gives
+ * its confidence. The finding stays ERROR only when the judge confirms it with a confidence above `SURE`; otherwise
+ * it is WARN with the judge's reason. One the pass never reached (no verdict written although the pass ran) stays
+ * ERROR only when the reader's own confidence is above `SURE`; without the pass, nothing changes. The judge only
+ * confirms or lowers: WARN and INFO are never touched. A verdict answers the ERROR at its position:
+ * `verdict-<k>.yaml` is the k-th ERROR of the merge the verification pass started from, and the merge after it, over
+ * the same findings files, lists the same ERRORs in the same order.
  */
 export function applyVerdicts(
     findings: readonly Graded[],
@@ -373,17 +372,32 @@ export function applyVerdicts(
     return findings.map((f) => {
         if (f.tier !== 'ERROR') return f;
         const v = verdicts.get(++k);
-        if (!v)
-            return ran
-                ? { ...f, verified: 'unverified — the verifier wrote no verdict; the finding stands on its quotes' }
-                : f;
-        return v.verdict === 'confirmed'
-            ? { ...f, verified: `confirmed — ${v.reason}` }
-            : { ...f, tier: 'WARN', verified: `not confirmed — ${v.reason}` };
+        if (!v) {
+            if (!ran) return f;
+            const reader = f.readerConfidence ?? 0;
+            return reader > SURE
+                ? { ...f, verified: `unverified — no verdict was written; the reader is ${reader}% sure` }
+                : {
+                      ...f,
+                      tier: 'WARN',
+                      verified: `unverified — no verdict was written, and the reader is only ${reader}% sure`,
+                  };
+        }
+        const judged = { ...f, judgeConfidence: v.judgeConfidence, ...(v.scenario ? { scenario: v.scenario } : {}) };
+        if (v.verdict === 'confirmed' && v.judgeConfidence > SURE)
+            return { ...judged, verified: `confirmed — ${v.reason}` };
+        return {
+            ...judged,
+            tier: 'WARN',
+            verified:
+                v.verdict === 'confirmed'
+                    ? `confirmed, but the judge is only ${v.judgeConfidence}% sure — ${v.reason}`
+                    : `not confirmed — ${v.reason}`,
+        };
     });
 }
 
-/** Every verdict file the verification pass wrote, by the ERROR's position; one that does not parse is reported and skipped. */
+/** Every verdict file the verification pass wrote, by the ERROR's position; one that is not valid is reported and skipped. */
 export function readVerdicts(problems: string[]): Map<number, Verdict> {
     const dir = path.join(root(), FINDINGS_DIR);
     const out = new Map<number, Verdict>();
@@ -391,15 +405,15 @@ export function readVerdicts(problems: string[]): Map<number, Verdict> {
     for (const name of fs.readdirSync(dir).sort()) {
         const k = VERDICT_FILE.exec(name)?.[1];
         if (!k) continue;
-        try {
-            const v = JSON.parse(jsonrepair(fs.readFileSync(path.join(dir, name), 'utf8'))) as Verdict;
-            if (v.verdict !== 'confirmed' && v.verdict !== 'warn') throw new Error('missing `verdict`');
-            out.set(Number(k), v);
-        } catch (error) {
+        const text = fs.readFileSync(path.join(dir, name), 'utf8');
+        const errors = checkData(text, JUDGE_VERDICT);
+        if (errors.length) {
             problems.push(
-                `\`${FINDINGS_DIR}/${name}\` is not a valid verdict: ${(error as Error).message} — its ERROR stands on its quotes.`,
+                `\`${FINDINGS_DIR}/${name}\` is not a valid verdict: ${errors.join('; ')} — its ERROR counts as unverified.`,
             );
+            continue;
         }
+        out.set(Number(k), parseData<Verdict>(text));
     }
     return out;
 }
@@ -421,7 +435,7 @@ export const exitCodeFor = (state: string): number => (state === 'FAIL' ? 1 : st
 const cell = (s: string) => normalize(s).replace(/\|/g, '\\|');
 const order: Record<Tier, number> = { ERROR: 0, WARN: 1, INFO: 2 };
 
-/** What `audit-parts/units.json` holds: every unit in scope with its class. */
+/** What `.spec-audit/parts/units.yaml` holds: every unit in scope with its class. */
 export type UnitsFile = Record<string, UnitEntry>;
 /** The unit a finding is about: the requirement id its `where` opens with. */
 export const unitOf = (where: string) => where.split(' ')[0]!;
@@ -433,15 +447,30 @@ const firstSentence = (text: string) => {
     return end === -1 ? flat : flat.slice(0, end + 1);
 };
 
-/** One ERROR or WARN as the developer reads it: kind, place, requirement, what drifted, why it was regraded, the verifier's word. */
+/** The reader's and the judge's confidence, as the report shows them. */
+const confidenceOf = (f: Graded) =>
+    [
+        f.readerConfidence !== undefined ? `reader ${f.readerConfidence}%` : '',
+        f.judgeConfidence !== undefined ? `judge ${f.judgeConfidence}%` : '',
+    ]
+        .filter(Boolean)
+        .join(', ');
+
+/**
+ * One ERROR or WARN as the developer reads it: kind, place, requirement, what drifted, the production scenario, the
+ * confidences, why it was regraded, the judge's word.
+ */
 const findingLine = (f: Graded) => {
     const [requirement, at] = f.where.split(' / ');
     const place = at ?? (f.quotes?.[0] ? `${f.quotes[0].file}:${f.quotes[0].line}` : undefined);
+    const confidence = confidenceOf(f);
     return [
         `- \`${f.kind}\``,
         place ? ` \`${place}\`` : '',
         ` — \`${requirement}\``,
         ` — ${firstSentence(f.detail)}`,
+        f.tier === 'ERROR' && f.scenario ? ` — **In production:** ${normalize(f.scenario)}` : '',
+        confidence ? ` — ${confidence}` : '',
         f.regraded ? ` — _${f.regraded}_` : '',
         f.verified ? ` — _${f.verified}_` : '',
     ].join('');
@@ -449,7 +478,7 @@ const findingLine = (f: Graded) => {
 
 /**
  * The developer's report: the verdict, what errored and what drifted — one line each — the INFO findings as counts,
- * and the checks that fell short. Quotes, full details and INFO findings are in `spec-verify.json`.
+ * and the checks that fell short. Quotes, full details and INFO findings are in `.spec-audit/spec-verify.yaml`.
  */
 export function render(
     scopeHeader: readonly string[],
@@ -461,8 +490,8 @@ export function render(
     const out = [v.line, '', ...scopeHeader, ''];
     if (problems.length) out.push("## Problems with the workers' output", '', ...problems.map((p) => `- ${p}`), '');
     const sections = [
-        ['ERROR', 'Errors — demonstrated and confirmed'],
-        ['WARN', 'Warnings — suspected, or not confirmed'],
+        ['ERROR', `Errors — demonstrated, with a production effect, confirmed above ${SURE}%`],
+        ['WARN', 'Warnings — suspected, without a production effect, or not confirmed'],
     ] as const;
     for (const [tier, title] of sections) {
         const items = findings
@@ -488,7 +517,7 @@ export function render(
 }
 
 /** The report's first lines after the verdict: the scope. */
-export function scopeHeader(scope: ScopeJson): string[] {
+export function scopeHeader(scope: ScopeData): string[] {
     if (scope.scope === 'affected') {
         return [
             'SCOPE affected',
@@ -502,18 +531,13 @@ export function scopeHeader(scope: ScopeJson): string[] {
 }
 
 export function main(read: Reader = commitReader): string {
-    const scopePath = path.join(root(), SCOPE_JSON);
-    // Every unit in scope, as `spec:scope` classed it.
-    const unitsPath = path.join(root(), UNITS_FILE);
-    const units: UnitsFile = fs.existsSync(unitsPath)
-        ? (JSON.parse(fs.readFileSync(unitsPath, 'utf8')) as UnitsFile)
-        : {};
+    // Every unit in scope, as the scope classed it.
+    const units = tryReadData<UnitsFile>(path.join(root(), UNITS_FILE)) ?? {};
     const advisory = new Set(Object.entries(units).flatMap(([id, u]) => (u.advisory ? [id] : [])));
-    const scope: ScopeJson | undefined = fs.existsSync(scopePath)
-        ? (JSON.parse(fs.readFileSync(scopePath, 'utf8')) as ScopeJson)
-        : undefined;
+    const scopePath = path.join(root(), SCOPE_FILE);
+    const scope: ScopeData | undefined = fs.existsSync(scopePath) ? readData<ScopeData>(scopePath) : undefined;
     const problems: string[] = [];
-    if (!scope) problems.push(`\`${SCOPE_JSON}\` is missing — run \`spec-tools scope\` first; one part assumed.`);
+    if (!scope) problems.push(`\`${SCOPE_FILE}\` is missing — run \`spec-tools scope\` first; one part assumed.`);
     const header = scope ? scopeHeader(scope) : ['SCOPE unknown'];
     const expected = scope ? scope.parts.length : 1;
     const parts = new Map<number, PartReaders>();
@@ -525,33 +549,21 @@ export function main(read: Reader = commitReader): string {
                 problems.push(`\`${rel}\` was not written — reader ${index + 1} of part ${n} counts as not run.`);
                 return undefined;
             }
-            try {
-                const text = fs.readFileSync(file, 'utf8');
-                let parsed: PartFindings;
-                try {
-                    parsed = JSON.parse(text) as PartFindings;
-                } catch (error) {
-                    // A model's JSON slips — a comma, a trailing one, a quote. Repair the syntax deterministically
-                    // and say so; content is never touched, and what cannot be repaired counts as not run.
-                    parsed = JSON.parse(jsonrepair(text)) as PartFindings;
-                    problems.push(
-                        `\`${rel}\` needed a syntax repair (${(error as Error).message}); its content was kept as written.`,
-                    );
-                }
-                if (!Array.isArray(parsed.findings) || typeof parsed.coverage !== 'object')
-                    throw new Error('missing `findings` or `coverage`');
-                const problem = findingsProblem(parsed.findings);
-                if (problem) throw new Error(problem);
-                return { ...parsed, part: n, capabilities: parsed.capabilities ?? [] };
-            } catch (error) {
+            // The workers send a file that fails its schema back to its reader; one that still fails counts as not run,
+            // and the completion pass judges its part again.
+            const text = fs.readFileSync(file, 'utf8');
+            const errors = checkData(text, READER_FINDINGS);
+            if (errors.length) {
                 problems.push(
-                    `\`${rel}\` is not valid: ${(error as Error).message} — reader ${index + 1} of part ${n} counts as not run.`,
+                    `\`${rel}\` is not valid: ${errors.slice(0, 3).join('; ')} — reader ${index + 1} of part ${n} counts as not run.`,
                 );
                 return undefined;
             }
+            const parsed = parseData<PartFindings>(text);
+            return { ...parsed, part: n, capabilities: parsed.capabilities ?? [] };
         });
     const defaults = (n: number) =>
-        Array.from({ length: readers }, (_, r) => `${FINDINGS_DIR}/part-${n}-${r + 1}.json`);
+        Array.from({ length: readers }, (_, r) => `${FINDINGS_DIR}/part-${n}-${r + 1}.yaml`);
     const dir = path.join(root(), FINDINGS_DIR);
     const present = fs.existsSync(dir) ? fs.readdirSync(dir).map((f) => `${FINDINGS_DIR}/${f}`) : [];
     for (let n = 1; n <= expected; n++)
@@ -571,26 +583,22 @@ export function main(read: Reader = commitReader): string {
     const coverage = mergeCoverage(parts, expectedIds);
 
     const report = render(header, findings, coverage, problems);
+    fs.mkdirSync(path.dirname(path.join(root(), REPORT_FILE)), { recursive: true });
     fs.writeFileSync(path.join(root(), REPORT_FILE), report);
     const v = verdict(findings, coverage);
-    const json =
-        JSON.stringify(
-            {
-                verdict: v.line,
-                state: v.state,
-                errors: v.errors,
-                warnings: v.warnings,
-                findings,
-                short: shortList(parts, expectedIds),
-            },
-            null,
-            2,
-        ) + '\n';
-    fs.writeFileSync(path.join(root(), REPORT_JSON), json);
+    const data = {
+        verdict: v.line,
+        state: v.state,
+        errors: v.errors,
+        warnings: v.warnings,
+        findings,
+        short: shortList(parts, expectedIds),
+    };
+    writeData(path.join(root(), REPORT_DATA), data);
     // Every merge of a run kept beside the workers' files, numbered, so a run can be analysed pass by pass.
     fs.mkdirSync(dir, { recursive: true });
     const merges = fs.readdirSync(dir).filter((f) => MERGE_FILE.test(f)).length;
-    fs.writeFileSync(path.join(dir, `merge-${merges + 1}.json`), json);
+    writeData(path.join(dir, `merge-${merges + 1}.yaml`), data);
     return report;
 }
 

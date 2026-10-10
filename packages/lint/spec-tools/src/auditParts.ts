@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import type * as ts from 'typescript';
 
+import { readData, toYaml, writeData } from './data';
 import { EVIDENCE_FILE, PARTS_DIR, UNITS_FILE } from './files';
 import { root } from './repo';
 import { evidenceAt, rootsOf } from './steward/steward';
@@ -13,7 +14,7 @@ const typescript = (): typeof ts => (loaded ??= createRequire(import.meta.url)('
 
 /**
  * The evidence each audit worker judges, assembled here before the audit starts from spec-steward's evidence model
- * (`spec-evidence.json`, which `spec-tools steward evidence --json` writes): one file per capability under `audit-parts/`
+ * (`.spec-audit/evidence.yaml`, written from `spec-tools steward evidence`): one YAML file per capability under `.spec-audit/parts/`
  * carrying every requirement verbatim and, under each, the tests bound to it quoted at their real `file:line`, the
  * source lines where its own terms occur with comments stripped, and the other requirements that share its terms; the
  * code and documents that cite it are not evidence, and are left out. A capability larger than one reader holds is
@@ -40,7 +41,7 @@ export const MAX_CANDIDATE_FILES = 8;
 export const MAX_CANDIDATE_LINES_PER_FILE = 3;
 export const MAX_RELATED = 8;
 
-/** spec-steward's `spec-evidence.json`, version 1 — the interface; the package's modules are never imported. */
+/** spec-steward's evidence model, version 1 — the interface; the package's modules are never imported. */
 export type EvidenceModel = {
     readonly version: 1;
     readonly root: string;
@@ -97,18 +98,18 @@ export type Requirement = {
     readonly related: readonly { id: string; shared: readonly string[] }[];
 };
 
-/** spec-steward's evidence model of the repository at `cwd`, written to its root for the scope and the focused check. */
+/** spec-steward's evidence model of the repository at `cwd`, written for the scope and the focused check. */
 export function writeEvidence(cwd: string): void {
-    fs.writeFileSync(path.join(cwd, EVIDENCE_FILE), JSON.stringify(evidenceAt(rootsOf({}, cwd)[0]!)) + '\n');
+    writeData(path.join(cwd, EVIDENCE_FILE), evidenceAt(rootsOf({}, cwd)[0]!));
 }
 
 /** The evidence model at a path; a missing file is the operator's to fix — the scope never guesses its evidence. */
 export function loadEvidence(file = path.join(root(), EVIDENCE_FILE)): EvidenceModel {
     if (!fs.existsSync(file))
         throw new Error(
-            `${EVIDENCE_FILE} is missing — \`spec-tools scope\` writes it with \`spec-tools steward evidence --json\``,
+            `${EVIDENCE_FILE} is missing — \`spec-tools scope\` writes it from spec-steward's evidence model`,
         );
-    const model = JSON.parse(fs.readFileSync(file, 'utf8')) as EvidenceModel;
+    const model = readData<EvidenceModel>(file);
     if (model.version !== 1 || !Array.isArray(model.requirements))
         throw new Error(`${EVIDENCE_FILE} is not spec-steward's evidence model, version 1`);
     return model;
@@ -396,11 +397,6 @@ export function excerpt(file: string, code: string, line: number): Excerpt {
     return { startLine: start, text: numbered(lines.slice(start - 1, end), start), cut: false };
 }
 
-const fence = (file: string, e: Excerpt) => {
-    const lang = /\.(ts|tsx|mts|cts)$/.test(file) ? 'ts' : /\.ya?ml$/.test(file) ? 'yaml' : '';
-    return ['```' + lang, e.text, '```'].join('\n');
-};
-
 /** What every requirement's evidence is rendered from: the corpus, the distinctive terms and the sources. */
 export type Context = {
     readonly all: readonly Requirement[];
@@ -424,8 +420,42 @@ export function contextOf(all: readonly Requirement[], read: Reader = sourceRead
     return { all, byId: new Map(all.map((r) => [idOf(r), r])), distinctive: distinctiveTerms(all), read, excerptAt };
 }
 
-const gapNote = (r: Requirement) =>
-    r.gaps.length ? ` — records a known gap (${r.gaps.map((g) => g.tracker ?? 'no tracker').join(', ')})` : '';
+/** A test bound to a requirement, quoted once with every anchor it binds. */
+export type BoundTest = {
+    readonly location: string;
+    readonly title?: string;
+    readonly binds: readonly string[];
+    /** Set when the excerpt is a window or an outline: read the file at these lines before judging. */
+    readonly window?: string;
+    /** Set when the same excerpt is already quoted under another requirement of this file. */
+    readonly sameAs?: string;
+    readonly code?: string;
+};
+
+/** One requirement's evidence, as its reader is shown it. */
+export type RequirementEvidence = {
+    readonly id: string;
+    readonly location: string;
+    /** Set on an ⚠️ Advisory requirement: a finding against it is WARN or lower. */
+    readonly advisory?: true;
+    readonly knownGaps?: readonly string[];
+    readonly block: string;
+    readonly boundTests: readonly BoundTest[];
+    readonly terms: readonly { readonly term: string; readonly common?: true }[];
+    readonly termsNote?: string;
+    readonly occurrences: readonly {
+        readonly file: string;
+        readonly shares: readonly string[];
+        readonly hits: readonly { readonly location: string; readonly text: string }[];
+    }[];
+    /** Judge each for conflict and duplication. */
+    readonly related?: readonly {
+        readonly id: string;
+        readonly shared: readonly string[];
+        readonly statement?: string;
+        readonly block?: string;
+    }[];
+};
 
 /**
  * One requirement's evidence, as its reader is shown it: its block; the tests bound to it, each excerpt once with the
@@ -437,17 +467,7 @@ export function renderRequirement(
     ctx: Context,
     relatedInFull = false,
     quoted?: Map<string, string>,
-): string[] {
-    const out: string[] = [
-        '',
-        '---',
-        '',
-        `\`${idOf(r)}\` — \`${r.file}:${r.line}\`${r.advisory ? ' — ⚠️ Advisory: a finding against it is at most WARN' : ''}${gapNote(r)}`,
-        '',
-        r.block,
-        '',
-        '### Bound tests',
-    ];
+): RequirementEvidence {
     // One excerpt per enclosing test (or window), with every binding inside it: a test quoted within the suite
     // excerpt that holds it is not quoted again.
     type Quoted = { file: string; line: number; e: Excerpt; binds: string[]; title: string | null };
@@ -470,83 +490,101 @@ export function renderRequirement(
         quotedHere.push({ file: b.file, line: b.line, e, binds: [bind], title: b.title });
     }
     quotedHere.sort((a, b) => a.file.localeCompare(b.file) || a.e.startLine - b.e.startLine);
-    if (quotedHere.length === 0) out.push('', 'No test, type assertion, lint entry or check binds it.');
-    for (const { file, line, e, binds, title } of quotedHere) {
+    const boundTests: BoundTest[] = quotedHere.map(({ file, line, e, binds, title }) => {
         const key = `${file}:${e.startLine}:${e.text}`;
         const [from, to] = span(e);
-        const heading = `\`${file}:${line}\`${title ? ` — \`${title.replace(/`/g, "'")}\`` : ''} — binds ${binds.join(', ')}${e.cut ? ` — window, lines ${from}–${to}` : ''}`;
+        const head = {
+            location: `${file}:${line}`,
+            ...(title ? { title } : {}),
+            binds,
+            ...(e.cut ? { window: `lines ${from}–${to}` } : {}),
+        };
         // The same test bound by several requirements of one capability is quoted once.
         const first = quoted?.get(key);
-        if (first) {
-            out.push('', `${heading} — the same excerpt as quoted under \`${first}\` above`);
-            continue;
-        }
+        if (first) return { ...head, sameAs: first };
         quoted?.set(key, idOf(r));
-        out.push('', heading, '', fence(file, e));
-    }
-    out.push('', '### Where its terms occur');
-    if (r.terms.length === 0) {
-        out.push(
-            '',
-            'The requirement names no term. Decide first whether it describes code behaviour at all — a process or documentation rule has nothing to implement; only if it does, search by hand.',
-        );
-    } else {
-        out.push(
-            '',
-            `Terms: ${r.terms.map((t) => `\`${t.term}\`${ctx.distinctive.has(t.term) ? '' : ' (common)'}`).join(', ')}`,
-        );
-        const found = occurrences(r.terms, ctx.distinctive, ctx.read);
-        if (found.length === 0) out.push('', 'None of them occurs in the sources, comments stripped.');
-        for (const c of found) {
-            out.push('', `- \`${c.file}\` shares ${c.terms.map((t) => `\`${t}\``).join(', ')}`);
-            for (const h of c.hits) out.push(`  - \`${h.file}:${h.line}\` — \`${h.text.replace(/`/g, "'")}\``);
-        }
-    }
-    const rel = r.related.flatMap((x) => {
-        const other = ctx.byId.get(x.id);
-        return other ? [{ other, shared: x.shared }] : [];
+        return { ...head, code: e.text };
     });
-    if (rel.length > 0) {
-        out.push('', '### Related requirements — judge for conflict and duplication');
-        for (const { other, shared } of rel.slice(0, MAX_RELATED)) {
-            const terms = shared.length ? ` (${shared.map((t) => `\`${t}\``).join(', ')})` : ' (similar wording)';
-            if (relatedInFull) out.push('', `#### \`${idOf(other)}\`${terms}`, '', other.block);
-            else
-                out.push(
-                    `- \`${idOf(other)}\`${terms} — ${other.statement.slice(0, 240)}${other.statement.length > 240 ? '…' : ''}`,
-                );
-        }
-    }
-    return out;
+    const hits = r.terms.length ? occurrences(r.terms, ctx.distinctive, ctx.read) : [];
+    const termsNote =
+        r.terms.length === 0
+            ? 'The requirement names no term. Decide first if it describes code behaviour at all. A process rule or a documentation rule has nothing to implement. Only if it does, search by hand.'
+            : hits.length === 0
+              ? 'None of the terms occurs in the sources, comments stripped.'
+              : undefined;
+    const related = r.related
+        .flatMap((x) => {
+            const other = ctx.byId.get(x.id);
+            return other ? [{ other, shared: x.shared }] : [];
+        })
+        .slice(0, MAX_RELATED)
+        .map(({ other, shared }) =>
+            relatedInFull
+                ? { id: idOf(other), shared, block: other.block }
+                : {
+                      id: idOf(other),
+                      shared,
+                      statement: `${other.statement.slice(0, 240)}${other.statement.length > 240 ? '…' : ''}`,
+                  },
+        );
+    return {
+        id: idOf(r),
+        location: `${r.file}:${r.line}`,
+        ...(r.advisory ? { advisory: true as const } : {}),
+        ...(r.gaps.length ? { knownGaps: r.gaps.map((g) => g.tracker ?? 'no tracker') } : {}),
+        block: r.block,
+        boundTests,
+        terms: r.terms.map((t) =>
+            ctx.distinctive.has(t.term) ? { term: t.term } : { term: t.term, common: true as const },
+        ),
+        ...(termsNote ? { termsNote } : {}),
+        occurrences: hits.map((c) => ({
+            file: c.file,
+            shares: c.terms,
+            hits: c.hits.map((h) => ({ location: `${h.file}:${h.line}`, text: h.text })),
+        })),
+        ...(related.length ? { related } : {}),
+    };
 }
 
+/** One capability's evidence file, as data. */
+export type CapabilityEvidence = {
+    readonly capability: string;
+    readonly source: string;
+    readonly note: string;
+    readonly sliced?: string;
+    readonly purpose?: string;
+    readonly requirements: readonly RequirementEvidence[];
+};
+
 /** A capability's evidence file opens with this: what it is, and the capability's Purpose. */
-function capabilityHeader(capability: string, ctx: Context, sliced: boolean): string[] {
+function capabilityHeader(capability: string, ctx: Context, sliced: boolean): Omit<CapabilityEvidence, 'requirements'> {
     const file = ctx.all.find((r) => r.capability === capability)?.file ?? `openspec/specs/${capability}/spec.md`;
     const specLines = ctx.read(file) ?? [];
     const purposeStart = specLines.findIndex((l) => l.startsWith('## Purpose'));
     const purposeEnd = specLines.findIndex((l, i) => i > purposeStart && l.startsWith('## '));
     const purpose =
-        purposeStart === -1 ? [] : specLines.slice(purposeStart + 1, purposeEnd === -1 ? undefined : purposeEnd);
-    return [
-        `# \`${capability}\` — evidence for the specification audit`,
-        '',
-        `Generated by \`spec-tools scope\` from \`${file}\` and spec-steward's evidence model; line numbers are the files' own. Every requirement is here verbatim with the tests bound to it, where its own terms occur in the sources with comments stripped, and its related requirements — so judge from this file and open a source only where an excerpt is marked as a window or a term occurrence must be confirmed.`,
+        purposeStart === -1
+            ? ''
+            : specLines
+                  .slice(purposeStart + 1, purposeEnd === -1 ? undefined : purposeEnd)
+                  .join('\n')
+                  .trim();
+    return {
+        capability,
+        source: file,
+        note: `Generated by spec-tools scope from ${file} and spec-steward's evidence model. Line numbers are the files' own. Every requirement is here as written, with the tests bound to it, the source lines where its own terms occur (comments stripped), and its related requirements. Judge from this file. Open a source only where an excerpt has a window, or where you must confirm a term occurrence.`,
         ...(sliced
-            ? [
-                  '',
-                  'This capability is larger than one reader holds, so its evidence is cut between its requirements: this file carries some of them, and its other files the rest.',
-              ]
-            : []),
-        '',
-        ...(purpose.length ? ['## Purpose', ...purpose] : []),
-    ];
+            ? {
+                  sliced: 'This capability is larger than one reader holds. Its evidence is cut between its requirements: this file carries some of them, and its other files carry the rest.',
+              }
+            : {}),
+        ...(purpose ? { purpose } : {}),
+    };
 }
 
 /** One evidence file's text and the requirements it carries. */
 export type EvidenceSlice = { readonly requirements: readonly Requirement[]; readonly text: string };
-
-const textOf = (lines: readonly string[]) => lines.join('\n') + '\n';
 
 /**
  * A capability's evidence, as the files a reader holds in full: the whole capability when it fits in `PART_BYTES`,
@@ -557,8 +595,10 @@ const textOf = (lines: readonly string[]) => lines.join('\n') + '\n';
 export function renderCapability(capability: string, ctx: Context): EvidenceSlice[] {
     const own = ctx.all.filter((r) => r.capability === capability);
     const cut = (sliced: boolean): EvidenceSlice[] => {
+        const header = capabilityHeader(capability, ctx, sliced);
+        const textOf = (requirements: readonly RequirementEvidence[]) => toYaml({ ...header, requirements });
         const slices: EvidenceSlice[] = [];
-        let lines = capabilityHeader(capability, ctx, sliced);
+        let blocks: RequirementEvidence[] = [];
         let taken: Requirement[] = [];
         let quoted = new Map<string, string>();
         for (const r of own) {
@@ -566,18 +606,18 @@ export function renderCapability(capability: string, ctx: Context): EvidenceSlic
             // would quote it, and re-rendered for a fresh file.
             const trial = new Map(quoted);
             const block = renderRequirement(r, ctx, false, trial);
-            if (taken.length && Buffer.byteLength(textOf([...lines, ...block])) > PART_BYTES) {
-                slices.push({ requirements: taken, text: textOf(lines) });
+            if (taken.length && Buffer.byteLength(textOf([...blocks, block])) > PART_BYTES) {
+                slices.push({ requirements: taken, text: textOf(blocks) });
                 quoted = new Map();
-                lines = [...capabilityHeader(capability, ctx, sliced), ...renderRequirement(r, ctx, false, quoted)];
+                blocks = [renderRequirement(r, ctx, false, quoted)];
                 taken = [r];
             } else {
-                lines.push(...block);
+                blocks.push(block);
                 taken.push(r);
                 quoted = trial;
             }
         }
-        slices.push({ requirements: taken, text: textOf(lines) });
+        slices.push({ requirements: taken, text: textOf(blocks) });
         return slices;
     };
     const whole = cut(false);
@@ -590,18 +630,16 @@ export function renderCapability(capability: string, ctx: Context): EvidenceSlic
  * is handed back — the file `spec-tools changed` writes and the audit's focused mode judges.
  */
 export function renderChanged(touched: readonly Requirement[], ctx: Context, base = 'HEAD'): string {
-    const out = [
-        '# Changed requirements — evidence for the focused check',
-        '',
-        touched.length
-            ? `Generated by \`spec-tools changed\` from the diff against ${base}: ${touched.length} requirement(s) in scope — the ones the diff changed or a touched delta names, the ones whose bound tests or whose own terms the changed files contain, the ones the changed code cites, and the requirements related to these. Judge each against its bound tests, where its terms occur, and the requirements related to it, quoted below.`
-            : `Generated by \`spec-tools changed\`: nothing in scope against ${base}.`,
-    ];
-    for (const r of touched) out.push(...renderRequirement(r, ctx, true));
-    return out.join('\n') + '\n';
+    return toYaml({
+        base,
+        note: touched.length
+            ? `Generated by spec-tools changed from the diff against ${base}: ${touched.length} requirement(s) in scope. These are the requirements the diff changed or a touched delta names, the requirements whose bound tests or own terms the changed files contain, the requirements the changed code cites, and the requirements related to these. Judge each against its bound tests, where its terms occur, and its related requirements, quoted in full.`
+            : `Generated by spec-tools changed: nothing in scope against ${base}.`,
+        requirements: touched.map((r) => renderRequirement(r, ctx, true)),
+    });
 }
 
-/** What `audit-parts/units.json` holds per unit in scope. */
+/** What `.spec-audit/parts/units.yaml` holds per unit in scope. */
 export type UnitEntry = { advisory?: true };
 
 /** One evidence file the partition places: a whole capability, or a slice of one, with its weight. */
@@ -614,8 +652,8 @@ export type EvidenceFile = {
 };
 
 /**
- * Writes each capability's evidence files and `units.json`; returns each file with its weight — `<capability>.md` for a
- * capability whole, `<capability>.<k>.md` for its k-th slice.
+ * Writes each capability's evidence files and `units.yaml`; returns each file with its weight — `<capability>.yaml` for
+ * a capability whole, `<capability>.<k>.yaml` for its k-th slice.
  */
 export function writeParts(
     capabilities: readonly string[],
@@ -623,11 +661,11 @@ export function writeParts(
 ): EvidenceFile[] {
     const ctx = contextOf(all);
     const dir = path.join(root(), PARTS_DIR);
-    // Regenerating the evidence replaces the evidence only: `findings/` and `steward/` hold the audits' output, and a
-    // scope regenerated after an audit must not erase what the audit found.
+    // Regenerating the evidence replaces the evidence only: `findings/` holds the audit's output, and a scope
+    // regenerated after an audit must not erase what the audit found.
     if (fs.existsSync(dir)) {
         for (const entry of fs.readdirSync(dir)) {
-            if (entry !== 'findings' && entry !== 'steward') fs.rmSync(path.join(dir, entry), { recursive: true });
+            if (entry !== 'findings') fs.rmSync(path.join(dir, entry), { recursive: true });
         }
     }
     fs.mkdirSync(path.join(dir, 'findings'), { recursive: true });
@@ -636,11 +674,11 @@ export function writeParts(
     for (const r of all) {
         if (capabilities.includes(r.capability)) units[idOf(r)] = r.advisory ? { advisory: true } : {};
     }
-    fs.writeFileSync(path.join(root(), UNITS_FILE), JSON.stringify(units, null, 1) + '\n');
+    writeData(path.join(root(), UNITS_FILE), units);
     return capabilities.flatMap((capability) => {
         const slices = renderCapability(capability, ctx);
         return slices.map(({ requirements, text }, k) => {
-            const file = `${PARTS_DIR}/${capability}${slices.length > 1 ? `.${k + 1}` : ''}.md`;
+            const file = `${PARTS_DIR}/${capability}${slices.length > 1 ? `.${k + 1}` : ''}.yaml`;
             fs.mkdirSync(path.dirname(path.join(root(), file)), { recursive: true });
             fs.writeFileSync(path.join(root(), file), text);
             return {

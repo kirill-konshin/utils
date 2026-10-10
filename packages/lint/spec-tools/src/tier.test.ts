@@ -13,7 +13,7 @@ const unreachable = (): OpenChangeClass => {
 };
 
 const haiku = { model: 'claude-haiku-5-5', effort: 'high' };
-const sonnet = { model: 'claude-sonnet-5-5', effort: 'medium' };
+const sonnet = { model: 'claude-sonnet-5-5', effort: 'high' };
 /** Every run reads on the cheap model; `judge` is the verifier's. Two workers at a time unless raised. */
 const models = (judge: typeof haiku) => ({
     AUDIT_MODEL: haiku.model,

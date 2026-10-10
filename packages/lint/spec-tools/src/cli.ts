@@ -16,12 +16,15 @@
  *   spec-tools audit [--here] [--dry] [--audit <a>] [--context <file>]          the whole audit locally, as CI runs it
  *
  * `--audit` names the audit: `spec-verify` (code conformance, the default) or `spec-steward` (corpus quality, whose
- * merge renders the review file `spec-review.md`). `--context <file>` puts the facts and owner decisions the file holds
+ * merge renders the YAML review file `.spec-audit/spec-review.yaml`). `--context <file>` puts the facts and owner decisions the file holds
  * into every worker's and verifier's brief.
- *   spec-tools run <skill> [--verdict <file>] [--advisory]   one skill-driven review, headless, and its verdict gate
- *   spec-tools verdict <file> [--log <file>] [--advisory]    the verdict gate of a review's report
+ *   spec-tools run <skill> [--verdict <report.yaml>] [--advisory]   one skill-driven review, headless, its report
+ *                                               checked and its verdict gate
+ *   spec-tools verdict <file> [--advisory]      the verdict gate of a report (spec-verify.yaml or a review report)
  *   spec-tools comment <name>=<report.md>...    the merge-request comment of the pipeline's reviews
  *   spec-tools html <file.md>...                Markdown reports as self-contained HTML
+ *
+ * Every output lands under `.spec-audit/`: intermediate files as YAML, reports for people as Markdown.
  *
  * Exit: 0 clean; 1 a failed gate; 2 a usage error; `report --gate` and `verdict` as their headers say.
  */
@@ -97,18 +100,17 @@ async function main(): Promise<number> {
             if (!skill || skill.startsWith('-')) break;
             const { jobLog } = await import('./ci');
             const log = jobLog();
-            const code = await (await import('./run')).run(skill, log);
             const report = flag('--verdict');
+            const code = await (await import('./run')).run(skill, log, report);
             if (code !== 0 || !report) return code;
             const advisory = argv.includes('--advisory') || process.env.AUDIT_GATING === 'advisory';
-            return (await import('./verdict')).gate(report, log, advisory);
+            return (await import('./verdict')).gate(report, advisory);
         }
         case 'verdict': {
             const report = argv[0];
             if (!report || report.startsWith('-')) break;
-            const { jobLog } = await import('./ci');
             const advisory = argv.includes('--advisory') || process.env.AUDIT_GATING === 'advisory';
-            return (await import('./verdict')).gate(report, flag('--log') ?? jobLog(), advisory);
+            return (await import('./verdict')).gate(report, advisory);
         }
         case 'comment':
             process.stdout.write((await import('./comment')).comment(argv));

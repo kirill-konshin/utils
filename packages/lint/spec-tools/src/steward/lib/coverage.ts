@@ -1,12 +1,30 @@
 /**
  * The coverage report: for every requirement and scenario, what binds it, which pointers name it, and its status —
- * from bindings and markers only; a code or document citation never changes a status. Markdown, safe to publish as
- * MDX. It fails nothing.
+ * from bindings and markers only; a code or document citation never changes a status. As data (`.spec-audit/coverage.yaml`)
+ * and as Markdown for people, safe to publish as MDX. It fails nothing.
  */
 import type { Citation } from './citations';
 import { boundAnchors } from './citations';
 import type { Corpus, Scenario } from './corpus';
 import { KNOWN_GAP, RETIRED } from './corpus';
+
+type CoverageLine = {
+    readonly location: string;
+    readonly status: string;
+    readonly boundBy: readonly string[];
+    readonly pointers: readonly string[];
+};
+export type CoverageRequirement = CoverageLine & {
+    readonly id: string;
+    readonly scenarios: (CoverageLine & { readonly slug: string })[];
+};
+/** The coverage as data: totals, every requirement and scenario with its status, the known gaps, the retired markers. */
+export type CoverageData = {
+    totals: Record<string, number>;
+    capabilities: { readonly capability: string; readonly requirements: CoverageRequirement[] }[];
+    gaps: { readonly tracker: string; readonly requirement: string; readonly gap: string }[];
+    retired: { readonly location: string; readonly text: string }[];
+};
 
 const MDX_ESCAPES: Record<string, string> = { '<': '&lt;', '>': '&gt;', '{': '&#123;', '}': '&#125;', '|': '\\|' };
 /** Text safe in an MDX table cell: angle brackets and braces would read as JSX, a pipe as a column. */
@@ -17,7 +35,7 @@ const show = (sites: Citation[]) => (sites.length ? sites.map((s) => `\`${s.file
 export function coverageReport(
     corpus: Corpus,
     citations: Citation[],
-): { markdown: string; totals: Record<string, number> } {
+): { markdown: string; totals: Record<string, number>; data: CoverageData } {
     const bound = boundAnchors(citations);
 
     const byAnchor: Map<string, Citation[]> = new Map();
@@ -39,7 +57,11 @@ export function coverageReport(
     const body = [];
     const gapRows = [];
     const retiredRows = [];
+    const data: CoverageData = { totals: {}, capabilities: [], gaps: [], retired: [] };
+    const where = (sites: Citation[]) => sites.map((s) => `${s.file}:${s.line}`);
     for (const cap of [...corpus.capabilities].sort((a, b) => a.capability.localeCompare(b.capability))) {
+        const capData: CoverageData['capabilities'][number] = { capability: cap.capability, requirements: [] };
+        data.capabilities.push(capData);
         body.push(
             `## ${cap.capability}`,
             '',
@@ -63,6 +85,15 @@ export function coverageReport(
                     ? 'tested'
                     : 'no test';
             const own = sites(reqKey);
+            const reqData: CoverageRequirement = {
+                id: r.id,
+                location: `${r.file}:${r.line}`,
+                status,
+                boundBy: where(own.filter((c) => c.binding)),
+                pointers: where(own.filter((c) => !c.binding)),
+                scenarios: [],
+            };
+            capData.requirements.push(reqData);
             body.push(
                 `| [${mdx(r.name)}](${r.file}#${r.slug}) | \`:${r.line}\` | ${show(own.filter((c) => c.binding))} | ${show(own.filter((c) => !c.binding))} | ${status} |`,
             );
@@ -79,16 +110,26 @@ export function coverageReport(
                       : gap
                         ? `known gap (${mdx(gap.tracker)})`
                         : 'no test';
+                reqData.scenarios.push({
+                    slug: s.slug,
+                    location: `${r.file}:${s.line}`,
+                    status: sStatus,
+                    boundBy: where(mine.filter((c) => c.binding)),
+                    pointers: where(mine.filter((c) => !c.binding)),
+                });
                 body.push(
                     `| › [${mdx(s.name)}](${key}) | \`:${s.line}\` | ${show(mine.filter((c) => c.binding))} | ${show(mine.filter((c) => !c.binding))} | ${sStatus} |`,
                 );
             }
-            for (const g of r.gaps)
+            for (const g of r.gaps) {
                 gapRows.push(`| ${mdx(g.tracker)} | [${mdx(r.id)}](${r.file}#${r.slug}) | ${mdx(g.text)} |`);
+                data.gaps.push({ tracker: g.tracker, requirement: r.id, gap: g.text });
+            }
             for (const m of r.markers)
                 if (m.label === RETIRED || (m.label === KNOWN_GAP && !m.tracker)) {
                     totals.retired++;
                     retiredRows.push(`- \`${r.file}:${m.line}\` ${mdx(m.text)}`);
+                    data.retired.push({ location: `${r.file}:${m.line}`, text: m.text });
                 }
         }
         body.push('');
@@ -111,5 +152,6 @@ export function coverageReport(
         ...(retiredRows.length ? retiredRows : ['_None._']),
         '',
     ];
-    return { markdown: [...header, ...body, ...trailer].join('\n'), totals };
+    data.totals = totals;
+    return { markdown: [...header, ...body, ...trailer].join('\n'), totals, data };
 }

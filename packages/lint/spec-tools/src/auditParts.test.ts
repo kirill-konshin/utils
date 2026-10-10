@@ -17,6 +17,7 @@ import {
     WHOLE_FILE_LINES,
     WINDOW_LINES,
 } from './auditParts';
+import { toYaml } from './data';
 
 const source = [
     "import x from 'y';",
@@ -248,21 +249,33 @@ describe('occurrences', () => {
 describe('renderRequirement', () => {
     test('carries the requirement verbatim, its bound tests quoted, where its terms occur, and its related requirements, never what cites it', () => {
         const all = model();
-        const text = renderRequirement(all[0]!, contextOf(all, reader(sources))).join('\n');
-        expect(text).toContain('`x#requirement-attach` — `openspec/specs/x/spec.md:9` — ⚠️ Advisory');
-        expect(text).toContain(all[0]!.block);
+        const e = renderRequirement(all[0]!, contextOf(all, reader(sources)));
+        expect(e).toMatchObject({ id: 'x#requirement-attach', location: 'openspec/specs/x/spec.md:9', advisory: true });
+        expect(e.block).toBe(all[0]!.block);
         // The bound test, quoted whole with the files' own line numbers and the anchor it binds.
-        expect(text).toContain(
-            '### Bound tests\n\n`apps/x/src/a.test.ts:3` — `attaches` — binds #scenario-attach (:3)',
-        );
-        expect(text).toContain("   4│ it('attaches', () => {");
+        expect(e.boundTests[0]).toMatchObject({
+            location: 'apps/x/src/a.test.ts:3',
+            title: 'attaches',
+            binds: ['#scenario-attach (:3)'],
+        });
+        expect(e.boundTests[0]!.code).toContain("   4│ it('attaches', () => {");
         // Where its terms occur: the source lines, comment-stripped by spec-steward, ranked.
-        expect(text).toContain('- `apps/x/src/b.ts` shares `selectMethod`');
-        expect(text).toContain('  - `apps/x/src/a.ts:2` — `return selectMethod();`');
+        expect(e.occurrences).toContainEqual(
+            expect.objectContaining({ file: 'apps/x/src/b.ts', shares: ['selectMethod'] }),
+        );
+        expect(e.occurrences.flatMap((o) => o.hits)).toContainEqual({
+            location: 'apps/x/src/a.ts:2',
+            text: 'return selectMethod();',
+        });
         // What cites it is not evidence, and is left out.
-        expect(text).not.toContain('`apps/x/src/a.ts:1` → #requirement-attach');
+        const text = toYaml(e);
+        expect(text).not.toContain('apps/x/src/a.ts:1');
         expect(text).not.toContain('   1│ export function attach()');
-        expect(text).toContain('- `y#requirement-other` (`selectMethod`) — The server SHALL answer `selectMethod`.');
+        expect(e.related).toContainEqual({
+            id: 'y#requirement-other',
+            shared: ['selectMethod'],
+            statement: 'The server SHALL answer `selectMethod`.',
+        });
     });
 
     test('quotes a bound test inside a bound suite once, under the suite, naming both bindings', () => {
@@ -281,9 +294,9 @@ describe('renderRequirement', () => {
                 }),
             ],
         });
-        const text = renderRequirement(r!, contextOf([r!], reader({ 's.test.ts': suite }))).join('\n');
-        expect(text.match(/```ts/g)).toHaveLength(1);
-        expect(text).toContain('binds #requirement-attach (:1), #scenario-one (:2)');
+        const e = renderRequirement(r!, contextOf([r!], reader({ 's.test.ts': suite })));
+        expect(e.boundTests).toHaveLength(1);
+        expect(e.boundTests[0]!.binds).toEqual(['#requirement-attach (:1)', '#scenario-one (:2)']);
     });
 
     test('says so when nothing binds it and when it names no term', () => {
@@ -292,10 +305,10 @@ describe('renderRequirement', () => {
             root: 'x',
             requirements: [modelRequirement({ bindings: [], terms: [], pointers: [], related: [] })],
         });
-        const text = renderRequirement(bare!, contextOf([bare!], reader(sources))).join('\n');
-        expect(text).toContain('No test, type assertion, lint entry or check binds it.');
-        expect(text).toContain('The requirement names no term.');
-        expect(text).not.toContain('### Pointers');
+        const e = renderRequirement(bare!, contextOf([bare!], reader(sources)));
+        expect(e.boundTests).toEqual([]);
+        expect(e.termsNote).toContain('The requirement names no term.');
+        expect(e.related).toBeUndefined();
     });
 });
 

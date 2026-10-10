@@ -1,23 +1,24 @@
 /**
  * The specification audit's fan-out, deterministic: headless `claude --print` workers started from here — no
- * orchestrating model decides when or whether the next worker starts. Each worker loads the `spec-verify` skill for its
- * contract — the five checks, the grading, the findings file — and writes its own findings file; `spec-tools report`
- * merges after every pass. CI runs the passes in one job or the reading in parallel jobs and the rest in a judge job —
- * the hand-off is files either way — and `spec-tools audit` runs them locally, in this order:
+ * orchestrating model decides when or whether the next worker starts. Each reader loads the `spec-verify` skill and its
+ * judging rules (`skills/spec-tools/references/rules/`), and writes its own findings file; `spec-tools report` merges
+ * after every pass. CI runs the passes in one job or the reading in parallel jobs and the rest in a judge job — the
+ * hand-off is files either way — and `spec-tools audit` runs them locally, in this order:
  *
- *   1. reading      One worker per part of `audit-scope.json`, judging every check over every requirement of its part;
- *                   the scope cut one part per slot of every reading job, so the reading is one round. In a parallel
- *                   job (`ci.ts` `shard`) only the job's share: part p goes to job ((p - 1) mod total) + 1, so each job
- *                   works its share out from the scope alone. Then the merge.
- *   2. complete     One worker per part the merge left short — the `short` list of `spec-verify.json` — over exactly
- *                   those items, writing the part's next reader file. Nothing already judged is judged twice.
- *   3. verify       One verifier per ERROR the merge left standing, over that finding alone, confirming it only when
- *                   the divergence is real and critical and lowering it to WARN with its reason otherwise, on
- *                   AUDIT_MODEL_VERIFY. Then the last merge, whose verdict gates.
+ *   1. reading      One worker per part of `.spec-audit/scope.yaml`, judging every check over every requirement of its
+ *                   part; the scope cut one part per slot of every reading job, so the reading is one round. In a
+ *                   parallel job (`ci.ts` `shard`) only the job's share: part p goes to job ((p - 1) mod total) + 1, so
+ *                   each job works its share out from the scope alone. Then the merge.
+ *   2. complete     One worker per part the merge left short — the `short` list of `.spec-audit/spec-verify.yaml` — over
+ *                   exactly those items, writing the part's next reader file. Nothing already judged is judged twice.
+ *   3. verify       One judge per ERROR the merge left standing, over that finding alone, confirming it or lowering it to
+ *                   WARN, with its confidence, on AUDIT_MODEL_VERIFY. Then the last merge, whose verdict gates.
  *
- * A worker writes its findings file and nothing else. Every pass compares the tree it leaves with the tree it found —
- * each changed or untracked file with its content's hash — and fails, exit 1, naming the paths, when anything changed
- * outside the audit's own outputs (`audit-parts/`, `spec-verify.*`, CI's `job-log-*`).
+ * A worker writes its findings file and nothing else. The tool checks that file against its schema as soon as the
+ * worker stops (`data.ts`), and sends the errors back to the same worker session to correct, at most `CORRECTIONS`
+ * times. Every pass compares the tree it leaves with the tree it found — each changed or untracked file with its
+ * content's hash — and fails, exit 1, naming the paths, when anything changed outside the audit's own folder
+ * (`.spec-audit/`).
  *
  * Models, efforts and gating are the run class's (`tier.ts`); how many parts there are is the evidence's
  * (`auditScope.ts`), and how many run at once is memory's, below.
@@ -27,10 +28,23 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { Finding, ShortPart } from './auditReport';
-import type { Part, ScopeJson } from './auditScope';
+import type { Part, ScopeData } from './auditScope';
 import { shard } from './ci';
-import { AUDIT_FILES, type AuditFiles, type AuditName, findingsFile } from './files';
+import {
+    checkFile,
+    JUDGE_VERDICT,
+    readData,
+    READER_FINDINGS,
+    type Schema,
+    STEWARD_FINDINGS,
+    STEWARD_VERDICT,
+    toYaml,
+    tryReadData,
+    writeData,
+} from './data';
+import { AUDIT_DIR, AUDIT_FILES, type AuditFiles, type AuditName, findingsFile, verdictFile } from './files';
 import { git, root } from './repo';
+import { correction, KEY_STYLE, readRules, rulesText } from './rules';
 import { SKILLS_DIR } from './skillsDir';
 import * as steward from './stewardAudit';
 import { CHEAP_EFFORT, CHEAP_MODEL, EXPENSIVE_MODEL, workersFor } from './tier';
@@ -50,8 +64,10 @@ type Options = {
 export const TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Grep,Write,Edit';
 /** A corpus-quality worker reads and writes its findings file; it never edits one. */
 const STEWARD_TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Grep,Write';
-/** What a pass may leave behind besides nothing. */
-const OUTPUTS = /^(audit-parts\/|spec-verify\.|job-log-)/;
+/** What a pass may leave behind besides nothing: the audit's own folder. */
+const OUTPUTS = new RegExp(`^${AUDIT_DIR.replace('.', '\\.')}/`);
+/** How many times a file that fails its schema goes back to its worker before the worker counts as not run. */
+export const CORRECTIONS = 2;
 
 /** How many workers run at once: in a container `tier`'s workersFor its memory; elsewhere AUDIT_WORKERS, else all. */
 export function concurrency(env: NodeJS.ProcessEnv, memoryLimit = cgroupLimit()): number {
@@ -109,18 +125,15 @@ export function treeChanges(before: Map<string, string>, after: Map<string, stri
 }
 
 const TOOL_RULE =
-    'Tool rule: only Skill, Read, Glob, Grep, Write, Edit and the git commands — no ls/cat/find, no shell validation of your JSON; other commands are denied here and only cost a turn.';
+    'Tool rule: use only Skill, Read, Glob, Grep, Write, Edit and the git commands. Other commands are denied here and only cost a turn.';
 /** The shipped skill, two levels above this module in the source and in the build alike. */
 const SKILL = path.join(SKILLS_DIR, 'spec-verify/SKILL.md');
 /** Loading the skill: by name where the repository links it, else from the package — a job with no install links none. */
 const loadSkill = (repo: string) =>
-    `First, load the skill instructions: use the Skill tool with skill "spec-verify" (or Read ${path.relative(repo, SKILL)} if that fails) to get the checks, the grading contract, the findings-file contract and the tool rules. Follow them exactly.`;
+    `First, load the skill: use the Skill tool with skill "spec-verify" (or Read ${path.relative(repo, SKILL)} if that fails). ${readRules(repo, 'spec-verify')}`;
 
 /** The reading brief: one part, every check over every requirement of it. */
-export const brief = (
-    p: Part,
-    repo: string,
-): string => `You are a worker for the spec-verify audit skill in repo ${repo}.
+export const brief = (p: Part, repo: string): string => `You are a reader for the spec-verify audit in repo ${repo}.
 
 ${loadSkill(repo)}
 
@@ -129,11 +142,15 @@ Your assignment:
 - reader: 1
 - capabilities: ${p.capabilities.join(', ')}
 - findings file to write (Write tool, overwrite, nothing else): ${p.findings[0]}
-- evidence files to read in full: ${p.files.join(', ')}
-- requirementIds (your judged list must cover exactly these):
+- evidence files: ${p.files.join(', ')}
+- requirementIds (your judged list names exactly these):
 ${p.requirementIds.join('\n')}
 
-Judge checks 1–5 over every requirement, every bound test, every listed term occurrence and every listed related pair. Complete this assigned evidence: read any named source window before judging and list every requirement id in your judged list. An uncertain conclusion is a WARN finding, not sampled coverage; use \`sampled\` only if an assigned source remains genuinely unavailable after reading it. A test that proves less than its rule is an \`untested\` finding with check 5 still full — a coverage note names what you did not read, never what a test did not assert. ${TOOL_RULE} Write the findings file exactly at the path above, then return one line: the path and your counts per tier.
+Judge checks 1–5 over every requirement of the part. ${TOOL_RULE}
+
+${KEY_STYLE}
+
+Write the findings file at the path above. Then return one line: the path and your counts per tier.
 `;
 
 /**
@@ -144,7 +161,7 @@ Judge checks 1–5 over every requirement, every bound test, every listed term o
 export const briefComplete = (p: Part, short: ShortPart, reader: number, file: string, repo: string): string => {
     const ids = short.requirementIds.length ? short.requirementIds.join('\n') : '(none)';
     const checks = Object.entries(short.checks);
-    return `You are a completion worker for the spec-verify audit skill in repo ${repo}. The first pass over part ${p.part} was left short; judge exactly what it left, and nothing else — every other requirement and check of this part is already judged.
+    return `You are a completion reader for the spec-verify audit in repo ${repo}. The first pass over part ${p.part} did not finish. Judge only what it left. The rest of the part is already judged.
 
 ${loadSkill(repo)}
 
@@ -153,33 +170,47 @@ Your assignment:
 - reader: ${reader}
 - capabilities: ${p.capabilities.join(', ')}
 - findings file to write (Write tool, overwrite, nothing else): ${file}
-- evidence files (read the requirement blocks you judge in full, with their bound tests, term occurrences and related lists): ${p.files.join(', ')}
+- evidence files: ${p.files.join(', ')}
 - requirements the first pass did not judge — judge checks 1–5 over each:
 ${ids}
-- checks the first pass left short, with its own note — judge each in full over the requirements the note names, or over every requirement of the part when it names none:
+- checks the first pass left short, with its note — judge each over the requirements the note names, or over every requirement of the part when it names none:
 ${checks.length ? checks.map(([check, note]) => `  ${check}: ${note}`).join('\n') : '  (none)'}
 
-Your findings file has the usual shape. Its coverage object names exactly the checks this brief names — each "full" when you judged every item named for it, otherwise "sampled: <what was skipped>" — and its judged list names exactly the requirement ids you judged here. This completion pass must close the named shortfall: read any required source window and record uncertainty as a WARN finding, not sampled coverage. A shortfall that is really a judgment about a test — it covers less than its rule — is closed by writing that judgment as an \`untested\` finding and marking the check full. Use \`sampled\` only if an assigned source remains genuinely unavailable after reading it. ${TOOL_RULE} Write the findings file exactly at the path above, then return one line: the path and your counts per tier.
+The coverage map names only the checks this brief names. The judged list names only the requirement ids you judged here. ${TOOL_RULE}
+
+${KEY_STYLE}
+
+Write the findings file at the path above. Then return one line: the path and your counts per tier.
 `;
 };
 
-/** The verifier's brief: one finding, one question, no skill to load — the contract is here in full. */
+/** The judge's brief: one finding, one question, its rules inlined — the judge loads no skill. */
 export const briefVerify = (f: Finding, p: Part | undefined, file: string, repo: string): string => {
-    const { kind, where, detail, quotes } = f;
-    return `You are the verifier for ONE finding of the spec-verify audit in repo ${repo}. A worker graded it ERROR, and its quotes were found at their lines mechanically. Your job is to decide whether it should stop the build.
+    const { kind, where, detail, readerConfidence, quotes } = f;
+    return `You are the judge for ONE finding of the spec-verify audit in repo ${repo}. The reader graded it ERROR, and the tool found its quotes at their lines.
+
+These are your judging rules.
+
+${rulesText('common')}
+
+${rulesText('spec-verify')}
+
+${rulesText('spec-verify-judge')}
 
 The finding:
-${JSON.stringify({ kind, where, detail, quotes }, null, 2)}
+${toYaml({ kind, where, detail, readerConfidence, quotes })}
+Read, with the Read and Grep tools only: the requirement's block in the part's evidence files (${p?.files.join(', ') ?? `${AUDIT_DIR}/parts/`}), the quoted sources and the code near them. Other commands are denied and only cost a turn.
 
-Read, with the Read and Grep tools only: the requirement's block in the part's evidence files (${p?.files.join(', ') ?? 'audit-parts/'} — Grep the slug from "where"), both quoted sources at and around the quoted lines, and enough of the surrounding code to know what it does. Do not shell out (no ls/cat/find); other commands are denied and only cost a turn.
+Write this YAML to ${file} with the Write tool, and nothing else:
+verdict: "confirmed" or "warn"
+reason: |
+  for confirmed, the production effect; for warn, the statement that is not true
+scenario: |
+  only when confirmed: the production scenario in one sentence
+judgeConfidence: an integer from 0 to 100
 
-Confirm the ERROR only when ALL of these hold:
-1. The quotes are genuine and say what the finding claims.
-2. The requirement and the code genuinely diverge — not a vague requirement read narrowly, not an ambiguity the surrounding code resolves, not behaviour implemented elsewhere that the finding did not look at, and not a dependency's behaviour — a command-line flag, a library default — that the repository does not show.
-3. The divergence is critical: an obvious code defect — the code does something different from what the requirement mandates in a way a caller, a test or an operator would observe — or a statement that would steer an agent wrongly (a prompt, a tool description, a workflow rule the agents follow).
+${KEY_STYLE}
 
-Otherwise the finding is WARN. A citation or a comment is never evidence either way: judge the requirement and the code. Write exactly this JSON with the Write tool to ${file} and nothing else:
-{"verdict": "confirmed" | "warn", "reason": "<one sentence: for confirmed, the observable consequence; for warn, which of the three conditions fails and why>"}
 Then return one line: the path and the verdict.
 `;
 };
@@ -213,19 +244,27 @@ type Run = {
     readonly log: string;
     readonly dir: string;
     readonly tools: string;
+    /** A session to continue rather than start: a correction goes back to the worker that wrote the file. */
+    readonly resume?: string;
 };
 
-/** One thing the verification pass puts to a verifier: a label for the log, and its brief. */
+/** How one worker run ended, and the session to send a correction to. */
+type Ran = { readonly status: string; readonly session?: string };
+
+/** One thing the verification pass puts to a judge: a label for the log, and its brief. */
 type Target = { readonly label: string; readonly brief: (file: string, repo: string) => string };
 
-/** What differs between the audits the engine runs: their files, tools, default model, briefs and verification targets. */
+/** What differs between the audits the engine runs: their files, tools, default model, briefs, schemas and targets. */
 type Kind = {
     readonly files: AuditFiles;
     readonly tools: string;
+    readonly canEdit: boolean;
     readonly model: string;
     readonly effort: string;
     readonly brief: (p: Part, repo: string) => string;
     readonly briefComplete: (p: Part, short: ShortPart, reader: number, file: string, repo: string) => string;
+    readonly findingsSchema: Schema;
+    readonly verdictSchema: Schema;
     readonly targets: (data: never, partOf: (n: number) => Part | undefined) => Target[];
     readonly none: string;
 };
@@ -234,10 +273,13 @@ const KINDS: Record<AuditName, Kind> = {
     'spec-verify': {
         files: AUDIT_FILES['spec-verify'],
         tools: TOOLS,
+        canEdit: true,
         model: CHEAP_MODEL,
         effort: CHEAP_EFFORT,
         brief,
         briefComplete,
+        findingsSchema: READER_FINDINGS,
+        verdictSchema: JUDGE_VERDICT,
         targets: (data: { findings: (Finding & { part?: number })[] }, partOf) =>
             data.findings
                 .filter((f) => f.tier === 'ERROR')
@@ -250,10 +292,13 @@ const KINDS: Record<AuditName, Kind> = {
     'spec-steward': {
         files: AUDIT_FILES['spec-steward'],
         tools: STEWARD_TOOLS,
+        canEdit: false,
         model: EXPENSIVE_MODEL,
         effort: 'high',
         brief: steward.brief,
         briefComplete: steward.briefComplete,
+        findingsSchema: STEWARD_FINDINGS,
+        verdictSchema: STEWARD_VERDICT,
         targets: (data: steward.StewardData) =>
             data.candidates.map((c) => ({
                 label: `${c.file}:${c.line}`,
@@ -267,12 +312,29 @@ const KINDS: Record<AuditName, Kind> = {
  * One headless worker under its time budget. A worker that never returns must not hold the whole job to its timeout:
  * past the budget it is killed and writes no findings file; the merge lists its part as short, and the completion pass
  * judges it once. A finished worker keeps its result event alone (duration, turns, cost, usage); a failed one keeps its
- * whole stream, and its own reason — e.g. an API usage-limit error — is echoed next to the exit status.
+ * whole stream, and its own reason — e.g. an API usage-limit error — is echoed next to the exit status. The session id
+ * is kept either way, so a file that fails its check can go back to the same session.
  */
-async function runClaude(run: Run, wrote: () => boolean, budget: number, env: NodeJS.ProcessEnv, cwd: string) {
+async function runClaude(
+    run: Run,
+    wrote: () => boolean,
+    budget: number,
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+): Promise<Ran> {
     const jsonl = path.join(cwd, run.dir, `${run.log}.jsonl`);
     const err = path.join(cwd, run.dir, `${run.log}.err`);
-    const args = ['--print', run.prompt, '--model', run.model, '--effort', run.effort, '--permission-mode', 'default'];
+    const args = [
+        ...(run.resume ? ['--resume', run.resume] : []),
+        '--print',
+        run.prompt,
+        '--model',
+        run.model,
+        '--effort',
+        run.effort,
+        '--permission-mode',
+        'default',
+    ];
     args.push('--output-format', 'stream-json', '--verbose', '--allowedTools', run.tools);
     const out = fs.openSync(jsonl, 'w');
     const errOut = fs.openSync(err, 'w');
@@ -289,26 +351,65 @@ async function runClaude(run: Run, wrote: () => boolean, budget: number, env: No
     clearTimeout(timer);
     fs.closeSync(out);
     fs.closeSync(errOut);
-    if (killed) return `killed after ${Math.round(budget / 60_000)}m`;
+    const r = resultOf(jsonl);
+    const session = typeof r?.session_id === 'string' ? r.session_id : run.resume;
+    if (killed) return { status: `killed after ${Math.round(budget / 60_000)}m`, session };
     if (code !== 0) {
-        const why = String(resultOf(jsonl)?.result ?? '').slice(0, 200);
-        return `exit ${code}${why ? ` (${why})` : ''}`;
+        const why = String(r?.result ?? '').slice(0, 200);
+        return { status: `exit ${code}${why ? ` (${why})` : ''}`, session };
     }
     if (wrote()) {
-        const r = resultOf(jsonl);
-        const kept = r && {
-            subtype: r.subtype,
-            is_error: r.is_error,
-            duration_ms: r.duration_ms,
-            num_turns: r.num_turns,
-            total_cost_usd: r.total_cost_usd,
-            usage: r.usage,
-        };
-        fs.writeFileSync(jsonl.replace(/\.jsonl$/, '.result.json'), kept ? JSON.stringify(kept) + '\n' : '');
+        if (r)
+            writeData(jsonl.replace(/\.jsonl$/, '.result.yaml'), {
+                subtype: r.subtype,
+                is_error: r.is_error,
+                duration_ms: r.duration_ms,
+                num_turns: r.num_turns,
+                total_cost_usd: r.total_cost_usd,
+                usage: r.usage,
+                session_id: session,
+            });
         fs.rmSync(jsonl);
         if (fs.statSync(err).size === 0) fs.rmSync(err);
     }
-    return 'ok';
+    return { status: 'ok', session };
+}
+
+/**
+ * The file a worker wrote, checked against its schema; while it fails and the worker finished, its errors go back to
+ * the same session, at most `CORRECTIONS` times. Returns the errors that remain and how many corrections it took.
+ */
+async function checked(
+    run: Run,
+    first: Ran,
+    file: string,
+    schema: Schema,
+    canEdit: boolean,
+    budget: number,
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+): Promise<{ status: string; errors: string[]; corrections: number }> {
+    const full = path.join(cwd, file);
+    let ran = first;
+    let errors = checkFile(full, schema);
+    let corrections = 0;
+    while (errors.length && ran.status === 'ok' && ran.session && corrections < CORRECTIONS) {
+        corrections++;
+        ran = await runClaude(
+            {
+                ...run,
+                prompt: correction(file, errors, canEdit),
+                resume: ran.session,
+                log: `${run.log}-fix-${corrections}`,
+            },
+            () => fs.existsSync(full),
+            budget,
+            env,
+            cwd,
+        );
+        errors = checkFile(full, schema);
+    }
+    return { status: ran.status, errors, corrections };
 }
 
 /** Run tasks with at most `limit` at once (0: all at once). */
@@ -322,7 +423,9 @@ async function pool(tasks: readonly (() => Promise<void>)[], limit: number): Pro
 
 const clock = () => new Date().toTimeString().slice(0, 8);
 
-const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
+/** The end of a worker's log line: corrections, and the first error that remains. */
+const checkNote = ({ errors, corrections }: { errors: readonly string[]; corrections: number }) =>
+    `${corrections ? `, corrected ${corrections}×` : ''}${errors.length ? `, still invalid: ${errors[0]}` : ''}`;
 
 /** One pass of the audit's workers; the exit code: 0 done, 1 the tree changed, 2 an input is missing. */
 export async function workers(
@@ -331,7 +434,7 @@ export async function workers(
 ) {
     const withContext = (prompt: string) =>
         context?.trim()
-            ? `${prompt}\nRun context — facts established and decisions the owner has already made. Judge with them; a finding or a verdict that would reverse one says so:\n${context.trim()}\n`
+            ? `${prompt}\nRun context — facts established and decisions the owner has already made. Judge with them. A finding or a verdict that reverses one says so:\n${context.trim()}\n`
             : prompt;
     const kind = KINDS[audit];
     const { files } = kind;
@@ -342,7 +445,7 @@ export async function workers(
     };
     const scopePath = path.join(cwd, files.scope);
     if (!fs.existsSync(scopePath)) return fail(`${files.scope} is missing — run spec-tools scope${flag} first`);
-    const scope = readJson<ScopeJson>(scopePath);
+    const scope = readData<ScopeData>(scopePath);
     const model = env.AUDIT_MODEL || kind.model;
     const effort = env.AUDIT_EFFORT || kind.effort;
     const budget = duration(env.AUDIT_WORKER_TIMEOUT || '20m');
@@ -362,41 +465,40 @@ export async function workers(
     const work = async (p: Part, short?: ShortPart) => {
         // The completion worker is the part's next reader: one more findings file, never an overwrite.
         const reader = short
-            ? fs.readdirSync(findings).filter((f) => new RegExp(`^part-${p.part}-\\d+\\.json$`).test(f)).length + 1
+            ? fs.readdirSync(findings).filter((f) => new RegExp(`^part-${p.part}-\\d+\\.yaml$`).test(f)).length + 1
             : 1;
         const file = short ? findingsFile(p.part, reader, audit) : p.findings[0]!;
         const prompt = withContext(short ? kind.briefComplete(p, short, reader, file, repo) : kind.brief(p, repo));
         const started = Date.now();
         log(`[${clock()}] worker ${p.part} started — ${short ? `completion, reader ${reader}, ` : ''}${model}`);
-        const logName = short ? `worker-${p.part}-${reader}` : `worker-${p.part}`;
+        const run: Run = {
+            prompt,
+            model,
+            effort,
+            log: short ? `worker-${p.part}-${reader}` : `worker-${p.part}`,
+            dir: files.findings,
+            tools: kind.tools,
+        };
         const full = path.join(cwd, file);
-        const status = await runClaude(
-            { prompt, model, effort, log: logName, dir: files.findings, tools: kind.tools },
-            () => fs.existsSync(full),
-            budget,
-            env,
-            cwd,
-        );
-        let wrote = 'no findings file';
-        if (fs.existsSync(full)) {
-            try {
-                const json = readJson<{ findings?: unknown[]; judged?: unknown[] }>(full);
-                wrote = `${json.findings?.length ?? 0} findings, judged ${json.judged?.length ?? 0}`;
-            } catch {
-                wrote = 'unparseable findings file';
-            }
-        }
+        const first = await runClaude(run, () => fs.existsSync(full), budget, env, cwd);
+        const check = await checked(run, first, file, kind.findingsSchema, kind.canEdit, budget, env, cwd);
+        const data = check.errors.length ? undefined : tryReadData<{ findings?: unknown[]; judged?: unknown[] }>(full);
+        const wrote = data
+            ? `${data.findings?.length ?? 0} findings, judged ${data.judged?.length ?? 0}`
+            : fs.existsSync(full)
+              ? 'invalid findings file'
+              : 'no findings file';
         log(
-            `[${clock()}] worker ${p.part} finished in ${Math.round((Date.now() - started) / 1000)}s — ${status} — ${wrote}`,
+            `[${clock()}] worker ${p.part} finished in ${Math.round((Date.now() - started) / 1000)}s — ${check.status} — ${wrote}${checkNote(check)}`,
         );
     };
 
     const verify = async (target: Target, k: number) => {
-        const file = `${files.findings}/verdict-${k}.json`;
+        const file = verdictFile(k, audit);
         const full = path.join(cwd, file);
         const started = Date.now();
         log(`[${clock()}] verifier ${k} started — ${target.label}`);
-        const run = {
+        const run: Run = {
             prompt: withContext(target.brief(file, repo)),
             model: env.AUDIT_MODEL_VERIFY || model,
             effort: env.AUDIT_EFFORT_VERIFY || effort,
@@ -404,18 +506,18 @@ export async function workers(
             dir: files.findings,
             tools: kind.tools,
         };
-        const status = await runClaude(run, () => fs.existsSync(full), budget, env, cwd);
-        let wrote = 'no verdict file';
-        if (fs.existsSync(full)) {
-            try {
-                const v = readJson<{ verdict: string; reason: string }>(full);
-                wrote = `${v.verdict} — ${v.reason}`;
-            } catch {
-                wrote = 'unparseable verdict file';
-            }
-        }
+        const first = await runClaude(run, () => fs.existsSync(full), budget, env, cwd);
+        const check = await checked(run, first, file, kind.verdictSchema, kind.canEdit, budget, env, cwd);
+        const v = check.errors.length
+            ? undefined
+            : tryReadData<{ verdict: string; reason: string; judgeConfidence?: number }>(full);
+        const wrote = v
+            ? `${v.verdict}${v.judgeConfidence !== undefined ? ` (${v.judgeConfidence}%)` : ''} — ${String(v.reason).trim()}`
+            : fs.existsSync(full)
+              ? 'invalid verdict file'
+              : 'no verdict file';
         log(
-            `[${clock()}] verifier ${k} finished in ${Math.round((Date.now() - started) / 1000)}s — ${status} — ${wrote}`,
+            `[${clock()}] verifier ${k} finished in ${Math.round((Date.now() - started) / 1000)}s — ${check.status} — ${wrote}${checkNote(check)}`,
         );
     };
 
@@ -432,10 +534,10 @@ export async function workers(
     if (pass === 'verify' || pass === 'complete') {
         const reportPath = path.join(cwd, files.data);
         if (!fs.existsSync(reportPath)) return fail(`${files.data} is missing — run spec-tools report${flag} first`);
-        const report = readJson<{ short: ShortPart[] }>(reportPath);
+        const report = readData<{ short: ShortPart[] }>(reportPath);
         if (pass === 'verify') {
             for (const f of fs.readdirSync(findings))
-                if (/^(verdict-.*\.json|verifier-.*\.(jsonl|err|result\.json))$/.test(f))
+                if (/^(verdict-.*\.yaml|verifier-.*\.(jsonl|err|result\.yaml))$/.test(f))
                     fs.rmSync(path.join(findings, f));
             fs.writeFileSync(path.join(cwd, files.verified), '');
             const targets = kind.targets(report as never, partOf);
@@ -479,7 +581,7 @@ export async function workers(
         const stale =
             job.total > 1
                 ? part !== null && mine.has(Number(part[1]))
-                : part !== null || /^(verdict-.*\.json|merge-.*\.json)$/.test(f);
+                : part !== null || /^(verdict-.*\.yaml|merge-.*\.yaml)$/.test(f);
         if (stale) fs.rmSync(path.join(findings, f));
     }
     if (job.total === 1) fs.rmSync(path.join(cwd, files.verified), { force: true });
