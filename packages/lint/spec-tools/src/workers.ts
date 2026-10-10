@@ -2,11 +2,13 @@
  * The specification audit's fan-out, deterministic: headless `claude --print` workers started from here — no
  * orchestrating model decides when or whether the next worker starts. Each worker loads the `spec-verify` skill for its
  * contract — the five checks, the grading, the findings file — and writes its own findings file; `spec-tools report`
- * merges after every pass. CI's reading jobs and judge job, and `spec-tools audit`, run the passes in this order:
+ * merges after every pass. CI runs the passes in one job or the reading in parallel jobs and the rest in a judge job —
+ * the hand-off is files either way — and `spec-tools audit` runs them locally, in this order:
  *
- *   1. reading      One worker per part of `audit-scope.json`, judging every check over every requirement of its part.
- *                   In a parallel job (`ci.ts` `shard`) only the job's share: part p goes to job ((p - 1) mod total) + 1,
- *                   so each job works its share out from the scope alone. Then, in the judge, the merge.
+ *   1. reading      One worker per part of `audit-scope.json`, judging every check over every requirement of its part;
+ *                   the scope cut one part per slot of every reading job, so the reading is one round. In a parallel
+ *                   job (`ci.ts` `shard`) only the job's share: part p goes to job ((p - 1) mod total) + 1, so each job
+ *                   works its share out from the scope alone. Then the merge.
  *   2. complete     One worker per part the merge left short — the `short` list of `spec-verify.json` — over exactly
  *                   those items, writing the part's next reader file. Nothing already judged is judged twice.
  *   3. verify       One verifier per ERROR the merge left standing, over that finding alone, confirming it only when
@@ -31,7 +33,7 @@ import { AUDIT_FILES, type AuditFiles, type AuditName, findingsFile } from './fi
 import { git, root } from './repo';
 import { SKILLS_DIR } from './skillsDir';
 import * as steward from './stewardAudit';
-import { CHEAP_EFFORT, CHEAP_MODEL, EXPENSIVE_MODEL } from './tier';
+import { CHEAP_EFFORT, CHEAP_MODEL, EXPENSIVE_MODEL, workersFor } from './tier';
 
 export type Pass = 'read' | 'complete' | 'verify';
 
@@ -48,24 +50,26 @@ type Options = {
 export const TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Grep,Write,Edit';
 /** A corpus-quality worker reads and writes its findings file; it never edits one. */
 const STEWARD_TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Grep,Write';
-/**
- * Each headless worker is a node process of about 500 MB resident — 590 MB at the most, measured over 24 cheap-tier
- * workers — so in a container the count follows the cgroup memory limit at 600 MB per worker (at least two).
- */
-const PER_WORKER_BYTES = 600 * 1024 * 1024;
 /** What a pass may leave behind besides nothing. */
 const OUTPUTS = /^(audit-parts\/|spec-verify\.|job-log-)/;
 
-/** How many workers run at once: memory's bound in a container, capped by AUDIT_WORKERS; else AUDIT_WORKERS, else all. */
+/** How many workers run at once: in a container `tier`'s workersFor its memory; elsewhere AUDIT_WORKERS, else all. */
 export function concurrency(env: NodeJS.ProcessEnv, memoryLimit = cgroupLimit()): number {
-    const asked = Number(env.AUDIT_WORKERS) || 0;
-    if (memoryLimit === null) return asked; // 0: every task at once
-    const bound = Math.max(2, Math.floor(memoryLimit / PER_WORKER_BYTES));
-    return asked > 0 ? Math.min(asked, bound) : bound;
+    return memoryLimit === null ? Number(env.AUDIT_WORKERS) || 0 : workersFor(env, memoryLimit); // 0: every task at once
 }
 
-function cgroupLimit(): number | null {
-    for (const file of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+const cgroupLimit = (): number | null =>
+    cgroupBytes(['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']);
+const cgroupPeak = (): number | null =>
+    cgroupBytes(['/sys/fs/cgroup/memory.peak', '/sys/fs/cgroup/memory/memory.max_usage_in_bytes']);
+
+const gb = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+/** The container's memory as the pass used it, for the job log — what WORKER_BYTES and AUDIT_WORKERS are tuned from. */
+export const memoryLine = (limit = cgroupLimit(), peak = cgroupPeak()): string | undefined =>
+    limit === null ? undefined : `memory: peak ${peak === null ? 'unknown' : gb(peak)} of a ${gb(limit)} limit`;
+
+function cgroupBytes(files: readonly string[]): number | null {
+    for (const file of files) {
         let value: string;
         try {
             value = fs.readFileSync(file, 'utf8').trim();
@@ -171,7 +175,7 @@ Read, with the Read and Grep tools only: the requirement's block in the part's e
 
 Confirm the ERROR only when ALL of these hold:
 1. The quotes are genuine and say what the finding claims.
-2. The requirement and the code genuinely diverge — not a vague requirement read narrowly, not an ambiguity the surrounding code resolves, not behaviour implemented elsewhere that the finding did not look at.
+2. The requirement and the code genuinely diverge — not a vague requirement read narrowly, not an ambiguity the surrounding code resolves, not behaviour implemented elsewhere that the finding did not look at, and not a dependency's behaviour — a command-line flag, a library default — that the repository does not show.
 3. The divergence is critical: an obvious code defect — the code does something different from what the requirement mandates in a way a caller, a test or an operator would observe — or a statement that would steer an agent wrongly (a prompt, a tool description, a workflow rule the agents follow).
 
 Otherwise the finding is WARN. A citation or a comment is never evidence either way: judge the requirement and the code. Write exactly this JSON with the Write tool to ${file} and nothing else:
@@ -343,6 +347,12 @@ export async function workers(
     const effort = env.AUDIT_EFFORT || kind.effort;
     const budget = duration(env.AUDIT_WORKER_TIMEOUT || '20m');
     const limit = concurrency(env);
+    /** One pass's workers, `limit` at a time, then the memory they used. */
+    const runPass = async (tasks: readonly (() => Promise<void>)[]) => {
+        await pool(tasks, limit);
+        const memory = memoryLine();
+        if (memory) log(`spec-tools workers: ${memory}, ${limit} at a time`);
+    };
     const findings = path.join(cwd, files.findings);
     fs.mkdirSync(findings, { recursive: true });
     const before = treeState(cwd);
@@ -436,10 +446,7 @@ export async function workers(
             log(
                 `spec-tools workers: verification pass over ${targets.length} finding(s), model ${env.AUDIT_MODEL_VERIFY || model} effort ${env.AUDIT_EFFORT_VERIFY || effort}`,
             );
-            await pool(
-                targets.map((t, i) => () => verify(t, i + 1)),
-                limit,
-            );
+            await runPass(targets.map((t, i) => () => verify(t, i + 1)));
             const code = unchanged();
             if (code === 0) log('spec-tools workers: verification done');
             return code;
@@ -455,7 +462,7 @@ export async function workers(
             const p = partOf(s.part);
             return p ? [() => work(p, s)] : [];
         });
-        await pool(tasks, limit);
+        await runPass(tasks);
         const code = unchanged();
         if (code === 0) log('spec-tools workers: completion done');
         return code;
@@ -483,10 +490,7 @@ export async function workers(
     log(
         `spec-tools workers: ${share.length} parts${of}, model ${model} effort ${effort}, ${limit === 0 ? 'all at once' : `${limit} at a time`}`,
     );
-    await pool(
-        share.map((p) => () => work(p)),
-        limit,
-    );
+    await runPass(share.map((p) => () => work(p)));
     const missing = share.map((p) => p.findings[0]!).filter((f) => !fs.existsSync(path.join(cwd, f)));
     if (missing.length)
         log(

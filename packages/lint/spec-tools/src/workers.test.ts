@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { Part } from './auditScope';
 import { findingsFile } from './files';
-import { concurrency, duration, shareOf, treeChanges, workers } from './workers';
+import { concurrency, duration, memoryLine, shareOf, treeChanges, workers } from './workers';
 
 /** A test that spawns git and workers in a throwaway repository: each can take seconds on a busy machine. */
 const TIMEOUT = 60_000;
@@ -132,13 +132,20 @@ describe('workers, the pieces', () => {
         expect(shareOf(parts, { index: 2, total: 2 }).map((p) => p.part)).toEqual([2, 4]);
     });
 
-    test('runs as many workers as the container holds, capped by AUDIT_WORKERS', () => {
+    test('in a container runs as many workers as its memory holds, two unless AUDIT_WORKERS raises it', () => {
         const gb = 1024 ** 3;
-        expect(concurrency({}, 3 * gb)).toBe(5);
-        expect(concurrency({ AUDIT_WORKERS: '3' }, 3 * gb)).toBe(3);
-        expect(concurrency({}, 0.5 * gb)).toBe(2);
+        expect(concurrency({}, 3 * gb)).toBe(2);
+        expect(concurrency({ AUDIT_WORKERS: '8' }, 3 * gb)).toBe(5);
+        expect(concurrency({ AUDIT_WORKERS: '8' }, 0.5 * gb)).toBe(1);
         expect(concurrency({ AUDIT_WORKERS: '4' }, null)).toBe(4);
         expect(concurrency({}, null)).toBe(0);
+    });
+
+    test('logs the memory a pass used, in a container only', () => {
+        const gb = 1024 ** 3;
+        expect(memoryLine(2 * gb, 1.5 * gb)).toBe('memory: peak 1.50 GB of a 2.00 GB limit');
+        expect(memoryLine(2 * gb, null)).toBe('memory: peak unknown of a 2.00 GB limit');
+        expect(memoryLine(null, null)).toBeUndefined();
     });
 
     test('reads a time budget', () => {

@@ -68,6 +68,23 @@ describe('partition', () => {
         expect(parts[0]!.capabilities).toEqual(['big', 'small']);
     });
 
+    test('cuts one round of parts for the reading slots, balanced, and a second only past the cap', () => {
+        const files = Array.from({ length: 12 }, (_, i) => evidence(`cap-${i}`, (10 + i) * 1024, 10));
+        const parts = partition(files, 'spec-verify', 4);
+        expect(parts).toHaveLength(4);
+        const bytes = parts.map((p) => p.bytes);
+        expect(Math.max(...bytes) - Math.min(...bytes)).toBeLessThanOrEqual(21 * 1024);
+        expect(parts.flatMap((p) => p.files).sort()).toEqual(files.map((f) => f.file).sort());
+        expect(partition(files.slice(0, 2), 'spec-verify', 4)).toHaveLength(2);
+        expect(
+            partition(
+                [1, 2, 3].map((i) => evidence(`big-${i}`, PART_BYTES - 1024)),
+                'spec-verify',
+                2,
+            ),
+        ).toHaveLength(3);
+    });
+
     test('is the same partition whatever order the evidence files come in', () => {
         const files = Array.from({ length: 24 }, (_, i) => evidence(`cap-${i}`, ((i * 7) % 13) * 4 * 1024 + 1024, 3));
         const reversed = [...files].reverse();

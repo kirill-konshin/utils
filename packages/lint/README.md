@@ -366,7 +366,7 @@ Where each runs:
 | `spec-tools steward check` | `spec-tools gates`, every merge request: an error fails it | the edit hook on every edit Claude makes, and `spec-tools gates` before handing back |
 | `spec-tools steward coverage`, `spec-tools steward evidence --json` | the coverage report, and the evidence `spec-tools scope` builds the spec-verify audit from | on demand |
 | spec-steward's corpus audit, review rounds, `align` | never — it is heavy and its outcome is the owner's | on the owner's request: `spec-tools audit --audit spec-steward [--context <decisions file>]`, then the review rounds, where the accepted answers are applied |
-| `spec-verify` | the reading jobs and the judge job: its verdict gates merge requests and the release | `spec-tools audit`, and `/spec-verify changed` before handing back a spec edit |
+| `spec-verify` | one audit job — the reading, then the judging: its verdict gates merge requests and the release | `spec-tools audit`, and `/spec-verify changed` before handing back a spec edit |
 | `spec-tools gates`, `evidence`, `diff` | their own jobs | before handing back |
 
 Specifications change only by hand, or when the steward skill applies the owner's accepted review answers; `spec-tools steward check --fix` makes the only mechanical repairs. No audit edits code or specifications.

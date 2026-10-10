@@ -312,6 +312,8 @@ describe('renderCapability', () => {
             terms: [],
             related: [],
         });
+    /** A requirement of this share of one reader's evidence, in KB: sized against PART_BYTES, whatever it is. */
+    const share = (fraction: number) => Math.round((PART_BYTES / 1024) * fraction);
     const cut = (...kbs: number[]) => {
         const all = requirementsOf({ version: 1, root: 'x', requirements: kbs.map((kb, i) => sized(i, kb)) });
         return { all, slices: renderCapability('x', contextOf(all, reader({ 'openspec/specs/x/spec.md': spec }))) };
@@ -326,7 +328,7 @@ describe('renderCapability', () => {
     });
 
     test('cuts a larger capability between its requirements, in their order, each file within one reader', () => {
-        const { all, slices } = cut(30, 30, 30, 30, 30, 30);
+        const { all, slices } = cut(...Array.from({ length: 6 }, () => share(0.4)));
         expect(slices.length).toBeGreaterThan(1);
         expect(slices.flatMap((s) => s.requirements.map(idOf))).toEqual(all.map(idOf));
         for (const s of slices) {
@@ -335,11 +337,11 @@ describe('renderCapability', () => {
             expect(s.text).toContain('cut between its requirements');
         }
         // The same evidence, the same cut — every job that reads the scope sees it alike.
-        expect(cut(30, 30, 30, 30, 30, 30).slices).toEqual(slices);
+        expect(cut(...Array.from({ length: 6 }, () => share(0.4))).slices).toEqual(slices);
     });
 
     test('gives a requirement larger than one reader holds a file of its own', () => {
-        const { slices } = cut(30, 100, 30);
+        const { slices } = cut(share(0.4), share(1.4), share(0.4));
         expect(slices.map((s) => s.requirements.map((r) => r.slug))).toEqual([
             ['requirement-r0'],
             ['requirement-r1'],

@@ -67,31 +67,36 @@ const findingsFiles = (part: number, audit: AuditName) =>
 export const load = (w: Pick<EvidenceFile, 'bytes' | 'requirements'>) => w.bytes + w.requirements * REQUIREMENT_BYTES;
 
 /**
- * The partition the audit starts from — decided here so the orchestrator opens nothing before its
- * workers run. Evidence files are placed heaviest first, by evidence and requirements, each into the first
- * part it fits in under `PART_BYTES` — no part is larger than one reader holds unless one file alone is,
- * and the evidence alone decides how many parts there are; a scope one reader holds is a single part, and
- * nothing in scope is none. A function of the files alone, in whatever order they come: the parts are
- * numbered in the order they open, heaviest first, so dealing them out in turn spreads the load evenly.
+ * The partition the audit starts from — decided here so the orchestrator opens nothing before its workers run.
+ * `slots` parts are one round of workers: AUDIT_JOBS reading jobs (the pipeline's own count, one unless it says) of
+ * AUDIT_SLOTS workers each (from `spec-tools tier`). Evidence files are
+ * placed heaviest first, by evidence and requirements, each into the lightest part it fits in under `PART_BYTES`; a
+ * file no part has room for opens another, so only a scope larger than a round holds takes a second round, and no part
+ * is larger than one reader holds unless one file alone is. Empty parts are dropped: nothing in scope is none. A
+ * function of the files alone, in whatever order they come: the parts are numbered heaviest first.
  */
-export function partition(files: readonly EvidenceFile[], audit: AuditName = 'spec-verify'): Part[] {
+export function partition(files: readonly EvidenceFile[], audit: AuditName = 'spec-verify', slots = 1): Part[] {
     const order = [...files].sort((x, y) => load(y) - load(x) || (x.file < y.file ? -1 : x.file > y.file ? 1 : 0));
-    const bins: EvidenceFile[][] = [];
+    const bins: EvidenceFile[][] = Array.from({ length: Math.max(1, slots) }, () => []);
     const bytesOf = (bin: readonly EvidenceFile[]) => bin.reduce((sum, f) => sum + f.bytes, 0);
+    const loadOf = (bin: readonly EvidenceFile[]) => bin.reduce((sum, f) => sum + load(f), 0);
     for (const f of order) {
-        const bin = bins.find((b) => bytesOf(b) + f.bytes <= PART_BYTES);
-        if (bin) bin.push(f);
+        const room = bins.filter((b) => bytesOf(b) + f.bytes <= PART_BYTES || !b.length);
+        if (room.length) room.reduce((a, b) => (loadOf(b) < loadOf(a) ? b : a)).push(f);
         else bins.push([f]);
     }
-    return bins.map((bin, index) => ({
-        part: index + 1,
-        capabilities: [...new Set(bin.map((f) => f.capability))],
-        files: bin.map((f) => f.file),
-        findings: findingsFiles(index + 1, audit),
-        requirementIds: bin.flatMap((f) => f.requirementIds),
-        bytes: bytesOf(bin),
-        requirements: bin.reduce((sum, f) => sum + f.requirements, 0),
-    }));
+    return bins
+        .filter((bin) => bin.length)
+        .sort((a, b) => loadOf(b) - loadOf(a))
+        .map((bin, index) => ({
+            part: index + 1,
+            capabilities: [...new Set(bin.map((f) => f.capability))],
+            files: bin.map((f) => f.file),
+            findings: findingsFiles(index + 1, audit),
+            requirementIds: bin.flatMap((f) => f.requirementIds),
+            bytes: bytesOf(bin),
+            requirements: bin.reduce((sum, f) => sum + f.requirements, 0),
+        }));
 }
 
 const kb = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -120,10 +125,7 @@ export function renderScope(parts: readonly Part[], kind: ScopeKind = 'all', det
     } else if (parts.length === 1) {
         lines.push(`One part, ${parts[0]!.requirements} requirements (${kb(parts[0]!.bytes)}).`);
     } else {
-        lines.push(
-            `${parts.length} parts, ${READERS_PER_PART} workers each, dealt out in turn to the reading jobs:`,
-            '',
-        );
+        lines.push(`${parts.length} parts, ${READERS_PER_PART} workers each, one round across the reading jobs:`, '');
         parts.forEach((part) =>
             lines.push(
                 `- Part ${part.part} (${part.requirements} requirements, ${kb(part.bytes)}): ${part.files.map((f) => `\`${f.slice(PARTS_DIR.length + 1)}\``).join(', ')}`,
@@ -153,7 +155,11 @@ export function main(env: NodeJS.ProcessEnv = process.env, audit: AuditName = 's
     const all = requirementsOf(model);
     const affected = kind === 'affected' ? affectedScope(diffBase(env), all) : undefined;
     const corpus = [...new Set(all.map((r) => r.capability))].sort();
-    const capabilityParts = partition(writeParts(affected ? affected.capabilities : corpus, all), audit);
+    const capabilityParts = partition(
+        writeParts(affected ? affected.capabilities : corpus, all),
+        audit,
+        (Number(env.AUDIT_JOBS) || 1) * (Number(env.AUDIT_SLOTS) || 1),
+    );
     const parts =
         audit === 'spec-steward' ? [...capabilityParts, ...sweepUnits(model, capabilityParts.length)] : capabilityParts;
     const detail = affected

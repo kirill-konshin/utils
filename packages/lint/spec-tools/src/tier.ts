@@ -20,6 +20,9 @@
  * on a merge request. Each run stands alone. The nightly reports and never gates: two nightlies over the same commit
  * can find different ERRORs.
  *
+ * A reading job runs AUDIT_SLOTS workers at a time (`workersFor`); how many reading jobs there are is the pipeline's
+ * choice (AUDIT_JOBS, its `parallel:`), and the scope is cut for one round across them.
+ *
  * The rows are decided in that order. Which open changes a merge request touches, and whether they carry deltas, is
  * workflow-evidence's classification against the gate base; a classification that fails fails the run class, rather
  * than reading as a request that touches nothing. The model and effort here reach every worker of the audit; a
@@ -39,12 +42,35 @@ export type Tier = {
     readonly AUDIT_EFFORT: string;
     readonly AUDIT_MODEL_VERIFY: string;
     readonly AUDIT_EFFORT_VERIFY: string;
+    /** Workers a reading job runs at once; the scope cuts AUDIT_JOBS × that many parts, one round of workers. */
+    readonly AUDIT_SLOTS: number;
 };
 
-export const CHEAP_MODEL = 'claude-haiku-4-5-20251001';
+export const CHEAP_MODEL = 'claude-haiku-5-5';
 export const CHEAP_EFFORT = 'high';
-export const EXPENSIVE_MODEL = 'claude-sonnet-5';
+export const EXPENSIVE_MODEL = 'claude-sonnet-5-5';
 export const EXPENSIVE_EFFORT = 'medium';
+
+/**
+ * A headless worker's resident memory: about 500 MB, 590 MB at the most over 24 workers on the cheap tier with 72 KB
+ * parts. Each pass logs the job's memory peak, from which it is re-measured.
+ */
+export const WORKER_BYTES = 600 * 1024 ** 2;
+/** Workers per reading job unless AUDIT_WORKERS says otherwise — conservative until the logged peaks show room. */
+export const DEFAULT_WORKERS = 2;
+/** A reading job's memory unless AUDIT_JOB_MEMORY says otherwise: the scope runs elsewhere and cannot measure it. */
+export const DEFAULT_JOB_MEMORY = 2 * 1024 ** 3;
+
+/** `2Gi`, `2G`, `1536Mi`, `512M` or bare bytes, in bytes; binary units either way, as a container limit is. */
+export function memoryOf(text: string): number {
+    const m = /^(\d+(?:\.\d+)?)\s*([KMGT]?)i?B?$/i.exec(text.trim());
+    if (!m) throw new Error(`bad memory size: ${text}`);
+    return Math.round(Number(m[1]) * 1024 ** ' KMGT'.indexOf((m[2] || ' ').toUpperCase()));
+}
+
+/** Workers a job of `memory` bytes runs at once: as many as fit, never more than AUDIT_WORKERS, at least one. */
+export const workersFor = (env: NodeJS.ProcessEnv, memory: number): number =>
+    Math.max(1, Math.min(Number(env.AUDIT_WORKERS) || DEFAULT_WORKERS, Math.floor(memory / WORKER_BYTES)));
 
 /** The open changes this merge request touches, by workflow-evidence's classification against the gate base. */
 export function openChangeClass(env: NodeJS.ProcessEnv = process.env): OpenChangeClass {
@@ -79,6 +105,7 @@ export function tier(
         AUDIT_EFFORT: cheap[1],
         AUDIT_MODEL_VERIFY: judge[0]!,
         AUDIT_EFFORT_VERIFY: judge[1]!,
+        AUDIT_SLOTS: workersFor(env, env.AUDIT_JOB_MEMORY ? memoryOf(env.AUDIT_JOB_MEMORY) : DEFAULT_JOB_MEMORY),
     };
 }
 

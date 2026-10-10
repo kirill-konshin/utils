@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { dotenv, tier } from './tier';
+import { dotenv, memoryOf, tier, workersFor } from './tier';
 import type { OpenChangeClass } from './workflowEvidence';
 
 /**
@@ -12,14 +12,15 @@ const unreachable = (): OpenChangeClass => {
     throw new Error('the open changes are asked only for a non-draft merge request');
 };
 
-const haiku = { model: 'claude-haiku-4-5-20251001', effort: 'high' };
-const sonnet = { model: 'claude-sonnet-5', effort: 'medium' };
-/** Every run reads on the cheap model; `judge` is the verifier's. */
+const haiku = { model: 'claude-haiku-5-5', effort: 'high' };
+const sonnet = { model: 'claude-sonnet-5-5', effort: 'medium' };
+/** Every run reads on the cheap model; `judge` is the verifier's. Two workers at a time unless raised. */
 const models = (judge: typeof haiku) => ({
     AUDIT_MODEL: haiku.model,
     AUDIT_EFFORT: haiku.effort,
     AUDIT_MODEL_VERIFY: judge.model,
     AUDIT_EFFORT_VERIFY: judge.effort,
+    AUDIT_SLOTS: 2,
 });
 const affected = { AUDIT_SCOPE: 'affected', AUDIT_GATING: 'advisory', ...models(haiku) };
 
@@ -88,6 +89,15 @@ describe('tier', () => {
             AUDIT_MODEL_VERIFY: 'm2',
             AUDIT_EFFORT_VERIFY: 'xhigh',
         });
+    });
+
+    test('sizes the audit job by its memory, capped by AUDIT_WORKERS, two workers unless raised', () => {
+        expect(tier({ AUDIT_JOB_MEMORY: '4Gi', AUDIT_WORKERS: '8' }, unreachable).AUDIT_SLOTS).toBe(6);
+        expect(tier({ AUDIT_JOB_MEMORY: '4Gi' }, unreachable).AUDIT_SLOTS).toBe(2);
+        expect(workersFor({ AUDIT_WORKERS: '8' }, memoryOf('1536Mi'))).toBe(2);
+        expect(workersFor({ AUDIT_WORKERS: '8' }, memoryOf('512M'))).toBe(1);
+        expect(memoryOf('2G')).toBe(memoryOf('2Gi'));
+        expect(() => memoryOf('lots')).toThrow('bad memory size');
     });
 
     test('prints the decision as dotenv lines', () => {

@@ -1,7 +1,7 @@
 ---
 name: spec-verify
 description: Audit whether the code does exactly what the OpenSpec specifications say, as written; its verdict gates CI. Checks what no tool can - cross-capability contradiction, EXACT code conformance, whether a bound test asserts its rule, and gaps nobody recorded. It audits code conformance only; corpus quality — placement, REQUIRED versus ⚠️ ADVISORY, evidence — is the spec-steward skill's audit. Workers only judge; each writes audit-parts/findings/part-<n>-<reader>.json and `spec-tools report` renders spec-verify.md at the repo root. Interactively, run `spec-tools audit`, then summarize spec-verify.md and ask the operator what to do. After changing a capability, `/spec-verify changed` judges what changed; the full audit runs when the operator asks.
-model: claude-haiku-4-5-20251001
+model: claude-haiku-5-5
 effort: high
 ---
 
@@ -9,7 +9,7 @@ effort: high
 
 The capability specifications under `openspec/specs/` are the single source of truth. The tooling's contract — this audit's scope, partition, merge and verdict — is the `spec-tools` skill's `references/contract.md`; the grading and the finding kinds are below; how a specification is written is the `spec-steward` model (its `references/model.md`); how a change is made is the repository's `AGENTS.md`. A code citation is an optional pointer to a requirement, never evidence that code complies.
 
-**Where it runs:** in CI as the gating audit (the reading jobs and the judge job), and locally as `spec-tools audit` and `/spec-verify changed`. spec-steward's corpus audit is the local, owner-requested counterpart; it never runs in CI.
+**Where it runs:** in CI as the gating audit (one job: the reading, then the judging), and locally as `spec-tools audit` and `/spec-verify changed`. spec-steward's corpus audit is the local, owner-requested counterpart; it never runs in CI.
 
 **Invariant this skill enforces: CODE 100% follows the SPEC.** A requirement and its code must match exactly; a mismatch is always a finding (the owner decides which side is fixed — never leave them divergent).
 
@@ -52,7 +52,7 @@ A **requirement** is one `### Requirement:` heading and everything under it. Add
 
 ## The worker contract
 
-One reader cannot hold the whole corpus and every symbol it governs; a run that tries samples, and a sample cannot support a `PASS`. So the evidence is assembled mechanically before the audit starts, and `spec-tools workers` starts one headless worker per part. The passes run in order — the reading, shared out among parallel reading jobs, the completion pass over what the reading left short, and the verification pass over every ERROR still standing. Each later brief names exactly what it judges, and the tool runs every pass, never a worker.
+One reader cannot hold the whole corpus and every symbol it governs; a run that tries samples, and a sample cannot support a `PASS`. So the evidence is assembled mechanically before the audit starts, and `spec-tools workers` starts one headless worker per part. The passes run in order, in one job — the reading, the completion pass over what the reading left short, and the verification pass over every ERROR still standing. Each later brief names exactly what it judges, and the tool runs every pass, never a worker.
 
 A worker's brief gives its part number, its reader number, the findings file it alone writes, its part's evidence files and its `requirementIds`. It judges all five checks over its evidence in one pass: the specification against itself (checks 2 and 3, from the requirement blocks and related lists the evidence carries) and the code against the specification (1, 4 and 5) — every requirement, every bound test and every listed related pair. It opens a source only where an excerpt is marked as a window, where a term hit must be confirmed, where the behaviour continues outside the excerpt, or where a related requirement's statement line is not enough to decide. Its tools are Skill, Read, Glob, Grep, Write, Edit (to repair its own findings file) and the git commands; anything else is denied and only costs a turn. It writes its findings file and returns one line: the path and its counts per tier.
 
@@ -72,7 +72,7 @@ Checks 2–5 are spec-steward's audit criteria 10, 9, 11 and 5 (its `references/
 
 Every finding is in exactly one of three tiers:
 
-- **ERROR** — a defect you demonstrated: you opened both sides and quote each at `file:line`. It fails the build once its verifier confirms it real and critical.
+- **ERROR** — a defect you demonstrated: you opened both sides and quote each at `file:line`. It fails the build once its verifier confirms it real and critical. It rests on the repository alone: where what the code does turns on a dependency's behaviour — a command-line flag, a library default — that the repository does not show, it is not demonstrated.
 - **WARN** — a defect of the same class, suspected but not demonstrated: suspected from a sample, or not read on both sides. Published, never a failure.
 - **INFO** — inventory and state recorded for a reader. Never a failure.
 

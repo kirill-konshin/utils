@@ -24,10 +24,11 @@ const typescript = (): typeof ts => (loaded ??= createRequire(import.meta.url)('
 
 /**
  * The evidence one cheap reader holds in full — an evidence file and a part are never larger, unless one requirement
- * alone is. Lowered from 96 KB on 2026-09-12: over six local corpus runs on the cheap tier, parts of ~150 KB left a
- * reader short (a mislabelled or genuine `sampled`) in 4 of 64 cases and parts of ~75 KB in 0 of 64.
+ * alone is. 72 KB was measured on a 200K-token reader (2026-09-12: parts of ~150 KB left a reader short in 4 of 64
+ * cases, ~75 KB in 0 of 64); the cheap reader's window is now 1M tokens, so a part is five times that. A reader left
+ * short is read again by the completion pass.
  */
-export const PART_BYTES = 72 * 1024;
+export const PART_BYTES = 360 * 1024;
 
 /** An excerpt is the smallest enclosing declaration up to this many lines; past it, a window. */
 export const MAX_EXCERPT_LINES = 80;

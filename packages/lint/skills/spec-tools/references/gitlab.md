@@ -11,6 +11,7 @@ The jobs a GitLab repository runs around `spec-steward` and `spec-tools`. Names 
 - Report jobs depend on the audits with `dependencies:` and `when: always`, never `needs:` — a failed audit is exactly when its report matters.
 - The default-branch pipeline publishes the reports on Pages, a failing one included; a report a run did not produce is omitted.
 - The scheduled nightly sets `SPEC_AUDIT_NIGHTLY=true`, so `spec-tools tier` audits the corpus there.
+- Reading jobs × workers is the pipeline's choice: `AUDIT_JOBS` reading jobs (default 1; a `parallel:` job sets the same number), each running `AUDIT_SLOTS` workers at once — as many as `AUDIT_JOB_MEMORY` holds, never more than `AUDIT_WORKERS` — and the scope is cut for one round across them. The reading and the judging hand off through files, so they run in one job (below) or as parallel reading jobs and a judge job that `needs:` them; `spec-tools workers` reads only its share in a parallel job. Set `AUDIT_JOB_MEMORY` once and give the AI jobs the same `KUBERNETES_MEMORY_LIMIT` (a YAML anchor keeps them one value; the runner must allow the overwrite); each pass logs the memory it used, which is what `AUDIT_WORKERS` is tuned from. Parallel reading jobs pay when one job cannot hold the round — a runner's default 2 GiB holds three workers; with the memory raised one job holds it, and the job that judges is the job that read: one pod, no artifact hop.
 - spec-steward's corpus audit (`--audit spec-steward`) has no job: it is heavy, and its review file is the owner's to answer, locally.
 - Declare what binds beyond spec-steward's defaults once, in `package.json`: `"spec-steward": { "binds": ["scripts/checks/**", "**/*.Dockerfile", ".gitlab-ci.yml"] }`.
 
@@ -65,24 +66,16 @@ spec-coverage:
                 node_modules/@kirill.konshin/lint/skills/,
             ]
 
-# The reading, shared out: each job reads the parts dealt to it.
-spec-verify:read:
-    stage: review
-    image: <an image with claude and node>
-    needs: [spec-coverage]
-    parallel: 2 # 8 on the nightly
-    allow_failure: true
-    script:
-        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers
-    artifacts: { when: always, paths: [audit-parts/findings/] }
-
-# The judge: merge, complete what the reading left short, verify every ERROR, gate.
+# The audit, in one job: read (a failed reading leaves its parts to the completion pass), merge, complete what the
+# reading left short, verify every ERROR, gate.
 spec-verify:
     stage: review
     image: <an image with claude and node>
-    needs: [spec-coverage, { job: 'spec-verify:read', optional: true }]
+    needs: [spec-coverage]
+    variables: { KUBERNETES_MEMORY_LIMIT: 8Gi, KUBERNETES_CPU_LIMIT: '4' } # AUDIT_JOB_MEMORY says the same
     allow_failure: { exit_codes: [3, 77] }
     script:
+        - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers || echo "the completion pass reads what the reading left short"
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js workers --complete
         - node node_modules/@kirill.konshin/lint/skills/spec-tools/scripts/cli.js report
