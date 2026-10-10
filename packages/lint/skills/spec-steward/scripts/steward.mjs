@@ -7,16 +7,14 @@
  *   spec-steward check     [--base auto|<ref>] [--binds <glob>]... [--file f] [--fix] [--strict] [--json]
  *                          [--max-words P,F] [--max-obligations P,F]      the corpus gate (also local and the hook)
  *   spec-steward coverage  [--out file] [--binds <glob>]...              the coverage report, MDX-safe Markdown
- *   spec-steward evidence  --json [--binds <glob>]...                     the audit's evidence model on stdout
- *   spec-steward evidence  --out dir [--root NAME=path]...               per-capability evidence bundles
- *   spec-steward partition --out dir --parts N                           balanced parts over the bundles in --out
- *   spec-steward index     [--full] [--binds <glob>]...                  corpus and citation summary as JSON
+ *   spec-steward evidence  --json [--binds <glob>]...                     the audits' evidence model on stdout
  *   spec-steward review    render|status|verify|lint ...                  the review-file engine
  *   spec-steward align     --root A=path --root B=path [--json]           wording drift of shared rules across repos
  *   spec-steward wire      [--check|--fix]                                the guard's steering points in a repository
  *   spec-steward hook                                                     Claude Code PostToolUse entry (stdin JSON)
  *
- * Common flags: --root NAME=path (repeatable), --specs <dir> (default openspec/specs).
+ * Common flags: --root NAME=path (repeatable), --specs <dir> (default openspec/specs). A repository's own binds live in its
+ * root package.json, `"spec-steward": { "binds": [...] }`, and add to every `--binds` given.
  * Exit: 0 clean; 1 an error finding (or a warning under --strict); 2 a usage or environment error — an unknown flag,
  * a base ref that does not exist, a git listing that fails or is empty, a missing specs directory.
  */
@@ -34,9 +32,9 @@ import {
     SIZE,
 } from './lib/checks.mjs';
 import { scanCitations } from './lib/citations.mjs';
-import { allRequirements, DEFAULT_SPECS_DIR, loadCorpus, loadCorpusAt, parseSpec } from './lib/corpus.mjs';
+import { DEFAULT_SPECS_DIR, loadCorpus, loadCorpusAt, parseSpec } from './lib/corpus.mjs';
 import { coverageReport } from './lib/coverage.mjs';
-import { capabilityEvidence, evidenceModel, partition, sourceIndex } from './lib/evidence.mjs';
+import { evidenceModel, sourceIndex } from './lib/evidence.mjs';
 import { changedFiles, forget, listFiles, resolveBase, toplevel } from './lib/git.mjs';
 import { parseArgs } from './lib/util.mjs';
 
@@ -46,12 +44,10 @@ const anchorsOf = (/** @type {string} */ text) => parseSpec(text, '', '').slugs;
 const FLAGS = {
     check: ['base', 'binds', 'file', 'fix', 'strict', 'json', 'max-words', 'max-obligations', 'all-citations'],
     coverage: ['out', 'binds'],
-    evidence: ['out', 'json', 'binds'],
-    partition: ['out', 'parts'],
-    index: ['full', 'binds'],
+    evidence: ['json', 'binds'],
 };
 const COMMON = ['root', 'specs'];
-const BOOLEANS = ['fix', 'strict', 'json', 'all-citations', 'full', 'check'];
+const BOOLEANS = ['fix', 'strict', 'json', 'all-citations', 'check'];
 
 /** A usage or environment error: reported on stderr, exit 2. */
 class UsageError extends Error {}
@@ -91,8 +87,23 @@ function assertScannable(root) {
         throw new UsageError(`${root.name}: git lists no files — is ${root.path} a repository?`);
 }
 
-/** @param {Record<string, any>} opts */
-const bindsOf = (opts) => /** @type {string[]} */ ([].concat(opts.binds ?? []).filter((b) => typeof b === 'string'));
+/**
+ * What binds beyond the defaults: the repository's own `binds` (`"spec-steward": { "binds": [...] }` in its root
+ * `package.json`), then every `--binds` given.
+ * @param {Record<string, any>} opts
+ * @param {string} root
+ */
+const bindsOf = (opts, root) => {
+    let configured = [];
+    try {
+        configured = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))['spec-steward']?.binds ?? [];
+    } catch {
+        // no package.json, or not JSON: nothing configured
+    }
+    return /** @type {string[]} */ (
+        [...[].concat(configured), ...[].concat(opts.binds ?? [])].filter((b) => typeof b === 'string')
+    );
+};
 
 /**
  * Every finding for one repository, and the base it was judged against.
@@ -111,7 +122,7 @@ export function runCheck(root, opts) {
         how = resolved.how;
     }
     const corpus = loadCorpus(root.path, root);
-    const binds = bindsOf(opts);
+    const binds = bindsOf(opts, root.path);
     if (opts.file && (typeof opts.file !== 'string' || !fs.existsSync(path.resolve(opts.file))))
         throw new UsageError(`--file ${opts.file}: no such file`);
     const relative = (/** @type {string} */ f) =>
@@ -168,34 +179,6 @@ async function main(argv) {
     validateFlags(cmd, opts);
     const roots = rootsOf(opts);
 
-    if (cmd === 'index') {
-        const out = roots.map((root) => {
-            assertScannable(root);
-            const corpus = loadCorpus(root.path, root);
-            const citations = scanCitations(root.path, anchorsOf, { binds: bindsOf(opts) });
-            const reqs = allRequirements(corpus);
-            const count = (/** @type {(c: import('./lib/citations.mjs').Citation) => boolean} */ p) =>
-                citations.filter(p).length;
-            return {
-                name: root.name,
-                path: root.path,
-                capabilities: corpus.capabilities.length,
-                requirements: reqs.length,
-                advisory: reqs.filter((r) => r.advisory).length,
-                gaps: reqs.reduce((n, r) => n + r.gaps.length, 0),
-                scenarios: reqs.reduce((n, r) => n + r.scenarios.length, 0),
-                citations: {
-                    bindings: count((c) => !!c.binding),
-                    pointers: count((c) => !c.binding),
-                    dangling: count((c) => !c.resolves),
-                },
-                corpus: opts.full ? corpus.capabilities.map((c) => ({ ...c, slugs: undefined })) : undefined,
-            };
-        });
-        process.stdout.write(JSON.stringify(out, null, 2) + '\n');
-        return 0;
-    }
-
     if (cmd === 'check') {
         let failed = false;
         const all = [];
@@ -251,7 +234,7 @@ async function main(argv) {
         assertScannable(root);
         const { markdown, totals } = coverageReport(
             loadCorpus(root.path, root),
-            scanCitations(root.path, anchorsOf, { binds: bindsOf(opts) }),
+            scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path) }),
         );
         if (typeof opts.out === 'string') {
             fs.writeFileSync(path.resolve(opts.out), markdown);
@@ -262,60 +245,16 @@ async function main(argv) {
         return 0;
     }
 
-    if (cmd === 'evidence' && opts.json) {
+    if (cmd === 'evidence') {
+        if (!opts.json) throw new UsageError('evidence takes --json: the evidence model on stdout');
         const root = oneRoot(roots, cmd);
         assertScannable(root);
         const model = evidenceModel(
             loadCorpus(root.path, root),
-            scanCitations(root.path, anchorsOf, { binds: bindsOf(opts) }),
+            scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path) }),
             sourceIndex(root.path),
         );
         process.stdout.write(JSON.stringify(model) + '\n');
-        return 0;
-    }
-
-    if (cmd === 'evidence') {
-        const out = path.resolve(opts.out ?? 'spec-evidence');
-        const corpora = roots.map((root) => {
-            assertScannable(root);
-            return {
-                root,
-                corpus: loadCorpus(root.path, root),
-                citations: scanCitations(root.path, anchorsOf, { binds: bindsOf(opts) }),
-                sources: sourceIndex(root.path),
-            };
-        });
-        const everywhere = corpora.flatMap(({ corpus }) =>
-            allRequirements(corpus).map((requirement) => ({ corpus, requirement })),
-        );
-        const bundles = [];
-        for (const { root, corpus, citations, sources } of corpora) {
-            for (const cap of corpus.capabilities) {
-                const file = path.join(out, root.name, `${cap.capability}.md`);
-                fs.mkdirSync(path.dirname(file), { recursive: true });
-                const md = capabilityEvidence(corpus, cap, citations, sources, everywhere);
-                fs.writeFileSync(file, md);
-                bundles.push({
-                    corpus: root.name,
-                    capability: cap.capability,
-                    file,
-                    bytes: Buffer.byteLength(md),
-                    requirementIds: cap.requirements.map((r) => r.id),
-                });
-            }
-        }
-        fs.writeFileSync(path.join(out, 'bundles.json'), JSON.stringify(bundles, null, 2));
-        process.stderr.write(`${bundles.length} bundle(s) in ${out}\n`);
-        return 0;
-    }
-
-    if (cmd === 'partition') {
-        const out = path.resolve(opts.out ?? 'spec-evidence');
-        const bundles = JSON.parse(fs.readFileSync(path.join(out, 'bundles.json'), 'utf8'));
-        const parts = partition(bundles, Number(opts.parts ?? 16));
-        fs.writeFileSync(path.join(out, 'parts.json'), JSON.stringify(parts, null, 2));
-        for (const p of parts)
-            process.stdout.write(`part ${p.part}: ${Math.round(p.bytes / 1024)} KB — ${p.capabilities.join(', ')}\n`);
         return 0;
     }
 
@@ -325,7 +264,7 @@ async function main(argv) {
     if (cmd === 'hook') return (await import('./lib/wire.mjs')).hookCli(opts);
 
     throw new UsageError(
-        'usage: spec-steward check|coverage|evidence|partition|index|review|align|wire|hook — see the header of steward.mjs',
+        'usage: spec-steward check|coverage|evidence|review|align|wire|hook — see the header of steward.mjs',
     );
 }
 

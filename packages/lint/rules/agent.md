@@ -78,6 +78,8 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
     - Hard constraints
     - That must appear in scope by `paths` glob
 - Should be cited in `AGENTS.md` to ensure they're discoverable by harnesses that don't support `.xxx/rules` natively
+- A `paths`-scoped rule loads only when the harness opens a matching file: before editing a file through a shell command, or in a repository other than the session's, read the rules whose `paths` match it
+- Never judge configuration unused before reading the rule that names it
 
 # `.agents/skills`
 

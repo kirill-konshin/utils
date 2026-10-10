@@ -6,7 +6,8 @@
   "skipGenerate": true,
   "bin": {
     "lint-prepare": "./dist/lintPrepare.js",
-    "spec-steward": "./skills/spec-steward/scripts/steward.mjs"
+    "spec-steward": "./skills/spec-steward/scripts/steward.mjs",
+    "spec-tools": "./spec-tools/dist/cli.mjs"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -33,17 +34,20 @@
   },
   "scripts": {
     "----- BUILD -----": "",
-    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
-    "build": "tsc --build",
-    "start": "tsc --build --watch",
+    "clean": "rm -rf dist spec-tools/dist",
+    "build": "tsdown",
+    "start": "tsdown --watch",
     "----- TEST -----": "",
-    "test": "yarn build && vitest run"
+    "typecheck": "tsc --noEmit",
+    "test": "yarn build && yarn typecheck && vitest run"
   },
   "files": [
     "dist",
+    "commands",
     "rules",
     "skills",
-    "!skills/**/*.test.mjs"
+    "spec-tools/dist",
+    "!**/*.test.*"
   ],
   "dependencies": {
     "@eslint/config-helpers": "^0.7.0",
@@ -81,6 +85,10 @@
   "devDependencies": {
     "@types/eslint-plugin-jsx-a11y": "^6.10.1",
     "@types/eslint-plugin-promise": "^7.3.0",
+    "github-markdown-css": "^5.9.0",
+    "jsonrepair": "^3.15.0",
+    "marked": "^18.0.5",
+    "tsdown": "^0.23.0",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
@@ -129,6 +137,14 @@
   "nx": {
     "tags": [
       "platform:tooling"
-    ]
+    ],
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/dist",
+          "{projectRoot}/spec-tools/dist"
+        ]
+      }
+    }
   }
 }

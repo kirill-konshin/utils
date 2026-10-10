@@ -74,9 +74,9 @@ test('scopes the block to the workspace package owning the entry CSS by default'
             'packages/x/src/styles/app.css': TAILWIND_ENTRY,
         },
         async () => {
-            const block = tailwindBlockOf(await tailwindConfig());
-            assert.ok(isAbsolute(block.basePath));
-            assert.ok(block.basePath.endsWith(join('packages', 'x')));
+            const { basePath = '' } = tailwindBlockOf(await tailwindConfig());
+            assert.ok(isAbsolute(basePath));
+            assert.ok(basePath.endsWith(join('packages', 'x')));
         },
     );
 });
@@ -89,7 +89,7 @@ test('scoping uses the absolutized path when cssConfigPath is relative', async (
         },
         async () => {
             const block = tailwindBlockOf(await tailwindConfig({ cssConfigPath: 'packages/x/app.css' }));
-            assert.ok(block.basePath.endsWith(join('packages', 'x')));
+            assert.ok(block.basePath?.endsWith(join('packages', 'x')));
             // the consumer's own notation still reaches the plugin settings untouched
             assert.equal(block.settings.tailwindcss.cssConfigPath, 'packages/x/app.css');
         },
@@ -128,7 +128,7 @@ test('root-owned entry, undeclared package dirs and scoped: false stay workspace
 
 test('findTailwindEntry: single entry found, ambiguous returns null', async () => {
     await inTempDir({ 'app.css': TAILWIND_ENTRY, 'plain.css': 'body {}\n' }, async () => {
-        assert.ok(findTailwindEntry([]).endsWith('app.css'));
+        assert.ok(findTailwindEntry([])?.endsWith('app.css'));
     });
     await inTempDir({ 'a.css': TAILWIND_ENTRY, 'b.css': TAILWIND_ENTRY }, async () => {
         assert.equal(findTailwindEntry([]), null);

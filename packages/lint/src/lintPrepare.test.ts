@@ -17,6 +17,7 @@ import {
     generateAgentsFile,
     installedRules,
     packageFiles,
+    readCommands,
     readRules,
     readSkills,
     readUserFiles,
@@ -99,6 +100,25 @@ test('syncAgentDirs: creates every agent dir and links package files straight to
                 linkTarget(join(cwd, agentDir, 'skills/lint-repo/SKILL.md')),
                 realpathSync(join(PACKAGE_DIR, 'skills/lint-repo/SKILL.md')),
             );
+        }
+    });
+});
+
+test('syncAgentDirs: every shipped command arrives in every agent dir as a link to the package file', async () => {
+    const commands = readCommands();
+    assert.ok(commands.length > 0, 'the package ships commands');
+
+    await inTempDir({ '.keep': '' }, async (cwd) => {
+        sync(cwd, packageFiles([], [], commands));
+
+        for (const command of commands) {
+            for (const agentDir of AGENT_DIRS) {
+                assert.equal(
+                    linkTarget(join(cwd, agentDir, 'commands', command)),
+                    realpathSync(join(PACKAGE_DIR, 'commands', command)),
+                    `${agentDir}/commands/${command}`,
+                );
+            }
         }
     });
 });

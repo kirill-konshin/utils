@@ -5,7 +5,7 @@
  *
  * This script makes `rules`, `commands` and `skills` real directories in the consuming project's
  * `.agents` (canonical, cross-tool) and `.claude` (Claude Code), and fills them with
- * file symlinks only: package rules and skills (every file a skill folder ships, plus the package
+ * file symlinks only: package rules, commands and skills (every file a skill folder ships, plus the package
  * README.md next to its SKILL.md, so a skill can reference `@README.md`) go into both, pointing
  * straight at the installed package; the user's own files in `.agents` are mirrored into `.claude`. It also
  * generates an `AGENTS.md` file for other tools, with `CLAUDE.md` symlinked to `AGENTS.md`.
@@ -38,6 +38,7 @@ const AGENTS_FILE = 'AGENTS.md';
 const CLAUDE_FILE = 'CLAUDE.md';
 const RULES_DIR = path.join(__dirname, '../rules');
 const SKILLS_DIR = path.join(__dirname, '../skills');
+const COMMANDS_DIR = path.join(__dirname, '../commands');
 const README_FILE = path.join(__dirname, '../README.md');
 // `.agents` is the cross-tool location (Codex, Cursor, Antigravity) holding the package links and the user's own
 // files, the latter are mirrored into `.claude` (Claude Code reads nothing else)
@@ -291,16 +292,32 @@ export function readSkills(): Skill[] {
 }
 
 /**
- * Package files to link, keyed by their path inside an agent dir: `rules/<file>`, and every file of a skill at its
- * own relative path, plus the package README.md next to its `SKILL.md` (unless the skill ships one), so a skill can
- * reference `@README.md`.
+ * Read the package commands directory: every markdown file is a command named after the file.
  */
-export function packageFiles(rules: Rule[], skills: Skill[]): Map<string, string> {
+export function readCommands(): string[] {
+    if (!fs.existsSync(COMMANDS_DIR)) return [];
+
+    return fs
+        .readdirSync(COMMANDS_DIR)
+        .filter((f) => f.endsWith('.md'))
+        .sort();
+}
+
+/**
+ * Package files to link, keyed by their path inside an agent dir: `rules/<file>`, `commands/<file>`, and every file
+ * of a skill at its own relative path, plus the package README.md next to its `SKILL.md` (unless the skill ships
+ * one), so a skill can reference `@README.md`.
+ */
+export function packageFiles(rules: Rule[], skills: Skill[], commands: string[] = []): Map<string, string> {
     const files = new Map<string, string>();
     const hasReadme = fs.existsSync(README_FILE);
 
     for (const rule of rules) {
         files.set(path.join('rules', rule.file), path.join(RULES_DIR, rule.file));
+    }
+
+    for (const command of commands) {
+        files.set(path.join('commands', command), path.join(COMMANDS_DIR, command));
     }
 
     for (const skill of skills) {
@@ -513,8 +530,11 @@ export function main(): void {
         const skills = readSkills();
         console.log(`Found ${skills.length} skill(s): ${skills.map((s) => s.name).join(', ')}`);
 
+        const commands = readCommands();
+        console.log(`Found ${commands.length} command(s): ${commands.map((c) => c.replace(/\.md$/, '')).join(', ')}`);
+
         const userFiles = readUserFiles(cwd);
-        syncAgentDirs(cwd, packageFiles(rules, skills), userFiles);
+        syncAgentDirs(cwd, packageFiles(rules, skills, commands), userFiles);
         console.log(
             `Synced ${AGENT_DIRS.join(', ')}, mirrored ${userFiles.size} own file(s) from ${CANONICAL_AGENT_DIR}`,
         );

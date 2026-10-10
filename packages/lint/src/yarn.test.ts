@@ -3,7 +3,20 @@ import { test } from 'vitest';
 
 import { defineYarnConfig } from '../dist/yarn.cjs';
 
-function makeWorkspace(cwd, manifest = {}) {
+/** The constraints context Yarn hands `defineYarnConfig().constraints` — the fakes below stand in for its parts. */
+type Context = Parameters<ReturnType<typeof defineYarnConfig>['constraints']>[0];
+
+type FakeWorkspace = { cwd: string; manifest: object; errors: string[]; error(message: string): void };
+type FakeDependency = {
+    workspace: FakeWorkspace;
+    ident: string;
+    range: string;
+    type: string;
+    updates: string[];
+    update(nextRange: string): void;
+};
+
+function makeWorkspace(cwd: string, manifest: object = {}): FakeWorkspace {
     return {
         cwd,
         manifest,
@@ -14,7 +27,12 @@ function makeWorkspace(cwd, manifest = {}) {
     };
 }
 
-function makeDependency(workspace, ident, range, type = 'devDependencies') {
+function makeDependency(
+    workspace: FakeWorkspace,
+    ident: string,
+    range: string,
+    type = 'devDependencies',
+): FakeDependency {
     return {
         workspace,
         ident,
@@ -27,13 +45,14 @@ function makeDependency(workspace, ident, range, type = 'devDependencies') {
     };
 }
 
-function makeContext(root, dependencies) {
-    return {
+/** Only the two lookups the constraints make; the rest of Yarn's context is never touched. */
+function makeContext(root: FakeWorkspace, dependencies: FakeDependency[]): Context {
+    const context = {
         Yarn: {
-            workspace(filter) {
+            workspace(filter?: { cwd?: string }) {
                 return filter?.cwd === '.' ? root : null;
             },
-            dependencies(filter = {}) {
+            dependencies(filter: { ident?: string; workspace?: FakeWorkspace } = {}) {
                 return dependencies.filter(
                     (dependency) =>
                         (filter.ident === undefined || dependency.ident === filter.ident) &&
@@ -42,6 +61,7 @@ function makeContext(root, dependencies) {
             },
         },
     };
+    return context as unknown as Context;
 }
 
 test('defineYarnConfig is available from the dedicated Yarn module', () => {

@@ -10,13 +10,13 @@ Every rule, requirement or scenario that matches one of these, numbered so findi
 2. A rule that belongs in `AGENTS.md`, a scoped rule, a skill, a command, the OPSX config or a README rather than the specification (place it per `rules/agent.md`).
 3. A rule better enforced by deterministic tooling than by an AI audit.
 4. A rule that produces low-value or artificial tests.
-5. A rule whose tests satisfy the wording while failing to protect the intent.
+5. A rule whose tests satisfy the wording while failing to protect the intent. (`spec-verify` check 5 judges it against the code.)
 6. A rule that cannot reasonably be verified.
 7. A rule whose wording allows materially different interpretations. An undefined evaluative term in a REQUIRED statement (_thin_, _safe_, _lean_, _at parity_, _needed_) is a finding: replace it with the criterion it stands for, drop the sentence where a precise rule already carries the obligation, or, when nothing checkable remains, make it ⚠️ ADVISORY.
 8. A rule that describes implementation detail instead of an externally meaningful invariant.
-9. A rule redundant with, or substantially overlapping, another.
-10. Contradictory rules.
-11. A rule that no longer matches the implementation or architecture.
+9. A rule redundant with, or substantially overlapping, another. (`spec-verify` check 3.)
+10. Contradictory rules. (`spec-verify` check 2.)
+11. A rule that no longer matches the implementation or architecture. (`spec-verify` check 4 judges it against the code.)
 12. Implementation suggesting the specification itself is wrong or outdated.
 13. A missing high-value invariant the architecture clearly relies on.
 14. A rule whose scope is unclear.

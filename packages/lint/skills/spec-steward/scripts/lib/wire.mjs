@@ -12,10 +12,11 @@ import { isTestFile, scanCitations } from './citations.mjs';
 import { capabilityOf, DEFAULT_SPECS_DIR, parseSpec } from './corpus.mjs';
 import { git, show, toplevel } from './git.mjs';
 
-export const SCRIPT = 'node_modules/@kirill.konshin/lint/skills/spec-steward/scripts/steward.mjs';
-export const HOOK_COMMAND = `f="$CLAUDE_PROJECT_DIR/${SCRIPT}"; [ ! -f "$f" ] || node "$f" hook`;
+/** The bin the package installs; the hook is a no-op until the repository's install provides it. */
+export const BIN = 'node_modules/.bin/spec-steward';
+export const HOOK_COMMAND = `f="$CLAUDE_PROJECT_DIR/${BIN}"; [ ! -x "$f" ] || "$f" hook`;
 export const AGENTS_LINE =
-    "Specifications: edits under `openspec/` are guarded by the scoped rule `.agents/rules/openspec.md` and the `spec-steward` edit hook; corpus-quality audits, review rounds and cross-repository alignment use the `spec-steward` skill, and code conformance is the repository's own audit.";
+    'Specifications: edits under `openspec/` are guarded by the scoped rule `.agents/rules/openspec.md` and the `spec-steward` edit hook; corpus-quality audits, review rounds and cross-repository alignment use the `spec-steward` skill, and code conformance is the `spec-verify` audit (`spec-tools`).';
 /** The OPSX guidance points at the repository's own spec gate; the gate runs spec-steward, so no second command. */
 export const GATE_POINTER = 'AGENTS.md → Checks';
 export const GUIDANCE = {
@@ -53,7 +54,8 @@ export function wireStatus(root) {
                 (e.hooks ?? []).some(
                     (/** @type {any} */ h) =>
                         typeof h.command === 'string' &&
-                        h.command.includes('steward.mjs') &&
+                        // the bin, or the script by path as earlier versions wired it
+                        /spec-steward|steward\.mjs/.test(h.command) &&
                         h.command.includes('hook'),
                 ),
             );

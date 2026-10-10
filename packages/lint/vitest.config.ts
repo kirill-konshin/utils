@@ -3,5 +3,6 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    test: {},
+    // `spec-tools html` inlines a stylesheet through `?raw`; Vitest stubs CSS unless told otherwise.
+    test: { css: true },
 });

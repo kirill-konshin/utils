@@ -36,7 +36,7 @@ A citation of a scenario's anchor binds the scenario only where it sits in one o
 | In a test file, in the comment run directly above such a call or function (in Python, its decorators too), with no blank line between | yes |
 | In a test file, on a type assertion — an `Expect<…>` type alias, or an `expectTypeOf(…)` or `assertType(…)` call — at the top level or inside a block | yes |
 | In a lint configuration — `eslint.config.{js,mjs,cjs,ts,mts,cts}` or `yarn.config.cjs` — anywhere | yes |
-| In a file matching a `--binds <glob>` the repository passes (a check script, a Dockerfile, a CI configuration), anywhere | yes |
+| In a file matching a `binds` glob the repository declares — `"spec-steward": { "binds": [...] }` in its root `package.json`, or `--binds <glob>` — (a check script, a Dockerfile, a CI configuration), anywhere | yes |
 | Anywhere else in a test file: its header, a fixture, a helper | no — it binds nothing and fails nothing |
 | Code, configuration, YAML, a Dockerfile or a document that no `--binds` glob matches | no — it is a pointer |
 
@@ -56,7 +56,7 @@ There are exactly two markers. Each stands on a line of its own: the Advisory li
 | Marker | Meaning |
 | --- | --- |
 | `**⚠️ Advisory:** <why review is its evidence>` | The requirement is ADVISORY. It keeps its RFC 2119 keywords and is exempt from the scenario ratchet and from `absolute-unproven`. Coverage reports it as `advisory`, and the evidence JSON classes it `advisory`. Marking an existing requirement Advisory is reported as `weakened` ("newly marked advisory"). It qualifies the whole requirement, so a requirement that mixes a contract with guidance is split. |
-| `**⚠️ Known gap (<tracker>):** <what is missing>` | Behaviour the requirement describes is knowingly absent or incomplete, or a REQUIRED rule lacks the evidence that would catch its failure. `<tracker>` is required text: a ticket key (`EVAA-34696`), a tickets-page id, or an open `openspec/changes/<name>` folder. Steward checks only that it is present: any non-empty text inside the parentheses counts and is not validated, so a placeholder counts until it is replaced. In the statement, the line records the gap and exempts nothing, unless it names scenarios of its requirement by title after `exempts`, each in quotes (`exempts scenario 'A'`, `exempts scenarios 'A' and 'B'`; double quotes, curly quotes, `_…_` and `*…*` are read too). Exactly the named scenarios are then exempt from the scenario ratchet. Coverage lists every gap with its tracker. |
+| `**⚠️ Known gap (<tracker>):** <what is missing>` | Behaviour the requirement describes is knowingly absent or incomplete, or a REQUIRED rule lacks the evidence that would catch its failure. `<tracker>` is required text: a ticket key (`PROJ-123`), a tickets-page id, or an open `openspec/changes/<name>` folder. Steward checks only that it is present: any non-empty text inside the parentheses counts and is not validated, so a placeholder counts until it is replaced. In the statement, the line records the gap and exempts nothing, unless it names scenarios of its requirement by title after `exempts`, each in quotes (`exempts scenario 'A'`, `exempts scenarios 'A' and 'B'`; double quotes, curly quotes, `_…_` and `*…*` are read too). Exactly the named scenarios are then exempt from the scenario ratchet. Coverage lists every gap with its tracker. |
 
 Retired spellings are `**⚠️ Unenforced:**` and `**⚠️ Known gap:**` without a tracker. Each is reported as `marker-hygiene` and grants no exemption. So is a marker inside a line rather than on a line of its own, and an Advisory or Known gap line inside a scenario. A misspelt marker (wrong case, missing emoji or bold) is reported as `marker-hygiene`, and `--fix` normalises it.
 
@@ -133,8 +133,8 @@ An explicit `--base <ref>` compares with the merge base of `<ref>` and `HEAD`. W
 | --- | --- | --- |
 | `spec-steward check [--base auto\|<ref>] [--binds <glob>]… [--file <f>] [--fix] [--strict] [--json]` | The corpus gate, run locally, in CI and by the hook | Findings ([below](#findings)) |
 | `spec-steward coverage [--out <file>] [--binds <glob>]…` | The [coverage report](#coverage-report) | Markdown, to the file or to stdout |
-| `spec-steward evidence --json [--binds <glob>]…` | The audit's [evidence model](#evidence-json) | JSON on stdout |
-| `spec-steward evidence --out <dir>`, `partition`, `index`, `review`, `align`, `wire`, `hook` | Audit bundles and partitions, the corpus index, review files, cross-repository drift, wiring, the edit hook | As each command documents |
+| `spec-steward evidence --json [--binds <glob>]…` | The audits' [evidence model](#evidence-json), which `spec-tools scope` assembles each audit's evidence files from | JSON on stdout |
+| `spec-steward review`, `align`, `wire`, `hook` | Review files, cross-repository drift, wiring, the edit hook | As each command documents |
 
 `spec-steward` is the package's `bin`. A repository calls it from its root scripts and never imports steward's modules: the package's `exports` map does not expose them, so the CLI and its JSON are the interface.
 

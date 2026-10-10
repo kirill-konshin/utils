@@ -7,11 +7,11 @@ An audit's findings go to the owner as one Markdown review file. The owner answe
 Each item has a scan line and five bullets. The bullet labels are fixed — the parser reads them.
 
 ```md
-### R-007 · SPEC-ADVISORY · CXAD apps/mastra · 1, 6
+### R-007 · SPEC-ADVISORY · SHOP checkout · 1, 6
 
-- Rule: “The A2A endpoint and Agent Card are the ONLY surface a consumer may target”
-    - Location: `CXAD openspec/specs/apps/mastra/spec.md:20`
-    - What’s wrong: <the concrete problem>. Evidence: `apps/mastra/src/main.ts:59`.
+- Rule: “The public HTTP API is the ONLY surface a client may target”
+    - Location: `SHOP openspec/specs/checkout/spec.md:20`
+    - What’s wrong: <the concrete problem>. Evidence: `src/checkout/server.ts:59`.
     - Proposed: Reclassify → OpenSpec ⚠️ ADVISORY — <exactly what to do>
     - My response: ⬜
 ```
@@ -29,8 +29,8 @@ When several rules share one problem and one solution, they become a single them
 ### R-012 · DELETE · Theme: Scenarios that restate their requirement · 19, 20
 
 - Rule: “Scenarios that restate their requirement” — 3 rules:
-    - “WHEN the module is evaluated THEN no instance exists until the factory runs” — `CXAD openspec/specs/apps/mastra/spec.md:31`
-    - “…” — `APC openspec/specs/client/spec.md:88` — member-specific note
+    - “WHEN the module is evaluated THEN no instance exists until the factory runs” — `SHOP openspec/specs/checkout/spec.md:31`
+    - “…” — `BILLING openspec/specs/invoices/spec.md:88` — member-specific note
     - Location: each member above
     - What’s wrong: …
     - Proposed: …

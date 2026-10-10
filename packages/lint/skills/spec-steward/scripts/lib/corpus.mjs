@@ -212,7 +212,7 @@ function walkSpecs(dir) {
     return out.sort();
 }
 
-/** `openspec/specs/apps/mastra/spec.md` → `apps/mastra`. @param {string} specsDir @param {string} file */
+/** `openspec/specs/billing/refunds/spec.md` → `billing/refunds`. @param {string} specsDir @param {string} file */
 export const capabilityOf = (specsDir, file) => path.relative(specsDir, path.dirname(file)).split(path.sep).join('/');
 
 /**

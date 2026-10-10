@@ -1,0 +1,49 @@
+[
+  {
+    "key": "tooling-ci",
+    "title": "Tooling, CI and the run classes",
+    "focus": "Which rules a deterministic check, a lint rule or a type would enforce better than an audit (criterion 3); CI and audit configuration whose cost buys no signal, or whose classification of a run is wrong (23); the same concern held by a CI job and a specification or a skill (21).",
+    "files": [
+      ".gitlab-ci.yml",
+      ".gitlab/**/*.yml",
+      ".github/workflows/*.yml",
+      ".github/workflows/*.yaml",
+      "package.json",
+      "nx.json",
+      "turbo.json",
+      "scripts/checks/**"
+    ]
+  },
+  {
+    "key": "compliance-theatre",
+    "title": "Tests citing the corpus",
+    "focus": "Tests bound to the specifications that satisfy the wording while failing to protect the intent (5), that are low-value or artificial (4), or whose verification relies on comments or textual matching (17).",
+    "from": "bindings"
+  },
+  {
+    "key": "comments-citations",
+    "title": "Comments and citations",
+    "focus": "Citation machinery whose upkeep exceeds its value (24), citations standing in for evidence (17), comments restating a rule the specification owns (21).",
+    "from": "pointers"
+  },
+  {
+    "key": "missing-invariants",
+    "title": "Missing invariants",
+    "focus": "High-value invariants the architecture clearly relies on that no requirement states (13), and implementation suggesting a specification is wrong or outdated (12).",
+    "files": ["README.md", "ARCHITECTURE.md", "docs/**/*.md"]
+  },
+  {
+    "key": "placement",
+    "title": "Placement",
+    "focus": "Rules that belong in AGENTS.md, a scoped rule, a skill, a command, the OPSX config or a README rather than the specification, and the reverse (2); the same concern held by two mechanisms (21); AGENTS.md hierarchy and scoped-rule scope. Judge by the placement guide, rules/agent.md.",
+    "files": [
+      "AGENTS.md",
+      "**/AGENTS.md",
+      ".agents/rules/*.md",
+      ".agents/skills/*/SKILL.md",
+      ".agents/commands/**/*.md",
+      "openspec/config.yaml",
+      "openspec/config.yml"
+    ]
+  }
+]

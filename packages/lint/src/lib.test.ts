@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'vitest';
 
+import type { ToggleOptions } from './index.js';
 import { asOptions, findWorkspaceRoot, toolGate } from './lib.js';
 import { inTempDir } from './testUtils.js';
+
+type CssOptions = ToggleOptions & { cssConfigPath?: string };
+type PathOptions = ToggleOptions & { path?: string };
 
 test('asOptions: booleans normalize to { enabled }', () => {
     assert.deepEqual(asOptions(true), { enabled: true });
@@ -17,8 +21,8 @@ test('asOptions: undefined stays undecided so callers fall back to detection', (
 
 test('asOptions: an options object implies enabled: true unless it says otherwise', () => {
     assert.deepEqual(asOptions({}), { enabled: true });
-    assert.deepEqual(asOptions({ cssConfigPath: 'a.css' }), { enabled: true, cssConfigPath: 'a.css' });
-    assert.deepEqual(asOptions({ enabled: false, cssConfigPath: 'a.css' }), {
+    assert.deepEqual(asOptions<CssOptions>({ cssConfigPath: 'a.css' }), { enabled: true, cssConfigPath: 'a.css' });
+    assert.deepEqual(asOptions<CssOptions>({ enabled: false, cssConfigPath: 'a.css' }), {
         enabled: false,
         cssConfigPath: 'a.css',
     });
@@ -78,11 +82,11 @@ test('findWorkspaceRoot: rejects env that does not contain cwd and resolves the 
 
 const SPEC = { tool: 'demo', has: false };
 const NEEDS = { what: 'entry file', detail: 'single demo entry file', hint: '`demo: { path }`' };
-const absolutizePath = ({ path }) => (path ? [path] : []);
+const absolutizePath = ({ path }: PathOptions) => (path ? [path] : []);
 
 test('toolGate: false and enabled: false are always off, keeping the other options', () => {
     assert.deepEqual(toolGate(false, false, { ...SPEC, has: true }), { enabled: false, options: {}, files: [] });
-    assert.deepEqual(toolGate({ enabled: false, path: 'x' }, true, { ...SPEC, has: true }), {
+    assert.deepEqual(toolGate<PathOptions>({ enabled: false, path: 'x' }, true, { ...SPEC, has: true }), {
         enabled: false,
         options: { path: 'x' },
         files: [],
@@ -100,7 +104,7 @@ test('toolGate: evidence turns detection on; absolutizeOptions evidence wins ove
     const scanned = toolGate(undefined, false, { ...SPEC, scan: () => ['/x/found'] });
     assert.deepEqual(scanned, { enabled: true, options: {}, files: ['/x/found'] });
 
-    const supplied = toolGate({ path: '/x/mine' }, false, {
+    const supplied = toolGate<PathOptions>({ path: '/x/mine' }, false, {
         ...SPEC,
         absolutizeOptions: absolutizePath,
         scan: () => assert.fail('scan must not run when the options supplied evidence'),
@@ -166,6 +170,10 @@ test('toolGate: strict throws when a tool that is on cannot work', () => {
     assert.throws(() => toolGate(true, true, { ...SPEC, packageName: 'gatemissingpkg' }), /strict detection/);
     assert.throws(() => toolGate(true, true, { ...SPEC, needs: NEEDS }), /strict detection/);
     // options-supplied evidence satisfies `needs` under strict
-    const gate = toolGate({ path: '/x/mine' }, true, { ...SPEC, needs: NEEDS, absolutizeOptions: absolutizePath });
+    const gate = toolGate<PathOptions>({ path: '/x/mine' }, true, {
+        ...SPEC,
+        needs: NEEDS,
+        absolutizeOptions: absolutizePath,
+    });
     assert.deepEqual(gate, { enabled: true, options: { path: '/x/mine' }, files: ['/x/mine'] });
 });

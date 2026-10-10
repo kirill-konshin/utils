@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -5,6 +6,9 @@ import { dirname, join } from 'node:path';
 import type { Linter } from 'eslint';
 
 export const TAILWIND_ENTRY = '@import "tailwindcss";\n';
+
+type TailwindBlock = Linter.Config & { settings: { tailwindcss: { cssConfigPath: string } } };
+type NextBlock = Linter.Config & { settings: { next: { rootDir: string | string[] } } };
 
 /**
  * Run `fn` with cwd pointed at a throwaway dir containing `files` (nested paths allowed) -
@@ -52,10 +56,23 @@ export function packagesLoadedBy(entry: string): string[] {
     return loaded.filter((url) => url.includes('/node_modules/'));
 }
 
-export const tailwindBlockOf = (config: Linter.Config[]): Linter.Config | undefined =>
-    config.find((block) => block.settings?.tailwindcss);
-export const nextSettingsBlockOf = (config: Linter.Config[]): Linter.Config | undefined =>
-    config.find((block) => block.settings?.next);
+/** The block carrying the Tailwind plugin's settings; a test that asks for it fails here when there is none. */
+export function tailwindBlockOf(config: Linter.Config[]): TailwindBlock {
+    const block = config.find((candidate) => candidate.settings?.tailwindcss);
+    assert.ok(block, 'tailwind block expected');
+    return block as TailwindBlock;
+}
+
+/** The block carrying `@next/next`'s settings; a test that asks for it fails here when there is none. */
+export function nextSettingsBlockOf(config: Linter.Config[]): NextBlock {
+    const block = config.find((candidate) => candidate.settings?.next);
+    assert.ok(block, 'next settings block expected');
+    return block as NextBlock;
+}
+
+export const hasTailwindBlockIn = (config: Linter.Config[]): boolean =>
+    config.some((block) => block.settings?.tailwindcss);
+export const hasNextSettingsIn = (config: Linter.Config[]): boolean => config.some((block) => block.settings?.next);
 export const hasNextPluginIn = (config: Linter.Config[]): boolean =>
     config.some((block) => block.plugins?.['@next/next']);
 export const hasNxRuleIn = (config: Linter.Config[]): boolean =>

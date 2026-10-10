@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'vitest';
 
-import { hasNextPluginIn, inTempDir, nextSettingsBlockOf } from '../testUtils.js';
+import { hasNextPluginIn, hasNextSettingsIn, inTempDir, nextSettingsBlockOf } from '../testUtils.js';
 import { nextConfig, reactConfig } from './react.js';
 
 test('explicit rootDir lands in settings.next.rootDir and skips the scan', async () => {
@@ -28,7 +28,7 @@ test('rootDir auto-detected from a single next.config.*', async () => {
 test('several apps produce all roots as an array', async () => {
     await inTempDir({ 'apps/a/next.config.js': '', 'apps/b/next.config.mjs': '' }, async () => {
         const { rootDir } = nextSettingsBlockOf(await nextConfig(true)).settings.next;
-        assert.deepEqual(rootDir.sort(), [join(process.cwd(), 'apps/a'), join(process.cwd(), 'apps/b')]);
+        assert.deepEqual([rootDir].flat().sort(), [join(process.cwd(), 'apps/a'), join(process.cwd(), 'apps/b')]);
     });
 });
 
@@ -43,7 +43,7 @@ test('no app-root evidence found stays without settings (rootDir is optional)', 
     await inTempDir({ 'packages/lib/package.json': '{"dependencies":{"react":"19.0.0"}}' }, async () => {
         const config = await nextConfig(true);
         assert.ok(hasNextPluginIn(config));
-        assert.equal(nextSettingsBlockOf(config), undefined);
+        assert.ok(!hasNextSettingsIn(config));
     });
 });
 
@@ -107,7 +107,7 @@ test('reactConfig composite: family blocks apply for both Next and plain React',
             assert.equal(hasNextPluginIn(config), flag);
             assert.ok(config.some((block) => block?.name === '@typescript-eslint overrides'));
             assert.ok(config.some((block) => block?.name === 'eslint-config-next overrides'));
-            assert.ok(config.some((block) => block?.settings?.react?.version));
+            assert.ok(config.some((block) => (block?.settings?.react as { version?: string } | undefined)?.version));
         }
     });
 });

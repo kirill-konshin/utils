@@ -161,7 +161,7 @@ describe('citation scanning', () => {
                 '});',
             ].join('\n'),
             'docs/guide.md': 'Read openspec/specs/demo/spec.md#requirement-payloads-stay-lean.\n',
-            'openspec/changes/x/proposal.md': 'APC openspec/specs/embedding/spec.md\n',
+            'openspec/changes/x/proposal.md': 'OTHER openspec/specs/embedding/spec.md\n',
         });
         const citations = scanCitations(dir, anchorsOf);
         expect(citations.filter((c) => !c.resolves).map((c) => c.file)).toEqual([
@@ -467,6 +467,9 @@ describe('the scenario ratchet', () => {
         write(dir, 'scripts/checks/refunds.sh', `# ${cite('scenario-a-first-refund')}\ntest -f x\n`);
         expect(ratchet(dir)).toHaveLength(1);
         expect(ratchet(dir, { binds: ['scripts/checks/**'] })).toEqual([]);
+        // The repository's own binds, declared once in its package.json.
+        write(dir, 'package.json', JSON.stringify({ 'spec-steward': { binds: ['scripts/checks/**'] } }));
+        expect(ratchet(dir)).toEqual([]);
     });
 
     test("a requirement's anchor binds only its one scenario", () => {
@@ -483,19 +486,19 @@ describe('the scenario ratchet', () => {
         const dir = repo({ [SPEC_FILE]: SPEC });
         const gap = (text) =>
             `${SPEC}${requirement('Refunds are idempotent', 'A refund SHALL be applied at most once per request id.', ['A repeat', 'A first refund'], `\n${text}\n`)}`;
-        let spec = gap("**⚠️ Known gap (EVAA-1):** exempts scenario 'A repeat': no store yet.");
+        let spec = gap("**⚠️ Known gap (PROJ-1):** exempts scenario 'A repeat': no store yet.");
         write(dir, SPEC_FILE, spec);
         expect(ratchet(dir).map((f) => f.line)).toEqual([lineOf(spec, 'Scenario: A first')]);
 
-        write(dir, SPEC_FILE, gap('**⚠️ Known gap (EVAA-1):** no store yet.'));
+        write(dir, SPEC_FILE, gap('**⚠️ Known gap (PROJ-1):** no store yet.'));
         expect(ratchet(dir)).toHaveLength(2);
-        expect(coverageRow(dir, 'Refunds are idempotent')).toMatch(/\| known gap \(EVAA-1\) \|$/);
+        expect(coverageRow(dir, 'Refunds are idempotent')).toMatch(/\| known gap \(PROJ-1\) \|$/);
         expect([coverageRow(dir, 'A repeat'), coverageRow(dir, 'A first refund')]).toEqual([
             expect.stringMatching(/\| no test \|$/),
             expect.stringMatching(/\| no test \|$/),
         ]);
         expect(coverageReport(loadCorpus(dir), scanCitations(dir, anchorsOf)).markdown).toMatch(
-            /## Known gaps\n\n\| Tracker \| Requirement \| Gap \|\n\| --- \| --- \| --- \|\n\| EVAA-1 \| \[demo#requirement-refunds-are-idempotent\]/,
+            /## Known gaps\n\n\| Tracker \| Requirement \| Gap \|\n\| --- \| --- \| --- \|\n\| PROJ-1 \| \[demo#requirement-refunds-are-idempotent\]/,
         );
 
         // Inside a scenario's block a Known gap exempts nothing, and is reported.
@@ -622,11 +625,11 @@ describe('markers', () => {
     });
 
     test('a misspelled marker is fixed to its canonical form, keeping its tracker', () => {
-        const dir = repo({ [SPEC_FILE]: marked('**Known gap (EVAA-7):** not yet.') });
+        const dir = repo({ [SPEC_FILE]: marked('**Known gap (PROJ-7):** not yet.') });
         const { of, findings } = check(dir);
-        expect(of('marker-hygiene').map((f) => f.message)).toEqual(['marker should read **⚠️ Known gap (EVAA-7):**']);
+        expect(of('marker-hygiene').map((f) => f.message)).toEqual(['marker should read **⚠️ Known gap (PROJ-7):**']);
         applyFixes(dir, findings);
-        expect(fs.readFileSync(path.join(dir, SPEC_FILE), 'utf8')).toContain('**⚠️ Known gap (EVAA-7):** not yet.');
+        expect(fs.readFileSync(path.join(dir, SPEC_FILE), 'utf8')).toContain('**⚠️ Known gap (PROJ-7):** not yet.');
         expect(check(dir).of('marker-hygiene')).toEqual([]);
     });
 
@@ -692,7 +695,7 @@ describe('coverage', () => {
                 'Refunds are idempotent',
                 'A refund SHALL apply once.',
                 ['A repeat', 'A first refund'],
-                "\n**⚠️ Known gap (EVAA-9):** exempts scenario 'A repeat': no store | yet.\n**⚠️ Unenforced:** old.\n",
+                "\n**⚠️ Known gap (PROJ-9):** exempts scenario 'A repeat': no store | yet.\n**⚠️ Unenforced:** old.\n",
             )}`,
             'apps/a.test.ts': `// ${cite('scenario-a-confirmation-times-out')}\ntest('t', () => {});\n`,
             'apps/a.ts': `// ${cite('scenario-a-confirmation-succeeds')}\n`,
@@ -708,8 +711,8 @@ describe('coverage', () => {
         expect(row('A confirmation succeeds')).toMatch(/\| — \| `apps\/a\.ts:1` \| no test \|$/);
         expect(row('Payloads stay lean')).toMatch(/\| advisory \|$/);
         expect(row('Lean payload')).toMatch(/\| — \| — \| — \|$/);
-        expect(row('Refunds are idempotent')).toMatch(/\| known gap \(EVAA-9\) \|$/);
-        expect(row('A repeat')).toMatch(/\| known gap \(EVAA-9\) \|$/);
+        expect(row('Refunds are idempotent')).toMatch(/\| known gap \(PROJ-9\) \|$/);
+        expect(row('A repeat')).toMatch(/\| known gap \(PROJ-9\) \|$/);
         expect(row('A first refund')).toMatch(/\| no test \|$/);
         expect(md).toContain("exempts scenario 'A repeat': no store \\| yet.");
         expect(md).toMatch(
@@ -839,7 +842,7 @@ describe('wire', () => {
             `add to AGENTS.md, beside the specification-driven convention:\n  ${AGENTS_LINE}`,
         );
         expect(AGENTS_LINE).toMatch(
-            /corpus-quality audits.*`spec-steward` skill.*code conformance is the repository's own/,
+            /corpus-quality audits.*`spec-steward` skill.*code conformance is the `spec-verify` audit/,
         );
         const config = fs.readFileSync(path.join(dir, 'openspec/config.yaml'), 'utf8');
         expect(config).toContain('# keep me');
@@ -848,7 +851,7 @@ describe('wire', () => {
         expect(
             JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8')).hooks.PostToolUse[0].hooks[0]
                 .command,
-        ).toContain('node "$f" hook');
+        ).toContain('node_modules/.bin/spec-steward"; [ ! -x "$f" ] || "$f" hook');
 
         write(dir, 'AGENTS.md', '# Agents\n\nSpecs are guarded by spec-steward.\n');
         write(dir, '.agents/rules/openspec.md', '-');

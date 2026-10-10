@@ -1,6 +1,6 @@
 ---
 name: spec-steward
-description: Guard, audit and repair an OpenSpec specification corpus. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (review rounds where the owner answers items with ⬜ / ✅ / ❌), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the repository's own conformance audit does — the `verify-spec` skill where the repository has one.
+description: Guard, audit and repair an OpenSpec specification corpus — whether these are the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (review rounds where the owner answers items with ⬜ / ✅ / ❌), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the `spec-verify` skill does. Writing a rule is the `/spec-author` command.
 ---
 
 # Spec steward
@@ -27,7 +27,7 @@ Procedures for an OpenSpec corpus. Four things live elsewhere and are not repeat
 
 ## Check
 
-Where the repository's `AGENTS.md` names a spec gate in its Checks list, such as `yarn spec:gates`, run that gate: it runs `steward check --base auto` with the repository's `--binds`. Elsewhere run `steward check --base auto` yourself. It compares the working tree with the branch point and checks the corpus and the files citing it. Add `--file <path>` to scope it, `--json` for machines, `--strict` to fail on warnings, and `--fix` for the safe mechanical repairs. A kind marked _base only_ runs only when a base is set, and under a base the prompts cover only what the diff added or edited.
+Where the repository's `AGENTS.md` names a spec gate in its Checks list, such as `spec-tools gates`, run that gate: it runs `steward check --base auto` with the repository's binds. Elsewhere run `steward check --base auto` yourself. It compares the working tree with the branch point and checks the corpus and the files citing it. Add `--file <path>` to scope it, `--json` for machines, `--strict` to fail on warnings, and `--fix` for the safe mechanical repairs. A kind marked _base only_ runs only when a base is set, and under a base the prompts cover only what the diff added or edited.
 
 | Kind | Severity | What to do |
 | --- | --- | --- |
@@ -49,15 +49,7 @@ The exact rule behind each kind is in [contract.md](references/contract.md#kinds
 
 ## Audit
 
-Corpus-wide or affected-set, for corpus quality: placement, REQUIRED versus ⚠️ ADVISORY, evidence. The procedure, its parts and its verification are in [references/audit.md](references/audit.md). The output is a review file in the format of [references/review-format.md](references/review-format.md), and nothing in the specs or the code changes until the owner answers it.
-
-Mechanical inputs:
-
-- `steward check` (heuristic candidates)
-- `steward evidence --out <dir>`: per-capability bundles, starting from the tests bound to each scenario
-- `steward coverage --out <file>`: bindings, Advisory requirements and Known gaps per capability
-- `steward partition --out <dir> --parts N`
-- `steward index`: counts, and the citation inventory as bindings and pointers, with how many of them dangle
+Local only, on the owner's request — CI runs this skill's `check` (inside `spec-tools gates`), `coverage` and `evidence`, never the audit. Corpus-wide or affected-set, for corpus quality: placement, REQUIRED versus ⚠️ ADVISORY, evidence. It runs on the engine `spec-verify` runs on — `spec-tools audit --audit spec-steward` — with this skill's [worker contract](references/worker.md) and [sweeps](sweeps.json). Pass the owner's earlier decisions with `--context <file>`. The procedure around it is [references/audit.md](references/audit.md). The output is a review file in the format of [references/review-format.md](references/review-format.md), and nothing in the specs or the code changes until the owner answers it.
 
 ## Apply
 
