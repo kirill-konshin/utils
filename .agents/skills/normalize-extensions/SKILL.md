@@ -1,4 +1,5 @@
 ---
+name: normalize-extensions
 description: Fix and normalize eslint/prettier file-extension lists everywhere they are defined (.editorconfig, .idea/*, configs, docs) against the canonical sets in @kirill.konshin/lint
 ---
 

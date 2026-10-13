@@ -1,5 +1,4 @@
-.claude/rules
-.claude/skills
+.claude
 .codex
 .DS_Store
 *.tsbuildinfo
