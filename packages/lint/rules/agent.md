@@ -17,7 +17,6 @@ Use this summarized guidance to consider where to place a set of instructions
 - Subdirectory `AGENTS.md` — scoped to this particular directory, auto-injected
 - `.agents/rules` — forced rules (or automatic guardrails), that agent will read based on frontmatter, with paths scope; may pollute context if not scoped well; should NOT have detailed guidance, examples, etc.
 - `.agents/skills` — one-off flows, potentially complex; but also sets of rules & instructions that agent may or may not read/follow, good for progressive disclosure, examples, thorough guidance, and something you want to offload from `AGENTS.md` (and cite from it), and has to be well-defined in frontmatter to increase likelihood of success, example: https://www.skills.sh/vercel-labs/agent-skills/vercel-react-best-practices
-- `.agents/commands` — one-off commands, usually simpler than skills
 - `openspec/specs` - SDD specifications, should define user facing behavior or API contracts, not coding instructions / best practices / etc.
 - `openspec/config.yml#context` - should only have very narrow instructions for OpenSpec specifically, when user entered flow
 - `openspec/config.yml#rules.[specs|proposal]` - very narrow sets of rules specifically for defined part of the flow when it's entered
@@ -43,6 +42,8 @@ When deciding where information belongs, use this order:
 When correctness depends on an instruction being observed, do NOT rely solely on skill discovery.
 
 Prefer one authoritative location for each concern. Reference it elsewhere instead of duplicating it.
+
+Do not use `.claude/commands` for anything. It's not portable (`.agent/commands` has compatibility gaps). Commands are essentially simplified skills, so if you pick between skill vs command, choose skill.
 
 # `README.md`
 
@@ -93,12 +94,6 @@ Prefer one authoritative location for each concern. Reference it elsewhere inste
     - Engineering knowledge
 - Agent decides to discover it or not, use it or not, so no guarantee of honoring
 - A requirement/rule MUST NOT exist only in a skill if correctness depends on the agent always observing it
-
-# `.agents/commands`
-
-- `.agents/commands` must be accompanied by symlinks in `.claude/commands`
-- Smaller and simpler than skills
-- One-off commands, not flows
 
 # `openspec`
 

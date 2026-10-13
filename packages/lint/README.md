@@ -334,10 +334,10 @@ The generated `AGENTS.md` has a `# Custom Rules` section at the bottom — add p
 
 In the project root, `lint-prepare`:
 
-- Creates real `rules/`, `commands/` and `skills/` directories in `.agents/` (canonical, cross-tool) and `.claude/` (Claude Code), and only ever symlinks files into them.
-- Links every `rules/*.md`, every `commands/*.md` and every skill folder (`skills/<name>/` with all its files, plus this `README.md` next to `SKILL.md` unless the skill ships one, so a skill can reference `@README.md`) into all three — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules. Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package).
-- Mirrors your own files from `.agents/{rules,commands,skills}/` into `.claude/`; a file of yours wins over the package file at the same path.
-- Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs. Each directory gets a generated `.gitignore` listing its links, so your own files stay tracked.
+- Creates real `rules/` and `skills/` directories in `.agents/` (canonical, cross-tool — Codex reads it) and `.claude/` (Claude Code), and symlinks the top-level entries it knows into them: a rule file, a skill folder.
+- Links every `rules/*.md` file and every `skills/<name>/` folder into both — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules. Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package). A rule or skill of yours with the same name in `.agents/` wins, the package one is not installed.
+- Mirrors your own top-level entries from `.agents/{rules,skills}/` into `.claude/`. Commands are not synced: make them skills.
+- Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs, including what older versions placed (per-file skill links, `commands/`). Each directory gets a generated `.gitignore` listing its links, so your own entries stay tracked.
 - Generates `AGENTS.md` for other assistants (Codex, Cursor, Copilot, …) with a `# Rules` section — one entry per rule (the package's and yours): its title, frontmatter `description`, the `paths` it is scoped to and a plain link to its `.agents/rules/<file>` entry — and symlinks `CLAUDE.md` to it. The links are never `@` imports: Claude Code loads `.claude/rules` itself and honours each rule's `paths`, while an import would load every rule into every session.
 
 ### OpenSpec

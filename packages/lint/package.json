@@ -42,7 +42,6 @@
   },
   "files": [
     "dist",
-    "commands",
     "rules",
     "skills",
     "!**/*.test.*"

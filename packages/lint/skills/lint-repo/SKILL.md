@@ -10,11 +10,11 @@ Two jobs. Pick by the request; do only what was asked.
 - **Set up / upgrade lint tooling** → [§A](#a-set-up--update-tooling)
 - **Audit code against the rules** → [§B](#b-audit-code-against-rules)
 
-Full config templates: @README.md
+Full config templates: `node_modules/@kirill.konshin/lint/README.md`
 
 ## A. Set up / update tooling
 
-Follow @README.md, reconciling (never blindly overwriting project-specific overrides). When **upgrading** `@kirill.konshin/lint` from an older version, first apply the README's "Migration" section (e.g. 0.2.x → 0.3.x: default-exported array → `defineLintConfig()` options):
+Follow `node_modules/@kirill.konshin/lint/README.md`, reconciling (never blindly overwriting project-specific overrides). When **upgrading** `@kirill.konshin/lint` from an older version, first apply the README's "Migration" section (e.g. 0.2.x → 0.3.x: default-exported array → `defineLintConfig()` options):
 
 1. **Install** — add `eslint`, `prettier`, `@kirill.konshin/lint`, `husky`, `lint-staged` (+ the PNPM `.npmrc` block if pnpm).
 2. **Config** — create/reconcile `.editorconfig`, `eslint.config.mjs` and `.prettierrc.mjs` (pass `defineLintConfig` options as needed — e.g. `defaultIgnore: { importMetaUrl: import.meta.url }`, `next: { rootDir }` — and keep project rule overrides).

@@ -1,12 +1,12 @@
 ---
-name: Spec author
+name: spec-author
 description: Write or edit a capability specification in openspec/specs — the default direct-edit path
 allowed-tools: Bash(openspec:*), Bash(spec-tools:*), Bash(spec-steward:*), Bash(yarn openspec:*), Bash(yarn spec-tools:*), Bash(yarn spec-steward:*), Bash(npx openspec:*), Bash(npx spec-tools:*), Bash(npx spec-steward:*), Bash(git diff*), Bash(git log*), Read, Edit, Write, Glob, Grep
 ---
 
 Write or edit a capability specification in place. This is the **default** path for specification work; the `/opsx:*` commands drive the full delta flow and run only when the user asks for them.
 
-How a specification is written is the spec-steward model, [`references/model.md`](../skills/spec-steward/references/model.md), and what the gate checks is its [`references/contract.md`](../skills/spec-steward/references/contract.md); the rest of the tooling's contract is the spec-tools skill's [`references/contract.md`](../skills/spec-tools/references/contract.md); the change paths and who commits are in the root `AGENTS.md`. Read them; this file only sequences the work.
+How a specification is written is the spec-steward model, [`references/model.md`](../spec-steward/references/model.md), and what the gate checks is its [`references/contract.md`](../spec-steward/references/contract.md); the rest of the tooling's contract is the spec-tools skill's [`references/contract.md`](../spec-tools/references/contract.md); the change paths and who commits are in the root `AGENTS.md`. Read them; this file only sequences the work.
 
 ## Steps
 
