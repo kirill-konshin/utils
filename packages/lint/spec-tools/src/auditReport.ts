@@ -251,11 +251,14 @@ export function partCoverage(readers: readonly (PartFindings | undefined)[]): { 
     return readers.some((r) => r !== undefined) ? { status: 'full' } : { status: 'not-run', note: 'no findings file' };
 }
 
-/** What a part's readers claimed of their own coverage of a check, when they claimed less than full. */
+/**
+ * What a part's readers claimed of their own coverage of a check, when they claimed less than full. A claim is what a
+ * reader wrote: a check its coverage map leaves out (a completion reader names only the checks of its brief) is none.
+ */
 export function readerClaims(readers: readonly (PartFindings | undefined)[], check: string): string[] {
     return readers
-        .filter((r): r is PartFindings => r !== undefined)
-        .map((r) => coverageEntry(r.coverage?.[check]))
+        .filter((r): r is PartFindings => r?.coverage?.[check] !== undefined)
+        .map((r) => coverageEntry(r.coverage[check]))
         .filter((e) => e.status !== 'full')
         .map((e) => `${e.status}${e.note ? `: ${e.note}` : ''}`);
 }
@@ -312,11 +315,11 @@ export function mergeCoverage(
 }
 
 /**
- * What a pass left for the completion pass, per part: the requirements no reader's judged list names, and
- * the checks no reader says it ran in full, each with the reader's own note — read once more, though a reader's claim
- * changes no verdict. A part with no findings file is
- * short on everything — the completion pass then judges the whole part once, which is how a killed
- * worker is recovered without re-running the parts that finished.
+ * What a pass left for the completion pass, per part, from mechanical signals only: the requirements no reader's judged
+ * list names. A part with no findings file is short on everything — the completion pass then judges the whole part
+ * once, which is how a killed worker is recovered without re-running the parts that finished. A reader's claim that it
+ * skipped a source ("sampled: …") is not re-read: a second reader under the same rules meets the same limit, so the
+ * report lists the claim as a note.
  */
 export type ShortPart = {
     readonly part: number;
@@ -333,14 +336,10 @@ export function shortList(
         const ids = expected.get(n) ?? [];
         const requirementIds = ids.length ? unjudged(readers, ids) : [];
         const checks: Record<string, string> = {};
-        const present = readers.filter((r) => r !== undefined).length;
-        for (const check of Object.keys(CHECKS)) {
-            const entry = partCoverage(readers);
-            // What every reader says it skipped is read once more by the completion pass; it changes no verdict.
-            const claims = readerClaims(readers, check);
-            if (entry.status !== 'full') checks[check] = `${entry.status}${entry.note ? `: ${entry.note}` : ''}`;
-            else if (claims.length && claims.length === present) checks[check] = claims[0]!;
-        }
+        const entry = partCoverage(readers);
+        if (entry.status !== 'full')
+            for (const check of Object.keys(CHECKS))
+                checks[check] = `${entry.status}${entry.note ? `: ${entry.note}` : ''}`;
         if (requirementIds.length || Object.keys(checks).length) out.push({ part: n, requirementIds, checks });
     }
     return out;

@@ -259,6 +259,8 @@ describe('mergeCoverage and verdict', () => {
         expect(partCoverage([sampled, undefined])).toEqual({ status: 'full' });
         expect(readerClaims([sampled, part(2)], '5')).toEqual(['sampled: src/never/existed.ts']);
         expect(readerClaims([part(2)], '5')).toEqual([]);
+        // A completion reader names only the checks of its brief; a check it leaves out is no claim.
+        expect(readerClaims([part(2, { coverage: { '5': 'full' } })], '1')).toEqual([]);
         expect(partCoverage([undefined, undefined])).toEqual({ status: 'not-run', note: 'no findings file' });
     });
 
@@ -439,9 +441,11 @@ describe('shortList and readerFiles — what the completion pass is handed', () 
         [3, ['z#a']],
     ]);
 
-    test('lists the requirements no judged list names and the checks no reader says it ran in full, and leaves a covered part out', () => {
+    test('lists the requirements no judged list names and a part with no findings file, never a claimed skip, and leaves a covered part out', () => {
         const parts = new Map<number, PartReaders>([
-            [1, [reader()]],
+            // Every requirement judged; the reader claims it could not read a source. A second reader would meet the same
+            // limit: the claim is a note in the report, not work for the completion pass.
+            [1, [reader({ coverage: { ...reader().coverage, '4': 'sampled: .env values (secret-file rule)' } })]],
             [
                 2,
                 [
@@ -462,8 +466,7 @@ describe('shortList and readerFiles — what the completion pass is handed', () 
             [3, [undefined]],
         ]);
         expect(shortList(parts, expected)).toEqual([
-            // The completion pass reads a claimed skip once more, as before; only the verdict ignores the claim.
-            { part: 2, requirementIds: ['y#a'], checks: { '5': 'sampled: y#a — test not opened' } },
+            { part: 2, requirementIds: ['y#a'], checks: {} },
             {
                 part: 3,
                 requirementIds: ['z#a'],

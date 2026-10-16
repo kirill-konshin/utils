@@ -72,8 +72,11 @@ const OUTPUTS = new RegExp(`^${AUDIT_DIR.replace('.', '\\.')}/`);
 export const CORRECTIONS = 2;
 /** A worker that exits non-zero this soon, with no file written, failed to start — e.g. "Not logged in" when many sessions start at once. */
 export const EARLY_FAILURE_MS = 60_000;
-/** How long such a worker waits before its one retry. */
-const RETRY_DELAY_MS = 3_000;
+/**
+ * How long such a worker waits before its one retry (`AUDIT_START_RETRY_DELAY`), plus up to a third more at random: the
+ * sessions that failed together at the start would fail together again, so the retry waits for the start to settle.
+ */
+export const START_RETRY_DELAY = '30s';
 
 /** How many workers run at once: in a container `tier`'s workersFor its memory; elsewhere AUDIT_WORKERS, else all. */
 export function concurrency(env: NodeJS.ProcessEnv, memoryLimit = cgroupLimit()): number {
@@ -402,8 +405,8 @@ async function runClaude(
 }
 
 /**
- * One worker, retried once at once when it failed to start: a non-zero exit within `EARLY_FAILURE_MS` that wrote
- * nothing. Without the retry its part waits for the completion pass, after the whole reading.
+ * One worker, retried once after a short delay when it failed to start: a non-zero exit within `EARLY_FAILURE_MS` that
+ * wrote nothing. Without the retry its part waits for the completion pass, after the whole reading.
  */
 async function runOnce(
     run: Run,
@@ -416,7 +419,8 @@ async function runOnce(
     const first = await runClaude(run, wrote, budget, env, cwd);
     if (!first.status.startsWith('exit ') || wrote() || Date.now() - started > EARLY_FAILURE_MS)
         return { ...first, retried: false };
-    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    const delay = duration(env.AUDIT_START_RETRY_DELAY || START_RETRY_DELAY);
+    await new Promise((resolve) => setTimeout(resolve, delay + (Math.random() * delay) / 3));
     return { ...(await runClaude({ ...run, log: `${run.log}-retry` }, wrote, budget, env, cwd)), retried: true };
 }
 
@@ -555,9 +559,10 @@ export async function workers(
         const check = await checked(run, first, file, kind.verdictSchema, kind.canEdit, budget, env, cwd);
         const v = check.errors.length
             ? undefined
-            : tryReadData<{ verdict: string; reason: string; judgeConfidence?: number }>(full);
+            : tryReadData<{ verdict?: string; judgeSeverity?: number; reason: string; judgeConfidence?: number }>(full);
+        // A spec-steward judge answers keep, revise or drop; a spec-verify judge gives its own severity.
         const wrote = v
-            ? `${v.verdict}${v.judgeConfidence !== undefined ? ` (${v.judgeConfidence}%)` : ''} — ${String(v.reason).trim()}`
+            ? `${v.verdict ?? `severity ${v.judgeSeverity}`}${v.judgeConfidence !== undefined ? ` (${v.judgeConfidence}%)` : ''} — ${String(v.reason).trim()}`
             : fs.existsSync(full)
               ? 'invalid verdict file'
               : 'no verdict file';

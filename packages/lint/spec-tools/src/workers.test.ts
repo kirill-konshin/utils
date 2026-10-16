@@ -156,12 +156,12 @@ describe('workers, the reading', () => {
     );
 
     test(
-        'retries a reader that failed to start once, at once, instead of leaving its part to the completion pass',
+        'retries a reader that failed to start once, after the delay, instead of leaving its part to the completion pass',
         async () => {
             const repo = repository(1);
             const { code, written, out } = await read(
                 1,
-                { STUB_FAIL_START: path.join(repo.dir, 'bin', 'failed-once') },
+                { STUB_FAIL_START: path.join(repo.dir, 'bin', 'failed-once'), AUDIT_START_RETRY_DELAY: '0' },
                 repo,
             );
             expect(code).toBe(0);
