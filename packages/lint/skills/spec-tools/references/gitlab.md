@@ -7,11 +7,12 @@ The jobs a GitLab repository runs around `spec-steward` and `spec-tools`. Names 
 - `openspec validate` and `spec-tools gates` are gates over repository state, not unit tests: each runs as a job of its own, never inside a unit suite. An error fails its job; a warning never does.
 - The diff, the coverage report and the merge-request comment are reports: they never fail a pipeline.
 - `workflow-evidence` runs on merge requests to the default branch, and on default-branch pushes, where a red holds the release.
-- The audit jobs accept exit 3 (`INCOMPLETE`) and 77 (`ADVISORY`, ERRORs at 80% confidence or lower, or a `FAIL` on an advisory run) as allowed failures; a gating `FAIL` (exit 1, an ERROR above 80%) blocks.
+- The audit jobs accept exit 3 (`INCOMPLETE`) and 77 (`ADVISORY`, ERRORs at 80% confidence or lower, or a `FAIL` on an advisory run) as allowed failures; a gating `FAIL` (exit 1, an ERROR above 80%) blocks. The severity and confidence thresholds and the judge gate are variables (`AUDIT_SEVERITY_WARN`, `AUDIT_SEVERITY_ERROR`, `AUDIT_CONFIDENCE_SURE`, `AUDIT_CONFIDENCE_BLOCKING`, `AUDIT_CONFIDENCE_IGNORE_GAP`, `AUDIT_JUDGE_FROM`, `AUDIT_JUDGE_MIN_CONFIDENCE`, `AUDIT_JUDGE_READER_NUMBERS` — [contract.md](contract.md)); set them once for all audit jobs, so the merge, the judge pass and the comment use the same values.
 - Report jobs depend on the audits with `dependencies:` and `when: always`, never `needs:` — a failed audit is exactly when its report matters.
 - The default-branch pipeline publishes the reports on Pages, a failing one included; a report a run did not produce is omitted.
 - The scheduled nightly sets `SPEC_AUDIT_NIGHTLY=true`, so `spec-tools tier` audits the corpus there.
 - Reading jobs × workers is the pipeline's choice: `AUDIT_JOBS` reading jobs (default 1; a `parallel:` job sets the same number), each running `AUDIT_SLOTS` workers at once — as many as `AUDIT_JOB_MEMORY` holds, never more than `AUDIT_WORKERS` — and the scope is cut for one round across them. The reading and the judging hand off through files, so they run in one job (below) or as parallel reading jobs and a judge job that `needs:` them; `spec-tools workers` reads only its share in a parallel job. Set `AUDIT_JOB_MEMORY` once and give the AI jobs the same `KUBERNETES_MEMORY_LIMIT` (a YAML anchor keeps them one value; the runner must allow the overwrite); each pass logs the memory it used, which is what `AUDIT_WORKERS` is tuned from. Parallel reading jobs pay when one job cannot hold the round — a runner's default 2 GiB holds three workers; with the memory raised one job holds it, and the job that judges is the job that read: one pod, no artifact hop.
+- The affected set of a merge request or a push is tuned by `AUDIT_AFFECTED_CONTEXT`, `AUDIT_AFFECTED_HOPS` and `AUDIT_AFFECTED_UNIT` ([contract.md](contract.md#the-affected-set)); a job sets them in its `variables:` to widen or narrow what it judges, and the scope line in its log names the values it used.
 - spec-steward's corpus audit (`--audit spec-steward`) has no job: it is heavy, and its review file is the owner's to answer, locally.
 - Declare what binds beyond spec-steward's defaults once, in `package.json`: `"spec-steward": { "binds": ["scripts/checks/**", "**/*.Dockerfile", ".gitlab-ci.yml"] }`.
 
@@ -80,7 +81,7 @@ spec-coverage:
         paths: [.spec-audit/, node_modules/@kirill.konshin/lint/skills/]
 
 # The audit, in one job: read (a failed reading leaves its parts to the completion pass), merge, complete what the
-# reading left short, judge every ERROR, gate.
+# reading left short, judge the severe and sure findings, gate.
 spec-verify:
     stage: review
     image: <an image with node>
@@ -127,4 +128,4 @@ render-reviews:
 
 A release job that must wait for the audit `needs:` the judge (`spec-verify`), so a gating `FAIL` on the default branch holds it.
 
-A skill-driven review writes `.spec-audit/<review>.yaml` in the shape `spec-tools run` checks (`findings[tier, where, detail, readerConfidence, fields]`, `coverage{complete, notes}`). `verdict` computes its state from that file, never from the model's words, and writes `.spec-audit/<review>.md` beside it for the comment and the HTML.
+A skill-driven review writes `.spec-audit/<review>.yaml` in the shape `spec-tools run` checks (`findings[readerSeverity, where, detail, readerConfidence, fields]`, `coverage{complete, notes}`). `verdict` computes its state from that file, never from the model's words, and writes `.spec-audit/<review>.md` beside it for the comment and the HTML.

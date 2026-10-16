@@ -1,6 +1,6 @@
 # Judging rules: common
 
-These rules tell what a finding is and which tier it gets. They apply to every audit that spec-tools runs: spec-verify, its judge, spec-steward and check-entity-hacks. The skill and the tool tell how a run works.
+These rules tell what a finding is, how severe it is, and how sure you are of it. They apply to every audit that spec-tools runs: spec-verify, its judge, spec-steward and check-entity-hacks. The skill and the tool tell how a run works.
 
 ## Evidence
 
@@ -21,23 +21,33 @@ These rules tell what a finding is and which tier it gets. They apply to every a
 - Code that does not run in production has no production effect. This includes tests, local-only and development-only modes, demo agents, and internal CI or developer scripts. The exception: such code lets a production defect through now, and you show an instance.
 - A difference in words, names, structure or style has no production effect when the behaviour stays the same.
 
-## Tiers
+## Severity
 
-- ERROR: a demonstrated defect with a production effect. Write the production scenario in one sentence: what occurs, to whom, and what breaks, leaks or becomes slow.
-- WARN: a suspected defect, or a demonstrated defect with no production effect.
-- INFO: a state or a risk for a reviewer. It is never a failure.
-- A finding against a requirement marked `**⚠️ Advisory:**` is WARN or lower.
-- Use the effect to find the tier. The size of the difference does not decide the tier.
+- Give each finding a severity, an integer from 0 to 100, on this scale:
+
+| Band | Severity | The finding is |
+| --- | --- | --- |
+| ERROR | 90–100 | data loss, a leak of sensitive data, a security hole, or a main flow that fails in production |
+| ERROR | 70–89 | a demonstrated defect with a production effect: a flow fails, a contract or an invariant is broken, or users or operators see a performance problem |
+| WARN | 40–69 | a suspected defect; a demonstrated defect with no production effect; a conflict between rules |
+| INFO | 1–39 | a state or a risk for a reviewer: a duplicate rule, a test that asserts less than its scenario, a wording problem. It is never a failure. |
+| — | 0 | not true |
+
+- For a severity in the ERROR band, write the production scenario in one sentence: what occurs, to whom, and what breaks, leaks or becomes slow.
+- The tool turns severity and confidence into ERROR, WARN or INFO with its thresholds. The bands above are its defaults; a run can move them. Give the severity that the finding has. Do not aim at a band.
+- A finding against a requirement marked `**⚠️ Advisory:**` is in the WARN band or lower.
+- Use the effect to find the severity. The size of the difference does not decide the severity.
+- Find if the defect is on a critical path or is an edge case. A defect that is not on a critical path, or an edge case with a small effect, is in the WARN band. An edge case that can cause a real production defect can be in the ERROR band.
 
 ## Confidence
 
-- Give each finding `readerConfidence`, an integer from 0 to 100. It tells how sure you are that the finding is an ERROR as ERROR rule in Tiers section tells. It includes the defect and its production effect.
+- Give each finding a confidence, an integer from 0 to 100. It tells how sure you are that the defect exists as you write it, and that its severity is correct.
 - Use a value below 50 when you could not read a side, or when the effect needs a condition that you could not confirm.
-- Assess if defect is on critical path or is an edge case. Issues not on critical path or low severity edge cases are a WARN. Edge cases that may lead to real production defect may be ERROR. Reflect this in `readerConfidence`.
+- Put your doubt in the confidence, not in the severity. An unsure ERROR has an ERROR-band severity and a low confidence.
 
 ## Scope
 
-- Report each defect one time, at its final tier.
+- Report each defect one time, at its final severity.
 - Do not report a thing that a deterministic tool reports: coverage, citations, gates, lint.
 - Do not report style preferences.
 

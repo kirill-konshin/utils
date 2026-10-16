@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 
-import { affectedScope } from './auditChanged';
-import { type EvidenceFile, loadEvidence, PART_BYTES, requirementsOf, writeParts } from './auditParts';
+import { type AffectedOptions, affectedOptions, affectedScope, describeOptions } from './auditChanged';
+import { type EvidenceFile, idOf, loadEvidence, PART_BYTES, requirementsOf, writeParts } from './auditParts';
 import { diffBase, isNightly, mergeRequest } from './ci';
 import { writeData } from './data';
 import { AUDIT_FILES, type AuditName, findingsFile, PARTS_DIR } from './files';
@@ -11,10 +11,9 @@ import { sweepUnits } from './stewardAudit';
 /**
  * The specification audit's scope and partition — decided here, mechanically, never by the audit.
  * Two scopes: the whole corpus, because a change can break a rule in a capability it never touched or
- * cited; and an affected set — the requirements it changes or its deltas name, those
- * whose bound tests or own terms the changed files contain, those its changed code cites, and the
- * requirements related to these (`auditChanged.ts`) — judged with cross-capability checks against the
- * corpus the evidence quotes. The mode is `modeFor`'s: `AUDIT_SCOPE` from `spec-tools tier` when set,
+ * cited; and an affected set — built in three stages that the `AUDIT_AFFECTED_*` variables tune
+ * (`auditChanged.ts`): what the changed lines reach, its related requirements, and the unit the parts carry —
+ * judged with cross-capability checks against the corpus the evidence quotes. The mode is `modeFor`'s: `AUDIT_SCOPE` from `spec-tools tier` when set,
  * else the nightly input or the absence of a merge-request target means the corpus. The scope is cut
  * into parts no larger than one reader holds in full, from evidence files the same run writes from
  * spec-steward's evidence model — see `auditParts.ts` — so the audit reads and never searches. The cut is
@@ -111,7 +110,7 @@ export function renderScope(parts: readonly Part[], kind: ScopeKind = 'all', det
         '',
         '## Parts',
         '',
-        `Every part's worker judges its evidence files under \`${PARTS_DIR}/\` — a capability whole, or a capability cut between its requirements — for every check: the specification against itself (2, 3) and the code against it (1, 4, 5).`,
+        `Every part's worker judges its evidence files under \`${PARTS_DIR}/\` — a capability whole, a capability cut between its requirements, or the requirements of a capability that the affected set holds — for every check: the specification against itself (2, 3) and the code against it (1, 4, 5).`,
         '',
     ];
     lines.push(
@@ -138,9 +137,10 @@ export function renderScope(parts: readonly Part[], kind: ScopeKind = 'all', det
 /** What the scope file holds: the parts, with the files each worker reads. */
 export type ScopeData = {
     readonly scope: ScopeKind;
-    /** The affected set's diff base and capabilities; absent for the corpus. */
+    /** The affected set's diff base, capabilities and the variables it was built by; absent for the corpus. */
     readonly base?: string;
     readonly capabilities?: readonly string[];
+    readonly affected?: AffectedOptions;
     readonly readers: number;
     readonly parts: readonly Part[];
 };
@@ -153,22 +153,26 @@ export function main(env: NodeJS.ProcessEnv = process.env, audit: AuditName = 's
     const kind = modeFor(env);
     const model = loadEvidence();
     const all = requirementsOf(model);
-    const affected = kind === 'affected' ? affectedScope(diffBase(env), all) : undefined;
+    const affected = kind === 'affected' ? affectedScope(diffBase(env), all, affectedOptions(env)) : undefined;
     const corpus = [...new Set(all.map((r) => r.capability))].sort();
     const capabilityParts = partition(
-        writeParts(affected ? affected.capabilities : corpus, all),
+        writeParts(
+            affected ? affected.capabilities : corpus,
+            all,
+            affected ? new Set(affected.requirements.map(idOf)) : undefined,
+        ),
         audit,
         (Number(env.AUDIT_JOBS) || 1) * (Number(env.AUDIT_SLOTS) || 1),
     );
     const parts =
         audit === 'spec-steward' ? [...capabilityParts, ...sweepUnits(model, capabilityParts.length)] : capabilityParts;
     const detail = affected
-        ? `The affected set against \`${affected.base}\`: ${affected.requirements.length} requirements in ${affected.capabilities.length} capabilities — the ones the diff changed or a touched delta names, the ones whose bound tests or own terms the changed files contain, the ones the changed code cites, and the requirements related to these — with cross-capability checks against the corpus the evidence quotes.`
+        ? `The affected set against \`${affected.base}\` (${describeOptions(affected.options)}): ${affected.requirements.length} requirements in ${affected.capabilities.length} capabilities — the ones the diff changed or a touched delta names, the ones a changed line reaches through a bound test, a citation or one of their terms, the requirements related to these, and the capabilities the unit adds — with cross-capability checks against the corpus the evidence quotes.`
         : undefined;
     const report = renderScope(parts, kind, detail);
     const data: ScopeData = {
         scope: kind,
-        ...(affected ? { base: affected.base, capabilities: affected.capabilities } : {}),
+        ...(affected ? { base: affected.base, capabilities: affected.capabilities, affected: affected.options } : {}),
         readers: READERS_PER_PART,
         parts,
     };

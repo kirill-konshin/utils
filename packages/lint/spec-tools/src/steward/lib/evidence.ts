@@ -35,20 +35,22 @@ const COMMON = new Set([
     'type',
 ]);
 
+/** Whether a file is one the term search reads: a non-test source, outside generated and vendored trees. */
+export const isSource = (file: string): boolean =>
+    SOURCE_EXT.test(file) && !SOURCE_SKIP.test(file) && !isTestFile(file);
+
 /** The non-test source files of a repository, read once, comments blanked for searching. */
 export function sourceIndex(root: string): Source[] {
-    return (listFiles(root) ?? [])
-        .filter((f) => SOURCE_EXT.test(f) && !SOURCE_SKIP.test(f) && !isTestFile(f))
-        .flatMap((file) => {
-            try {
-                const raw = fs.readFileSync(path.join(root, file), 'utf8');
-                return raw.length < 400_000 && !raw.includes('\0')
-                    ? [{ file, text: stripComments(file, raw), lines: raw.split('\n') }]
-                    : [];
-            } catch {
-                return [];
-            }
-        });
+    return (listFiles(root) ?? []).filter(isSource).flatMap((file) => {
+        try {
+            const raw = fs.readFileSync(path.join(root, file), 'utf8');
+            return raw.length < 400_000 && !raw.includes('\0')
+                ? [{ file, text: stripComments(file, raw), lines: raw.split('\n') }]
+                : [];
+        } catch {
+            return [];
+        }
+    });
 }
 
 /** Terms worth searching for: the identifiers a requirement names in backticks. */
@@ -58,7 +60,7 @@ export const searchTerms = (r: Requirement) =>
     );
 
 /** A term as a pattern: an identifier-like end never matches inside a longer identifier. */
-const termPattern = (term: string) =>
+export const termPattern = (term: string): RegExp =>
     new RegExp(
         `${/^[\w$]/.test(term) ? '(?<![\\w$])' : ''}${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}${/[\w$]$/.test(term) ? '(?![\\w$])' : ''}`,
         'g',
@@ -158,6 +160,7 @@ export function evidenceModel(corpus: Corpus, citations: Citation[], sources: So
                         line: c.line,
                         anchor: c.anchor,
                         kind: c.kind === 'doc' ? 'doc' : 'code',
+                        window: c.window,
                     })),
                 terms: searchTerms(r).map((term) => ({ term, hits: hitsOf(term) })),
                 related: relatedOf(r, everywhere, corpus).map(({ x, shared }) => ({ id: x.requirement.id, shared })),

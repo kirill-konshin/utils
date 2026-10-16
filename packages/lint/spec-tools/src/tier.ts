@@ -15,7 +15,7 @@
  *
  * Only the nightly audits the corpus. Every other run audits its affected set (`auditChanged.ts`) against the diff
  * base `ci.ts` names. Every run reads on the cheap model (AUDIT_MODEL / AUDIT_EFFORT) — the reading and the completion
- * pass alike; the judge — the verifier of every ERROR the reading left standing — runs on AUDIT_MODEL_VERIFY /
+ * pass alike; the judge — the second reading of each finding severe and sure enough — runs on AUDIT_MODEL_VERIFY /
  * AUDIT_EFFORT_VERIFY: the expensive model where the run is the default branch's (a push, the nightly), the cheap one
  * on a merge request. Each run stands alone. The nightly reports and never gates: two nightlies over the same commit
  * can find different ERRORs.

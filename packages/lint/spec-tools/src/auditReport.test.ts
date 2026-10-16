@@ -31,6 +31,7 @@ import {
     verdict,
 } from './auditReport';
 import { checkData, READER_FINDINGS, toYaml } from './data';
+import { THRESHOLDS } from './severity';
 
 /**
  * The report is a function of the workers' JSON and the sources — tested here as such.
@@ -43,7 +44,7 @@ const read: Reader = (file) => files[file];
 
 const error = (over: Partial<Finding> = {}): Finding => ({
     kind: 'code-mismatch',
-    tier: 'ERROR',
+    readerSeverity: 80,
     where: '<x>#requirement-a / apps/mcp/src/x.ts:2',
     detail: 'does not attach',
     readerConfidence: 80,
@@ -103,16 +104,18 @@ describe('quoteFound', () => {
 });
 
 describe('grade', () => {
-    test('keeps an ERROR whose two quotes are found', () => {
-        expect(grade(error(), 1, read)).toMatchObject({ tier: 'ERROR', part: 1 });
+    test('keeps an ERROR-band finding whose two quotes are found, at its severity and confidence', () => {
+        expect(grade(error(), 1, read)).toMatchObject({ tier: 'ERROR', part: 1, severity: 80, confidence: 80 });
+        expect(grade(error(), 1, read).cap).toBeUndefined();
     });
 
-    test('re-grades an ERROR to WARN when a quote is not found, or fewer than two are given', () => {
+    test('caps an ERROR-band finding below the band when a quote is not found, or fewer than two are given', () => {
         const wrong = error({
             quotes: [error().quotes![0]!, { file: 'apps/mcp/src/x.ts', line: 3, text: 'return everything;' }],
         });
         expect(grade(wrong, 2, read)).toMatchObject({
             tier: 'WARN',
+            severity: 69,
             regraded: expect.stringContaining('apps/mcp/src/x.ts:3'),
         });
         expect(grade(error({ quotes: [error().quotes![0]!] }), 2, read)).toMatchObject({ tier: 'WARN' });
@@ -138,23 +141,27 @@ describe('grade', () => {
         expect(grade(error({ quotes: [...error().quotes!, dependency] }), 2, read).tier).toBe('ERROR');
     });
 
-    test('tiers by the contract: INFO-class kinds are INFO, a conflict WARN at most, a WARN or INFO never raised, unknown kinds INFO', () => {
+    test('caps by the contract: INFO-class kinds below WARN, a conflict below ERROR, unknown kinds below WARN, and never raises', () => {
         expect(grade(error({ kind: 'untested' }), 1, read)).toMatchObject({
             tier: 'INFO',
+            severity: 39,
             regraded: 'untested is INFO-class',
         });
         expect(grade(error({ kind: 'spec-dup' }), 1, read)).toMatchObject({ tier: 'INFO' });
-        // The merge never raises a tier: the reader's WARN or INFO stands.
-        for (const tier of ['INFO', 'WARN'] as const) {
-            const kept = grade(error({ tier }), 1, read);
-            expect([kept.tier, kept.regraded]).toEqual([tier, undefined]);
+        // A cap lowers, and never raises: the reader's lower severity stands, with no reason given.
+        for (const [readerSeverity, tier] of [
+            [55, 'WARN'],
+            [20, 'INFO'],
+        ] as const) {
+            const kept = grade(error({ readerSeverity, quotes: undefined }), 1, read);
+            expect([kept.tier, kept.severity, kept.regraded]).toEqual([tier, readerSeverity, undefined]);
         }
         // A conflict is a specification defect, the owner's to decide: WARN at most, however well proved.
         expect(grade(error({ kind: 'conflict' }), 1, read)).toMatchObject({
             tier: 'WARN',
             regraded: 'conflict is a specification defect: WARN at most',
         });
-        expect(grade(error({ kind: 'conflict', tier: 'INFO' }), 1, read)).toMatchObject({ tier: 'INFO' });
+        expect(grade(error({ kind: 'conflict', readerSeverity: 20 }), 1, read)).toMatchObject({ tier: 'INFO' });
         // The kinds the contract deleted are no longer graded as theirs: unknown, so INFO.
         for (const kind of ['vibes', 'mis-citation', 'bad-citation', 'uncited', 'stranded-rule'])
             expect(grade(error({ kind }), 1, read)).toMatchObject({
@@ -163,17 +170,25 @@ describe('grade', () => {
             });
     });
 
-    test('caps a finding against an advisory requirement at WARN, however well proved, and the build proceeds', () => {
+    test('takes the bands from the thresholds it is given', () => {
+        const strict = { ...THRESHOLDS, warn: 60, error: 90 };
+        expect(grade(error(), 1, read, undefined, strict).tier).toBe('WARN');
+        expect(grade(error({ readerSeverity: 50, quotes: undefined }), 1, read, undefined, strict).tier).toBe('INFO');
+    });
+
+    test('caps a finding against an advisory requirement below ERROR, however well proved and judged, and the build proceeds', () => {
         const advisory = new Set(['<x>#requirement-a']);
         const capped = grade(error(), 1, read, advisory);
         expect(capped).toMatchObject({ tier: 'WARN', regraded: expect.stringContaining('Advisory') });
-        // The verifier would have confirmed it; the cap stands, and nothing fails.
+        // With the judge gate lowered, the judge reads it and rates it critical; the cap still stands, and nothing fails.
+        const open = { ...THRESHOLDS, judgeFrom: 40 };
         const [after] = applyVerdicts(
             [capped],
-            new Map([[1, { verdict: 'confirmed', reason: 'real and critical', judgeConfidence: 95 }]]),
+            new Map([[1, { judgeSeverity: 95, judgeConfidence: 95, reason: 'real and critical', scenario: 's' }]]),
             true,
+            open,
         );
-        expect(after!.tier).toBe('WARN');
+        expect(after).toMatchObject({ tier: 'WARN', severity: 69, regraded: expect.stringContaining('Advisory') });
         expect(verdict([after!], mergeCoverage(new Map([[1, [part(1)]]]))).state).toBe('PASS');
         // A required requirement's demonstrated defect stays ERROR.
         expect(grade(error({ where: '<x>#requirement-b / apps/mcp/src/x.ts:2' }), 1, read, advisory).tier).toBe(
@@ -247,9 +262,9 @@ describe('mergeCoverage and verdict', () => {
         expect(partCoverage([undefined, undefined])).toEqual({ status: 'not-run', note: 'no findings file' });
     });
 
-    test('counts a defect two readers both found once, keeping the better-proved twin', () => {
+    test('counts a defect two readers both found once, keeping the more severe twin', () => {
         const a = { ...grade(error(), 1, read), reader: 1 };
-        const b = { ...grade(error({ where: 'said differently', tier: 'WARN' }), 1, read), reader: 2 };
+        const b = { ...grade(error({ where: 'said differently', readerSeverity: 55 }), 1, read), reader: 2 };
         const other = { ...grade(error({ kind: 'conflict', quotes: [] }), 1, read), reader: 2 };
         expect(dedupe([b, a, other]).map((f) => [f.kind, f.tier, f.reader])).toEqual([
             ['code-mismatch', 'ERROR', 1],
@@ -259,13 +274,14 @@ describe('mergeCoverage and verdict', () => {
 
     test('fails on an ERROR above 80%, is ADVISORY on ERRORs at 80% or lower, passes when everything ran in full', () => {
         const full = mergeCoverage(new Map([[1, [part(1)]]]));
-        const at = (readerConfidence: number, judgeConfidence?: number) =>
-            ({ ...grade(error({ readerConfidence }), 1, read), judgeConfidence }) as Graded;
+        const at = (readerConfidence: number): Graded => grade(error({ readerConfidence }), 1, read);
         expect(verdict([at(90)], full).line).toBe('FAIL (1 errors, 0 warnings)');
-        // The judge's confidence decides when there is one.
-        expect(verdict([at(60, 85)], full).state).toBe('FAIL');
-        expect(verdict([at(90, 75)], full).line).toBe('ADVISORY (1 errors, 0 warnings)');
-        expect(verdict([at(80)], full).state).toBe('ADVISORY');
+        expect(verdict([at(81)], full).state).toBe('FAIL');
+        expect(verdict([at(80)], full).line).toBe('ADVISORY (1 errors, 0 warnings)');
+        expect(verdict([at(71)], full).state).toBe('ADVISORY');
+        // Severe but not sure enough: a WARN.
+        expect(verdict([at(70)], full).line).toBe('PASS (0 errors, 1 warnings)');
+        expect(verdict([at(90)], full, { ...THRESHOLDS, blocking: 95 }).state).toBe('ADVISORY');
         expect([exitCodeFor('FAIL'), exitCodeFor('ADVISORY'), exitCodeFor('INCOMPLETE'), exitCodeFor('PASS')]).toEqual([
             1, 77, 3, 0,
         ]);
@@ -273,62 +289,71 @@ describe('mergeCoverage and verdict', () => {
     });
 });
 
-describe('applyVerdicts — the judge over the ERRORs', () => {
+describe('applyVerdicts — the judge over the severe and sure findings', () => {
     const graded = (over: Partial<Finding> = {}) => grade(error(over), 1, read);
-    const verdictOf = (verdict: 'confirmed' | 'warn', judgeConfidence: number, reason = 'r') => ({
-        verdict,
-        reason,
+    const judge = (judgeSeverity: number, judgeConfidence: number, reason = 'r', scenario?: string) => ({
+        judgeSeverity,
         judgeConfidence,
-        ...(verdict === 'confirmed' ? { scenario: 'an operator applies it and the write lands on another queue' } : {}),
+        reason,
+        ...(scenario ? { scenario } : {}),
     });
+    const SCENARIO = 'an operator applies it and the write lands on another queue';
 
-    test('keeps an ERROR the judge confirms above 70%, with its reason, scenario and confidence', () => {
+    test("fuses a judge's agreeing reading with the reader's: the ERROR stands, with the reason, scenario and readings", () => {
         const [kept] = applyVerdicts(
             [graded()],
-            new Map([[1, verdictOf('confirmed', 85, 'the write lands elsewhere')]]),
+            new Map([[1, judge(85, 85, 'the write lands elsewhere', SCENARIO)]]),
             true,
         );
         expect(kept).toMatchObject({
             tier: 'ERROR',
-            verified: 'confirmed — the write lands elsewhere',
+            severity: 83,
+            confidence: 85,
+            readerSeverity: 80,
+            judgeSeverity: 85,
             judgeConfidence: 85,
+            verified: 'judge: severity 85 at 85% — the write lands elsewhere',
             scenario: expect.stringContaining('another queue'),
         });
     });
 
-    test('lowers an ERROR the judge confirms at 70% or less, or does not confirm, to WARN with the reason', () => {
-        const out = applyVerdicts(
-            [graded(), graded({ where: '<x>#requirement-b / apps/mcp/src/x.ts:2' })],
-            new Map([
-                [1, verdictOf('confirmed', 70, 'maybe')],
-                [2, verdictOf('warn', 90, 'no production effect')],
-            ]),
+    test('lowers a finding the judge rates minor or untrue, and lifts the confidence of a weak confirmation when the reader is sure', () => {
+        const [lowered] = applyVerdicts([graded()], new Map([[1, judge(30, 85, 'no production effect')]]), true);
+        expect(lowered).toMatchObject({ tier: 'WARN', severity: 51, confidence: 70 });
+        const [lifted] = applyVerdicts(
+            [graded({ readerSeverity: 90, readerConfidence: 90 })],
+            new Map([[1, judge(78, 76, 'real', SCENARIO)]]),
             true,
         );
-        expect(out.map((f) => [f.tier, f.verified])).toEqual([
-            ['WARN', 'confirmed, but the judge is only 70% sure — maybe'],
-            ['WARN', 'not confirmed — no production effect'],
-        ]);
+        expect(lifted).toMatchObject({ tier: 'ERROR', severity: 86, confidence: 90 });
     });
 
-    test('answers each ERROR with the verdict at its position; the judge never touches a WARN', () => {
+    test('caps a finding below ERROR when the judge rates it ERROR with no production scenario', () => {
+        const [out] = applyVerdicts([graded({ readerConfidence: 60 })], new Map([[1, judge(95, 95, 'bad')]]), true);
+        expect(out).toMatchObject({ judgeSeverity: 95, severity: 69, tier: 'WARN' });
+        expect(out!.regraded).toContain('no production scenario');
+    });
+
+    test('answers each judged finding with the verdict at its position; a finding below a gate is never judged', () => {
         const first = graded();
         const second = graded({ where: '<x>#requirement-b / apps/mcp/src/x.ts:2' });
-        const warn = graded({ tier: 'WARN', where: '<x>#requirement-c' });
-        const out = applyVerdicts([first, warn, second], new Map([[2, verdictOf('warn', 90, 'not critical')]]), true);
-        expect(out.map((f) => f.tier)).toEqual(['ERROR', 'WARN', 'WARN']);
-        expect(out[2]!.verified).toBe('not confirmed — not critical');
+        const warn = graded({ readerSeverity: 55, where: '<x>#requirement-c' });
+        const unsure = graded({ readerConfidence: 55, where: '<x>#requirement-d' });
+        const out = applyVerdicts([first, warn, unsure, second], new Map([[2, judge(20, 90, 'not critical')]]), true);
+        expect(out.map((f) => f.tier)).toEqual(['ERROR', 'WARN', 'WARN', 'WARN']);
+        expect(out[3]!.verified).toBe('judge: severity 20 at 90% — not critical');
         expect(out[1]).toEqual(warn);
+        expect(out[2]).toEqual(unsure);
     });
 
-    test('lets an ERROR the pass never reached stand only when the reader is more than 70% sure, and changes nothing without the pass', () => {
+    test("keeps the reader's reading for a finding the pass never reached, and changes nothing without the pass", () => {
         expect(applyVerdicts([graded()], new Map(), true)[0]).toMatchObject({
             tier: 'ERROR',
-            verified: expect.stringContaining('the reader is 80% sure'),
+            verified: expect.stringContaining("the reader's severity 80 at 80% stands"),
         });
-        expect(applyVerdicts([graded({ readerConfidence: 60 })], new Map(), true)[0]).toMatchObject({
+        expect(applyVerdicts([graded({ readerConfidence: 65 })], new Map(), true)[0]).toMatchObject({
             tier: 'WARN',
-            verified: expect.stringContaining('only 60% sure'),
+            verified: expect.stringContaining('unverified'),
         });
         const f = graded();
         expect(applyVerdicts([f], new Map(), false)[0]).toEqual(f);
@@ -348,7 +373,11 @@ describe('render and scopeHeader', () => {
         const md = render(['SCOPE 1 capabilities'], findings, mergeCoverage(parts), []);
         const lines = md.split('\n');
         expect(lines[0]).toBe('ADVISORY (1 errors, 0 warnings)');
-        expect(md).toContain('## Advisory errors — confirmed above 70%, at 80% or lower');
+        expect(md).toContain('## Advisory errors — severity 70 or more, confidence above 70%, at 80% or lower');
+        expect(md).toContain(
+            'Graded by: WARN from severity 40, ERROR from 70 above 70% confidence, FAIL above 80%; a severity gap up to 20 between readings costs no confidence.',
+        );
+        expect(md).toContain('severity 80 at 80% (reader 80 at 80%)');
         expect(lines[2]).toBe('SCOPE 1 capabilities');
         const errors = lines.filter((l) => l.startsWith('- `code-mismatch`'));
         expect(errors).toHaveLength(1);
@@ -484,7 +513,9 @@ describe('the reader findings schema — a file the report cannot read makes its
     const file = (findings: unknown[]) => toYaml({ findings, coverage: { '1': 'full' }, judged: ['a'] });
 
     test('passes findings that carry every field the report reads', () => {
-        expect(checkData(file([error(), error({ tier: 'WARN', quotes: undefined })]), READER_FINDINGS)).toEqual([]);
+        expect(checkData(file([error(), error({ readerSeverity: 55, quotes: undefined })]), READER_FINDINGS)).toEqual(
+            [],
+        );
     });
 
     test('names each missing or wrong field, so the worker corrects it, or the completion pass re-reads its part', () => {
@@ -495,6 +526,10 @@ describe('the reader findings schema — a file the report cannot read makes its
         ]);
         expect(checkData(file([error({ readerConfidence: 101 })]), READER_FINDINGS)).toEqual([
             'findings[0].readerConfidence: must be an integer from 0 to 100',
+        ]);
+        const { readerSeverity: _severity, ...tiered } = error();
+        expect(checkData(file([{ ...tiered, tier: 'ERROR' }]), READER_FINDINGS)).toEqual([
+            'findings[0].readerSeverity: missing',
         ]);
         expect(checkData('findings: [\n  - x', READER_FINDINGS)[0]).toMatch(/^line \d+: not valid YAML/);
     });

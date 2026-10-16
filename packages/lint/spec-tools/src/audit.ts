@@ -1,7 +1,7 @@
 /**
  * `spec-tools audit`: the CI sequence — the evidence model, scope, then the passes and merges in the order `workers.ts`
  * describes — run by default from a DETACHED worktree of HEAD, so what is judged is exactly the commit CI judges: an
- * uncommitted edit, or a stale `.spec-audit/` in the working tree, cannot leak into the run, and every ERROR's
+ * uncommitted edit, or a stale `.spec-audit/` in the working tree, cannot leak into the run, and each ERROR-band finding's
  * quotes are re-proved against HEAD. The install is the working tree's (`node_modules` is linked in), and the run's
  * outputs — evidence model, scope, evidence, findings, the merged report — come back to the working tree.
  * `--here` runs on the working tree instead, uncommitted edits included, and re-proves quotes against it.

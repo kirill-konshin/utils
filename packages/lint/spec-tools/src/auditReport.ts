@@ -7,33 +7,35 @@ import type { ScopeData } from './auditScope';
 import { checkData, JUDGE_VERDICT, parseData, readData, READER_FINDINGS, tryReadData, writeData } from './data';
 import { AUDIT_DIR, FINDINGS_DIR, REPORT_DATA, REPORT_FILE, SCOPE_FILE, UNITS_FILE, VERIFIED_MARKER } from './files';
 import { root } from './repo';
+import {
+    describeThresholds,
+    fuse,
+    isJudged,
+    type Reading,
+    THRESHOLDS,
+    type Thresholds,
+    thresholds,
+    type Tier,
+    tierOf,
+} from './severity';
 
 /**
  * The specification audit's report, merged mechanically from what each worker judged. A worker
  * writes its part's findings as YAML; nothing here judges again. What this does is what needs no
- * judgment: every ERROR's quotes are looked up at their `file:line` in the audited commit — `HEAD`,
+ * judgment: each finding's severity is capped by the contract's kind list, by an ⚠️ Advisory requirement,
+ * and — for the ERROR band — by its quotes, looked up at their `file:line` in the audited commit (`HEAD`,
  * which no worker can edit, or the working tree with `--worktree` when the working tree is what
- * `spec-tools audit --here` audits — and a finding whose quotes are not there is WARN; kinds are tiered
- * by the contract's list, and a finding against an ⚠️ Advisory requirement is at most WARN; the judge's
- * verdict keeps an ERROR only when it confirms it with a confidence above `SURE`; coverage is the weakest
- * part's; the verdict follows from those; and the Markdown CI and the reader consume is rendered from it.
+ * `spec-tools audit --here` audits); the judge's reading is fused with the reader's (`severity.ts`); the
+ * thresholds give each finding its tier; coverage is the weakest part's; the verdict follows from those;
+ * and the Markdown CI and the reader consume is rendered from it.
  * The YAML files stay beside the report for debugging.
  * Usage: spec-tools report [--gate] [--worktree]
  */
 
 /** One merge of a run, as it stood after the pass before it: `.spec-audit/parts/findings/merge-<n>.yaml`. */
 export const MERGE_FILE = /^merge-\d+\.yaml$/;
-/** One verifier's answer over one ERROR: `.spec-audit/parts/findings/verdict-<k>.yaml`. */
+/** One judge's reading of one judged finding: `.spec-audit/parts/findings/verdict-<k>.yaml`. */
 export const VERDICT_FILE = /^verdict-(\d+)\.yaml$/;
-
-/** A finding is a sure ERROR only when the judge's confidence — or, unjudged, the reader's — is above this. */
-export const SURE = 70;
-/** An ERROR fails the run only when that confidence is above this; ERRORs at `SURE` to this exit 77, advisory. */
-export const BLOCKING = 80;
-
-/** The confidence an ERROR stands at: the judge's, else the reader's. */
-export const confidenceOfError = (f: { judgeConfidence?: number; readerConfidence?: number }): number =>
-    f.judgeConfidence ?? f.readerConfidence ?? 0;
 
 export const ERROR_CLASS = ['code-mismatch', 'undeclared-gap'] as const;
 /** Kinds that are a defect in the specification, the owner's to decide: WARN at most (spec-verify rules, check 2). */
@@ -49,15 +51,15 @@ export const CHECKS: Record<string, string> = {
     '5': 'A rule whose tests satisfy the wording while failing to protect the intent',
 };
 
-export type Tier = 'ERROR' | 'WARN' | 'INFO';
 export type Quote = { readonly file: string; readonly line: number; readonly text: string };
 export type Finding = {
     readonly kind: string;
-    readonly tier: Tier;
+    /** How severe the reader finds the defect, from 0 to 100, on the judging rules' scale. */
+    readonly readerSeverity: number;
     readonly where: string;
     readonly detail: string;
-    /** How sure the reader is that the finding is an ERROR — the defect and its production effect — from 0 to 100. */
-    readonly readerConfidence?: number;
+    /** How sure the reader is that the defect exists as written and that its severity is right, from 0 to 100. */
+    readonly readerConfidence: number;
     readonly quotes?: readonly Quote[];
 };
 export type Status = 'full' | 'sampled' | 'not-run';
@@ -86,24 +88,31 @@ export type PartFindings = {
     readonly notes?: readonly string[];
 };
 export type Graded = Finding & {
+    /** The fused severity and confidence — the reader's alone until a judge reads the finding — and their tier. */
+    readonly severity: number;
+    readonly confidence: number;
     readonly tier: Tier;
     readonly part: number;
     readonly reader?: number;
+    /** The highest severity the finding can reach, and why: a deterministic rule no reading overrides. */
+    readonly cap?: { readonly severity: number; readonly reason: string };
+    /** Why the severity is below what the readings gave: the cap's reason, once it lowered them. */
     readonly regraded?: string;
-    /** The verification pass's answer on an ERROR: confirmed, not confirmed with the verifier's reason, or never reached. */
+    /** The verification pass's answer: the judge's reading with its reason, or why no judge read it. */
     readonly verified?: string;
-    /** How sure the judge is that the finding is an ERROR, from 0 to 100. */
+    /** The judge's reading of the finding, from 0 to 100 each. */
+    readonly judgeSeverity?: number;
     readonly judgeConfidence?: number;
-    /** The production scenario the judge wrote when it confirmed the ERROR. */
+    /** The production scenario the judge wrote for an ERROR-band reading. */
     readonly scenario?: string;
 };
 
-/** A verifier's answer, `verdict-<k>.yaml`: it answers the k-th ERROR, so it names nothing but its verdict. */
+/** A judge's answer, `verdict-<k>.yaml`: it answers the k-th judged finding, so it names nothing but its reading. */
 export type Verdict = {
-    readonly verdict: 'confirmed' | 'warn';
+    readonly judgeSeverity: number;
+    readonly judgeConfidence: number;
     readonly reason: string;
     readonly scenario?: string;
-    readonly judgeConfidence: number;
 };
 
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -164,65 +173,67 @@ export const worktreeReader: Reader = (file) => {
 };
 
 /**
- * The tier a finding earns: INFO-class kinds are INFO however the worker graded them; WARN-class kinds (a
- * specification defect) are WARN at most; a WARN or INFO the worker gave stands, never raised; an ERROR-class
- * kind is ERROR only when the worker claimed it and at least two of its quotes — both sides — are
- * found at their lines, and WARN otherwise, saying why; and a finding against an ⚠️ Advisory
- * requirement is at most WARN. A kind the contract does not name is recorded as INFO with the
- * note, never invented into a failure.
+ * The highest severity a finding can reach, and why, from deterministic rules alone: INFO-class kinds and kinds the
+ * contract does not name stay below the WARN band; a WARN-class kind (a specification defect) and a finding against an
+ * ⚠️ Advisory requirement stay below the ERROR band; and an ERROR-class kind reaches the ERROR band only when at least
+ * two of its quotes — both sides, from the repository — are found at their lines. The lowest cap that applies wins;
+ * none applies to a proved ERROR-class finding.
  */
-export function grade(finding: Finding, part: number, read: Reader, advisory?: ReadonlySet<string>): Graded {
-    const graded = gradeKind(finding, part, read);
-    if (graded.tier !== 'ERROR' || !advisory?.has(unitOf(finding.where))) return graded;
-    return {
-        ...graded,
-        tier: 'WARN',
-        regraded: 'the requirement is ⚠️ Advisory: a finding against it is at most WARN',
-    };
+export function capOf(
+    finding: Finding,
+    read: Reader,
+    advisory?: ReadonlySet<string>,
+    t: Thresholds = THRESHOLDS,
+): Graded['cap'] {
+    const kind = finding.kind;
+    if ((INFO_CLASS as readonly string[]).includes(kind))
+        return { severity: t.warn - 1, reason: `${kind} is INFO-class` };
+    if (!(ERROR_CLASS as readonly string[]).includes(kind) && !(WARN_CLASS as readonly string[]).includes(kind))
+        return { severity: t.warn - 1, reason: `kind \`${kind}\` is not in the contract's list` };
+    if ((WARN_CLASS as readonly string[]).includes(kind))
+        return { severity: t.error - 1, reason: `${kind} is a specification defect: WARN at most` };
+    if (advisory?.has(unitOf(finding.where)))
+        return {
+            severity: t.error - 1,
+            reason: 'the requirement is ⚠️ Advisory: a finding against it is at most WARN',
+        };
+    const quotes = (finding.quotes ?? []).filter((q) => !isForeign(q.file));
+    if (quotes.length < 2)
+        return {
+            severity: t.error - 1,
+            reason: 'ERROR needs both sides quoted from the sources; fewer than two such quotes',
+        };
+    const missing = quotes.filter((q) => !quoteFound(q, read(q.file)));
+    if (missing.length)
+        return {
+            severity: t.error - 1,
+            reason: `re-proof failed: not found at ${missing.map((q) => `\`${q.file}:${q.line}\``).join(', ')}`,
+        };
+    return undefined;
 }
 
-function gradeKind(finding: Finding, part: number, read: Reader): Graded {
-    const kind = finding.kind;
-    if ((INFO_CLASS as readonly string[]).includes(kind)) {
-        return {
-            ...finding,
-            tier: 'INFO',
-            part,
-            regraded: finding.tier === 'INFO' ? undefined : `${kind} is INFO-class`,
-        };
-    }
-    if ((WARN_CLASS as readonly string[]).includes(kind)) {
-        return {
-            ...finding,
-            tier: finding.tier === 'INFO' ? 'INFO' : 'WARN',
-            part,
-            regraded: finding.tier === 'ERROR' ? `${kind} is a specification defect: WARN at most` : undefined,
-        };
-    }
-    if (!(ERROR_CLASS as readonly string[]).includes(kind)) {
-        return { ...finding, tier: 'INFO', part, regraded: `kind \`${kind}\` is not in the contract's list` };
-    }
-    // The reader's WARN or INFO stands: the merge never raises a tier.
-    if (finding.tier !== 'ERROR') return { ...finding, part };
-    const quotes = (finding.quotes ?? []).filter((q) => !isForeign(q.file));
-    const missing = quotes.filter((q) => !quoteFound(q, read(q.file)));
-    if (quotes.length < 2) {
-        return {
-            ...finding,
-            tier: 'WARN',
-            part,
-            regraded: 'ERROR needs both sides quoted from the sources; fewer than two such quotes',
-        };
-    }
-    if (missing.length > 0) {
-        return {
-            ...finding,
-            tier: 'WARN',
-            part,
-            regraded: `re-proof failed: not found at ${missing.map((q) => `\`${q.file}:${q.line}\``).join(', ')}`,
-        };
-    }
-    return { ...finding, tier: 'ERROR', part };
+/** A reading under a cap, its tier, and the cap's reason when the cap lowered it. */
+function graded(reading: Reading, cap: Graded['cap'], t: Thresholds) {
+    const severity = cap ? Math.min(reading.severity, cap.severity) : reading.severity;
+    const at = { severity, confidence: reading.confidence };
+    return { ...at, tier: tierOf(at, t), ...(cap && severity < reading.severity ? { regraded: cap.reason } : {}) };
+}
+
+/** A reader's finding, graded: its reading under its cap, and the tier the thresholds give it. */
+export function grade(
+    finding: Finding,
+    part: number,
+    read: Reader,
+    advisory?: ReadonlySet<string>,
+    t: Thresholds = THRESHOLDS,
+): Graded {
+    const cap = capOf(finding, read, advisory, t);
+    return {
+        ...finding,
+        part,
+        ...(cap ? { cap } : {}),
+        ...graded({ severity: finding.readerSeverity, confidence: finding.readerConfidence }, cap, t),
+    };
 }
 
 /** Per check: its status, the parts that fell short with why, and what readers claimed — notes, never a status. */
@@ -346,12 +357,10 @@ export function readerFiles(listed: readonly string[], present: readonly string[
     return [...listed, ...extra];
 }
 
-const tierRank: Record<Tier, number> = { ERROR: 0, WARN: 1, INFO: 2 };
-
 /**
  * Two readers of one part report the same defect in their own words; it is one finding. Two
  * findings are the same when they share a kind and a quoted `file:line`, or a kind and a `where`;
- * the better-proved twin stands.
+ * the more severe twin, after its cap, stands.
  */
 export function dedupe(findings: readonly Graded[]): Graded[] {
     const kept: Graded[] = [];
@@ -362,51 +371,49 @@ export function dedupe(findings: readonly Graded[]): Graded[] {
             (k) => k.kind === f.kind && (normalize(k.where) === normalize(f.where) || sameQuote(k, f)),
         );
         if (at === -1) kept.push(f);
-        else if (tierRank[f.tier] < tierRank[kept[at]!.tier]) kept[at] = f;
+        else if (f.severity > kept[at]!.severity) kept[at] = f;
     }
     return kept;
 }
 
 /**
- * The verification pass's answers, applied. An ERROR the workers demonstrated is put to one more reader over that
- * finding alone — the judge — which confirms it only when the defect is real and has a production effect, and gives
- * its confidence. The finding stays ERROR only when the judge confirms it with a confidence above `SURE`; otherwise
- * it is WARN with the judge's reason. One the pass never reached (no verdict written although the pass ran) stays
- * ERROR only when the reader's own confidence is above `SURE`; without the pass, nothing changes. The judge only
- * confirms or lowers: WARN and INFO are never touched. A verdict answers the ERROR at its position:
- * `verdict-<k>.yaml` is the k-th ERROR of the merge the verification pass started from, and the merge after it, over
- * the same findings files, lists the same ERRORs in the same order.
+ * The verification pass's answers, applied. A finding the reader rated severe and sure enough (`isJudged`) is put to
+ * one more reader over that finding alone — the judge — which gives its own severity and confidence; the two readings
+ * are fused (`fuse`), the finding's cap applies again, and the thresholds give the tier. A judge reading in the ERROR
+ * band with no production scenario caps the finding below that band. A finding the pass never reached (no verdict
+ * written although the pass ran) keeps the reader's reading, which is an ERROR only above `sure`; without the pass,
+ * nothing changes. A verdict answers the judged finding at its position: `verdict-<k>.yaml` is the k-th judged finding
+ * of the merge the verification pass started from, and the merge after it, over the same findings files, lists the
+ * same findings in the same order.
  */
 export function applyVerdicts(
     findings: readonly Graded[],
     verdicts: ReadonlyMap<number, Verdict>,
     ran: boolean,
+    t: Thresholds = THRESHOLDS,
 ): Graded[] {
     let k = 0;
     return findings.map((f) => {
-        if (f.tier !== 'ERROR') return f;
+        if (!isJudged(f, t)) return f;
         const v = verdicts.get(++k);
         if (!v) {
             if (!ran) return f;
-            const reader = f.readerConfidence ?? 0;
-            return reader > SURE
-                ? { ...f, verified: `unverified — no verdict was written; the reader is ${reader}% sure` }
-                : {
-                      ...f,
-                      tier: 'WARN',
-                      verified: `unverified — no verdict was written, and the reader is only ${reader}% sure`,
-                  };
+            return {
+                ...f,
+                verified: `unverified — no verdict was written; the reader's severity ${f.severity} at ${f.confidence}% stands`,
+            };
         }
-        const judged = { ...f, judgeConfidence: v.judgeConfidence, ...(v.scenario ? { scenario: v.scenario } : {}) };
-        if (v.verdict === 'confirmed' && v.judgeConfidence > SURE)
-            return { ...judged, verified: `confirmed — ${v.reason}` };
+        const unproved = v.judgeSeverity >= t.error && !v.scenario?.trim() && (f.cap?.severity ?? 100) >= t.error;
+        const cap = unproved
+            ? { severity: t.error - 1, reason: 'the judge gave an ERROR-band severity with no production scenario' }
+            : f.cap;
         return {
-            ...judged,
-            tier: 'WARN',
-            verified:
-                v.verdict === 'confirmed'
-                    ? `confirmed, but the judge is only ${v.judgeConfidence}% sure — ${v.reason}`
-                    : `not confirmed — ${v.reason}`,
+            ...f,
+            judgeSeverity: v.judgeSeverity,
+            judgeConfidence: v.judgeConfidence,
+            ...(v.scenario ? { scenario: v.scenario } : {}),
+            ...graded(fuse([f, { severity: v.judgeSeverity, confidence: v.judgeConfidence }], t.ignoreGap), cap, t),
+            verified: `judge: severity ${v.judgeSeverity} at ${v.judgeConfidence}% — ${v.reason}`,
         };
     });
 }
@@ -423,7 +430,7 @@ export function readVerdicts(problems: string[]): Map<number, Verdict> {
         const errors = checkData(text, JUDGE_VERDICT);
         if (errors.length) {
             problems.push(
-                `\`${FINDINGS_DIR}/${name}\` is not a valid verdict: ${errors.join('; ')} — its ERROR counts as unverified.`,
+                `\`${FINDINGS_DIR}/${name}\` is not a valid verdict: ${errors.join('; ')} — its finding counts as unverified.`,
             );
             continue;
         }
@@ -433,15 +440,15 @@ export function readVerdicts(problems: string[]): Map<number, Verdict> {
 }
 
 /**
- * The verdict: FAIL when an ERROR stands above `BLOCKING`; ADVISORY when ERRORs stand, none above it; INCOMPLETE when
- * none stands but a check fell short; PASS otherwise.
+ * The verdict: FAIL when an ERROR stands at a confidence above `blocking`; ADVISORY when ERRORs stand, none above it;
+ * INCOMPLETE when none stands but a check fell short; PASS otherwise.
  */
-export function verdict(findings: readonly Graded[], coverage: Merged) {
+export function verdict(findings: readonly Graded[], coverage: Merged, t: Thresholds = THRESHOLDS) {
     const standing = findings.filter((f) => f.tier === 'ERROR');
     const errors = standing.length;
     const warnings = findings.filter((f) => f.tier === 'WARN').length;
     const incomplete = Object.values(coverage).some((c) => c.status !== 'full');
-    const blocking = standing.some((f) => confidenceOfError(f) > BLOCKING);
+    const blocking = standing.some((f) => f.confidence > t.blocking);
     const state = blocking ? 'FAIL' : errors > 0 ? 'ADVISORY' : incomplete ? 'INCOMPLETE' : 'PASS';
     return { state, errors, warnings, line: `${state} (${errors} errors, ${warnings} warnings)` };
 }
@@ -451,9 +458,6 @@ export function verdict(findings: readonly Graded[], coverage: Merged) {
  * 77 and 3 are allowed failures, so the job is marked failed and the pipeline continues.
  */
 export const exitCodeFor = (state: string): number => ({ FAIL: 1, ADVISORY: 77, INCOMPLETE: 3 })[state] ?? 0;
-
-const cell = (s: string) => normalize(s).replace(/\|/g, '\\|');
-const order: Record<Tier, number> = { ERROR: 0, WARN: 1, INFO: 2 };
 
 /** What `.spec-audit/parts/units.yaml` holds: every unit in scope with its class. */
 export type UnitsFile = Record<string, UnitEntry>;
@@ -467,30 +471,26 @@ const firstSentence = (text: string) => {
     return end === -1 ? flat : flat.slice(0, end + 1);
 };
 
-/** The reader's and the judge's confidence, as the report shows them. */
-const confidenceOf = (f: Graded) =>
-    [
-        f.readerConfidence !== undefined ? `reader ${f.readerConfidence}%` : '',
-        f.judgeConfidence !== undefined ? `judge ${f.judgeConfidence}%` : '',
-    ]
-        .filter(Boolean)
-        .join(', ');
+/** The fused reading and each model's, as the report shows them. */
+const readingOf = (f: Graded) =>
+    `severity ${f.severity} at ${f.confidence}% (reader ${f.readerSeverity} at ${f.readerConfidence}%${
+        f.judgeSeverity !== undefined ? `, judge ${f.judgeSeverity} at ${f.judgeConfidence}%` : ''
+    })`;
 
 /**
  * One ERROR or WARN as the developer reads it: kind, place, requirement, what drifted, the production scenario, the
- * confidences, why it was regraded, the judge's word.
+ * readings, why it was regraded, the judge's word.
  */
 const findingLine = (f: Graded) => {
     const [requirement, at] = f.where.split(' / ');
     const place = at ?? (f.quotes?.[0] ? `${f.quotes[0].file}:${f.quotes[0].line}` : undefined);
-    const confidence = confidenceOf(f);
     return [
         `- \`${f.kind}\``,
         place ? ` \`${place}\`` : '',
         ` — \`${requirement}\``,
         ` — ${firstSentence(f.detail)}`,
         f.tier === 'ERROR' && f.scenario ? ` — **In production:** ${normalize(f.scenario)}` : '',
-        confidence ? ` — ${confidence}` : '',
+        ` — ${readingOf(f)}`,
         f.regraded ? ` — _${f.regraded}_` : '',
         f.verified ? ` — _${f.verified}_` : '',
     ].join('');
@@ -505,20 +505,24 @@ export function render(
     findings: readonly Graded[],
     coverage: Merged,
     problems: readonly string[],
+    t: Thresholds = THRESHOLDS,
 ): string {
-    const v = verdict(findings, coverage);
-    const out = [v.line, '', ...scopeHeader, ''];
+    const v = verdict(findings, coverage, t);
+    const out = [v.line, '', ...scopeHeader, '', `Graded by: ${describeThresholds(t)}.`, ''];
     if (problems.length) out.push("## Problems with the workers' output", '', ...problems.map((p) => `- ${p}`), '');
     const sections = [
         [
-            `Errors that fail the run — confirmed above ${BLOCKING}%`,
-            (f: Graded) => f.tier === 'ERROR' && confidenceOfError(f) > BLOCKING,
+            `Errors that fail the run — severity ${t.error} or more, confidence above ${t.blocking}%`,
+            (f: Graded) => f.tier === 'ERROR' && f.confidence > t.blocking,
         ],
         [
-            `Advisory errors — confirmed above ${SURE}%, at ${BLOCKING}% or lower`,
-            (f: Graded) => f.tier === 'ERROR' && confidenceOfError(f) <= BLOCKING,
+            `Advisory errors — severity ${t.error} or more, confidence above ${t.sure}%, at ${t.blocking}% or lower`,
+            (f: Graded) => f.tier === 'ERROR' && f.confidence <= t.blocking,
         ],
-        ['Warnings — suspected, without a production effect, or not confirmed', (f: Graded) => f.tier === 'WARN'],
+        [
+            `Warnings — severity ${t.warn} or more, or severe but not sure enough for an ERROR`,
+            (f: Graded) => f.tier === 'WARN',
+        ],
     ] as const;
     for (const [title, belongs] of sections) {
         const items = findings
@@ -568,7 +572,8 @@ export function scopeHeader(scope: ScopeData): string[] {
     return ['SCOPE all', '', `Every capability under \`openspec/specs/\`, in ${scope.parts.length} parts.`];
 }
 
-export function main(read: Reader = commitReader): string {
+export function main(read: Reader = commitReader, env: NodeJS.ProcessEnv = process.env): string {
+    const t = thresholds(env);
     // Every unit in scope, as the scope classed it.
     const units = tryReadData<UnitsFile>(path.join(root(), UNITS_FILE)) ?? {};
     const advisory = new Set(Object.entries(units).flatMap(([id, u]) => (u.advisory ? [id] : [])));
@@ -610,25 +615,27 @@ export function main(read: Reader = commitReader): string {
         dedupe(
             [...parts.values()].flatMap((readers) =>
                 readers.flatMap((p, index) =>
-                    p ? p.findings.map((f) => ({ ...grade(f, p.part, read, advisory), reader: index + 1 })) : [],
+                    p ? p.findings.map((f) => ({ ...grade(f, p.part, read, advisory, t), reader: index + 1 })) : [],
                 ),
             ),
         ),
         readVerdicts(problems),
         fs.existsSync(path.join(root(), VERIFIED_MARKER)),
+        t,
     );
     const expectedIds = new Map((scope?.parts ?? []).map((p) => [p.part, p.requirementIds ?? []] as const));
     const coverage = mergeCoverage(parts, expectedIds);
 
-    const report = render(header, findings, coverage, problems);
+    const report = render(header, findings, coverage, problems, t);
     fs.mkdirSync(path.dirname(path.join(root(), REPORT_FILE)), { recursive: true });
     fs.writeFileSync(path.join(root(), REPORT_FILE), report);
-    const v = verdict(findings, coverage);
+    const v = verdict(findings, coverage, t);
     const data = {
         verdict: v.line,
         state: v.state,
         errors: v.errors,
         warnings: v.warnings,
+        thresholds: t,
         findings,
         short: shortList(parts, expectedIds),
     };

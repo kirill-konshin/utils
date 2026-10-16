@@ -122,7 +122,8 @@ const optStr: Field = { type: 'string', optional: true };
 const strings: Field = { type: 'array', items: { type: 'string' } };
 const optStrings: Field = { ...strings, optional: true };
 export const CONFIDENCE: Field = { type: 'integer', min: 0, max: 100 };
-const TIER: Field = { type: 'enum', values: ['ERROR', 'WARN', 'INFO'] };
+/** A severity on the judging rules' scale; the thresholds turn it into a tier (`severity.ts`). */
+export const SEVERITY: Field = { type: 'integer', min: 0, max: 100 };
 
 /** One spec-verify reader's findings file. */
 export const READER_FINDINGS: Schema = {
@@ -137,7 +138,7 @@ export const READER_FINDINGS: Schema = {
                 type: 'object',
                 fields: {
                     kind: str,
-                    tier: TIER,
+                    readerSeverity: SEVERITY,
                     where: str,
                     detail: str,
                     readerConfidence: CONFIDENCE,
@@ -155,14 +156,14 @@ export const READER_FINDINGS: Schema = {
     },
 };
 
-/** The spec-verify judge's verdict over one finding. */
+/** The spec-verify judge's reading of one finding; the merge fuses it with the reader's. */
 export const JUDGE_VERDICT: Schema = {
     type: 'object',
     fields: {
-        verdict: { type: 'enum', values: ['confirmed', 'warn'] },
+        judgeSeverity: SEVERITY,
+        judgeConfidence: CONFIDENCE,
         reason: str,
         scenario: optStr,
-        judgeConfidence: CONFIDENCE,
     },
 };
 
@@ -219,7 +220,7 @@ export const REVIEW_REPORT: Schema = {
             items: {
                 type: 'object',
                 fields: {
-                    tier: TIER,
+                    readerSeverity: SEVERITY,
                     where: str,
                     detail: str,
                     readerConfidence: CONFIDENCE,

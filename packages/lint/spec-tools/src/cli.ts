@@ -122,6 +122,10 @@ async function main(): Promise<number> {
     return 2;
 }
 
-process.exitCode = await main();
+// An input the command cannot use — a missing file, an incorrect variable — exits 2 with its message, not a trace.
+process.exitCode = await main().catch((error: unknown) => {
+    console.error(`spec-tools: ${error instanceof Error ? error.message : String(error)}`);
+    return 2;
+});
 
 export {};

@@ -11,8 +11,9 @@
  *                   each job works its share out from the scope alone. Then the merge.
  *   2. complete     One worker per part the merge left short — the `short` list of `.spec-audit/spec-verify.yaml` — over
  *                   exactly those items, writing the part's next reader file. Nothing already judged is judged twice.
- *   3. verify       One judge per ERROR the merge left standing, over that finding alone, confirming it or lowering it to
- *                   WARN, with its confidence, on AUDIT_MODEL_VERIFY. Then the last merge, whose verdict gates.
+ *   3. verify       One judge per finding severe and sure enough (`severity.ts` `judgeGate`), over that finding alone,
+ *                   giving its own severity and confidence, on AUDIT_MODEL_VERIFY. Then the last merge, which fuses the
+ *                   two readings, and whose verdict gates.
  *
  * A worker writes its findings file and nothing else. The tool checks that file against its schema as soon as the
  * worker stops (`data.ts`), and sends the errors back to the same worker session to correct, at most `CORRECTIONS`
@@ -27,7 +28,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import type { Finding, ShortPart } from './auditReport';
+import type { Graded, ShortPart } from './auditReport';
 import type { Part, ScopeData } from './auditScope';
 import { shard } from './ci';
 import {
@@ -45,6 +46,7 @@ import {
 import { AUDIT_DIR, AUDIT_FILES, type AuditFiles, type AuditName, findingsFile, verdictFile } from './files';
 import { git, root } from './repo';
 import { correction, KEY_STYLE, readRules, rulesText } from './rules';
+import { judgeGate, THRESHOLDS, type Thresholds, thresholds } from './severity';
 import { SKILLS_DIR } from './skillsDir';
 import * as steward from './stewardAudit';
 import { CHEAP_EFFORT, CHEAP_MODEL, EXPENSIVE_MODEL, workersFor } from './tier';
@@ -154,7 +156,7 @@ Judge checks 1–5 over every requirement of the part. ${TOOL_RULE}
 
 ${KEY_STYLE}
 
-Write the findings file at the path above. Then return one line: the path and your counts per tier.
+Write the findings file at the path above. Then return one line: the path and your counts per band (ERROR, WARN, INFO).
 `;
 
 /**
@@ -184,14 +186,24 @@ The coverage map names only the checks this brief names. The judged list names o
 
 ${KEY_STYLE}
 
-Write the findings file at the path above. Then return one line: the path and your counts per tier.
+Write the findings file at the path above. Then return one line: the path and your counts per band (ERROR, WARN, INFO).
 `;
 };
 
-/** The judge's brief: one finding, one question, its rules inlined — the judge loads no skill. */
-export const briefVerify = (f: Finding, p: Part | undefined, file: string, repo: string): string => {
-    const { kind, where, detail, readerConfidence, quotes } = f;
-    return `You are the judge for ONE finding of the spec-verify audit in repo ${repo}. The reader graded it ERROR, and the tool found its quotes at their lines.
+/**
+ * The judge's brief: one finding, its rules inlined — the judge loads no skill. The judge gives its own reading; the
+ * reader's numbers are left out unless `AUDIT_JUDGE_READER_NUMBERS=show`, so the two readings stay independent.
+ */
+export const briefVerify = (
+    f: Graded,
+    p: Part | undefined,
+    file: string,
+    repo: string,
+    t: Thresholds = THRESHOLDS,
+): string => {
+    const { kind, where, detail, readerSeverity, readerConfidence, quotes } = f;
+    const numbers = t.judgeReaderNumbers === 'show' ? { readerSeverity, readerConfidence } : {};
+    return `You are the judge for ONE finding of the spec-verify audit in repo ${repo}. The reader rated it severe.${f.cap ? '' : ' The tool found its quotes at their lines.'} Give your own reading of it: its severity and your confidence.
 
 These are your judging rules.
 
@@ -202,20 +214,20 @@ ${rulesText('spec-verify')}
 ${rulesText('spec-verify-judge')}
 
 The finding:
-${toYaml({ kind, where, detail, readerConfidence, quotes })}
+${toYaml({ kind, where, detail, ...numbers, quotes })}
 Read, with the Read and Grep tools only: the requirement's block in the part's evidence files (${p?.files.join(', ') ?? `${AUDIT_DIR}/parts/`}), the quoted sources and the code near them. Other commands are denied and only cost a turn.
 
 Write this YAML to ${file} with the Write tool, and nothing else:
-verdict: "confirmed" or "warn"
-reason: |
-  for confirmed, the production effect; for warn, the statement that is not true
-scenario: |
-  only when confirmed: the production scenario in one sentence
+judgeSeverity: an integer from 0 to 100 on the severity scale of your rules (0 when the finding is not true)
 judgeConfidence: an integer from 0 to 100
+reason: |
+  why this severity: the production effect, or the statement that is not true
+scenario: |
+  required when judgeSeverity is ${t.error} or more: the production scenario in one sentence
 
 ${KEY_STYLE}
 
-Then return one line: the path and the verdict.
+Then return one line: the path and your severity.
 `;
 };
 
@@ -269,7 +281,12 @@ type Kind = {
     readonly briefComplete: (p: Part, short: ShortPart, reader: number, file: string, repo: string) => string;
     readonly findingsSchema: Schema;
     readonly verdictSchema: Schema;
-    readonly targets: (data: never, partOf: (n: number) => Part | undefined) => Target[];
+    /** What the verification pass puts to a judge, and a note on what it held back. */
+    readonly targets: (
+        data: never,
+        partOf: (n: number) => Part | undefined,
+        env: NodeJS.ProcessEnv,
+    ) => { readonly list: Target[]; readonly note?: string };
     readonly none: string;
 };
 
@@ -284,14 +301,18 @@ const KINDS: Record<AuditName, Kind> = {
         briefComplete,
         findingsSchema: READER_FINDINGS,
         verdictSchema: JUDGE_VERDICT,
-        targets: (data: { findings: (Finding & { part?: number })[] }, partOf) =>
-            data.findings
-                .filter((f) => f.tier === 'ERROR')
-                .map((f) => ({
+        targets: (data: { findings: Graded[] }, partOf, env) => {
+            const t = thresholds(env);
+            const { judged, unsure, mild } = judgeGate(data.findings, t);
+            return {
+                list: judged.map((f) => ({
                     label: f.where,
-                    brief: (file, repo) => briefVerify(f, partOf(f.part ?? 1), file, repo),
+                    brief: (file, repo) => briefVerify(f, partOf(f.part), file, repo, t),
                 })),
-        none: 'no ERROR stands',
+                note: `judge gate: severity ${t.judgeFrom} or more and reader confidence ${t.judgeMinConfidence}% or more — ${unsure} severe finding(s) held back as unsure, ${mild} below the severity`,
+            };
+        },
+        none: 'no finding is severe and sure enough for the judge',
     },
     'spec-steward': {
         files: AUDIT_FILES['spec-steward'],
@@ -303,11 +324,12 @@ const KINDS: Record<AuditName, Kind> = {
         briefComplete: steward.briefComplete,
         findingsSchema: STEWARD_FINDINGS,
         verdictSchema: STEWARD_VERDICT,
-        targets: (data: steward.StewardData) =>
-            data.candidates.map((c) => ({
+        targets: (data: steward.StewardData) => ({
+            list: data.candidates.map((c) => ({
                 label: `${c.file}:${c.line}`,
                 brief: (file, repo) => steward.briefVerify(c, file, repo),
             })),
+        }),
         none: 'no finding stands',
     },
 };
@@ -563,7 +585,8 @@ export async function workers(
                 if (/^(verdict-.*\.yaml|verifier-.*\.(jsonl|err|result\.yaml))$/.test(f))
                     fs.rmSync(path.join(findings, f));
             fs.writeFileSync(path.join(cwd, files.verified), '');
-            const targets = kind.targets(report as never, partOf);
+            const { list: targets, note } = kind.targets(report as never, partOf, env);
+            if (note) log(`spec-tools workers: ${note}`);
             if (!targets.length) {
                 log(`spec-tools workers: nothing to verify — ${kind.none}`);
                 return 0;

@@ -4,12 +4,13 @@ import * as path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import { toYaml } from './data';
+import { THRESHOLDS } from './severity';
 import { exitFor, gate, reviewVerdict, verdictOf } from './verdict';
 
 const dir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'spec-tools-verdict-'));
 
-const finding = (tier: 'ERROR' | 'WARN', readerConfidence: number) => ({
-    tier,
+const finding = (readerSeverity: number, readerConfidence: number) => ({
+    readerSeverity,
     where: 'apps/x.ts:12',
     detail: 'the write addresses another record',
     readerConfidence,
@@ -36,15 +37,24 @@ describe('verdict', () => {
         expect(exitFor(null, true)).toBe(1);
     });
 
-    test('computes a review report’s verdict itself: an ERROR counts above 70%, fails above 80%, an incomplete review is INCOMPLETE', () => {
+    test('computes a review report’s verdict itself on the severity scale: an ERROR counts above 70%, fails above 80%, an incomplete review is INCOMPLETE', () => {
         const complete = { complete: true };
-        expect(reviewVerdict({ findings: [finding('ERROR', 70)], coverage: complete }).line).toBe(
+        expect(reviewVerdict({ findings: [finding(80, 70)], coverage: complete }).line).toBe(
             'PASS (0 errors, 1 warnings)',
         );
-        expect(reviewVerdict({ findings: [finding('ERROR', 71)], coverage: complete }).line).toBe(
+        expect(reviewVerdict({ findings: [finding(80, 71)], coverage: complete }).line).toBe(
             'ADVISORY (1 errors, 0 warnings)',
         );
-        expect(reviewVerdict({ findings: [finding('ERROR', 81)], coverage: complete }).state).toBe('FAIL');
+        expect(reviewVerdict({ findings: [finding(80, 81)], coverage: complete }).state).toBe('FAIL');
+        expect(reviewVerdict({ findings: [finding(69, 95)], coverage: complete }).line).toBe(
+            'PASS (0 errors, 1 warnings)',
+        );
+        expect(reviewVerdict({ findings: [finding(39, 95)], coverage: complete }).line).toBe(
+            'PASS (0 errors, 0 warnings)',
+        );
+        expect(
+            reviewVerdict({ findings: [finding(80, 81)], coverage: complete }, { ...THRESHOLDS, error: 85 }).state,
+        ).toBe('PASS');
         expect(reviewVerdict({ findings: [], coverage: { complete: false } }).state).toBe('INCOMPLETE');
     });
 
@@ -53,12 +63,14 @@ describe('verdict', () => {
         const report = path.join(d, 'entity-hacks.yaml');
         fs.writeFileSync(
             report,
-            toYaml({ title: 'Entity hacks', findings: [finding('ERROR', 90)], coverage: { complete: true } }),
+            toYaml({ title: 'Entity hacks', findings: [finding(85, 90)], coverage: { complete: true } }),
         );
         expect(gate(report, true)).toBe(77);
         const md = fs.readFileSync(path.join(d, 'entity-hacks.md'), 'utf8');
         expect(md.split('\n')[0]).toBe('FAIL (1 errors, 0 warnings)');
-        expect(md).toContain('| ERROR | `apps/x.ts:12` | QueueEntity | the write addresses another record | 90% |');
+        expect(md).toContain(
+            '| ERROR | `apps/x.ts:12` | QueueEntity | the write addresses another record | 85 | 90% |',
+        );
     });
 
     test('fails a review that wrote no report', () => {

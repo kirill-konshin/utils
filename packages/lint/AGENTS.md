@@ -8,7 +8,7 @@
     - `spec-tools/src/` — the `spec-tools` CLI, TypeScript, bundled by `tsdown.config.ts` into the one file `skills/spec-tools/scripts/cli.js`, the package's only spec bin
     - `skills/spec-tools/` — its consumer skill: setup, the contract (`references/contract.md`), the GitLab pipeline (`references/gitlab.md`)
     - `skills/spec-verify/` — the code-conformance worker's mechanics: the material it reads and the findings file it writes
-    - `skills/spec-tools/references/rules/` — the judging rules: what a finding is, its tier and its confidence, per audit role
+    - `skills/spec-tools/references/rules/` — the judging rules: what a finding is, its severity and its confidence, per audit role; `spec-tools/src/severity.ts` — the thresholds and the fusion that turn readings into tiers
     - `spec-tools/src/data.ts` — every YAML read and write, and the schema each model-written file is checked against; `spec-tools/src/files.ts` — every path, all under `.spec-audit/`
     - `spec-tools/src/stewardAudit.ts` — spec-steward's audit on the same engine; its worker contract is `skills/spec-steward/references/worker.md`, its sweeps `skills/spec-steward/sweeps.json`
 - A contract changes in the same change as the code it describes; its cases are what the tests beside the code prove

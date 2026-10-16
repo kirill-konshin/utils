@@ -24,11 +24,11 @@ Do not compare code with code.
 ## Contradictory rules
 
 - Two requirements conflict when one system cannot obey both.
-- A conflict is a defect in the specification. It is WARN or lower. The owner decides.
+- A conflict is a defect in the specification. Its severity is in the WARN band or lower. The owner decides.
 
 ## A rule redundant with, or substantially overlapping, another
 
-- Two requirements that state the same rule are `spec-dup`. This is always INFO.
+- Two requirements that state the same rule are `spec-dup`. Its severity is always in the INFO band.
 
 ## A rule that no longer matches the implementation or architecture
 
@@ -41,10 +41,14 @@ Do not compare code with code.
 ## A rule whose tests satisfy the wording while failing to protect the intent
 
 - For each test that a scenario binds, make sure that the test asserts the outcome of the scenario. The name of the test is not evidence.
-- A test that asserts less than its scenario is `untested`. This is always INFO.
+- A test that asserts less than its scenario is `untested`. Its severity is always in the INFO band.
 
 ## Coverage
 
 - A check is full when you judged each item that the part lists for it, and each requirement id is in your judged list.
 - A check is sampled only when an assigned source was not available after you tried to read it. Name that source.
 - An uncertain conclusion is a finding with a low `readerConfidence`. It is not sampled coverage.
+
+## The numbers
+
+- Write the severity as `readerSeverity` and the confidence as `readerConfidence`.

@@ -777,7 +777,13 @@ describe('evidence --json', () => {
                 },
             ],
             pointers: [
-                { file: 'apps/order.ts', line: 3, anchor: 'requirement-orders-are-confirmed-once', kind: 'code' },
+                {
+                    file: 'apps/order.ts',
+                    line: 3,
+                    anchor: 'requirement-orders-are-confirmed-once',
+                    kind: 'code',
+                    window: [3, 4],
+                },
             ],
             terms: [{ term: 'confirmOrder', hits: [{ file: 'apps/order.ts', line: 2 }] }],
         });

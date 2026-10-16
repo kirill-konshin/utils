@@ -7,7 +7,8 @@ import { describe, expect, test } from 'vitest';
 import type { Part } from './auditScope';
 import { toYaml } from './data';
 import { findingsFile, SCOPE_FILE } from './files';
-import { concurrency, duration, memoryLine, shareOf, treeChanges, workers } from './workers';
+import { THRESHOLDS } from './severity';
+import { briefVerify, concurrency, duration, memoryLine, shareOf, treeChanges, workers } from './workers';
 
 /** A test that spawns git and workers in a throwaway repository: each can take seconds on a busy machine. */
 const TIMEOUT = 60_000;
@@ -147,7 +148,9 @@ describe('workers, the reading', () => {
         async () => {
             const { code, out } = await read(1, { STUB_BAD: 'always' });
             expect(code).toBe(0);
-            expect(out).toContain('invalid findings file, corrected 2×, still invalid: findings[0].tier: missing');
+            expect(out).toContain(
+                'invalid findings file, corrected 2×, still invalid: findings[0].readerSeverity: missing',
+            );
         },
         TIMEOUT,
     );
@@ -206,6 +209,30 @@ describe('workers, the pieces', () => {
         expect(duration('20m')).toBe(1_200_000);
         expect(duration('90s')).toBe(90_000);
         expect(duration('45')).toBe(45_000);
+    });
+
+    test("asks the judge for its own reading, and hides the reader's numbers unless told to show them", () => {
+        const finding = {
+            kind: 'code-mismatch',
+            where: 'x#requirement-a / x.ts:1',
+            detail: 'the write lands elsewhere',
+            readerSeverity: 83,
+            readerConfidence: 67,
+            severity: 83,
+            confidence: 67,
+            tier: 'WARN' as const,
+            part: 1,
+        };
+        const hidden = briefVerify(finding, undefined, 'verdict-1.yaml', '/repo');
+        expect(hidden).toContain('judgeSeverity: an integer from 0 to 100');
+        expect(hidden).toContain('required when judgeSeverity is 70 or more');
+        expect(hidden).not.toMatch(/readerSeverity: 83|readerConfidence: 67/);
+        const shown = briefVerify(finding, undefined, 'verdict-1.yaml', '/repo', {
+            ...THRESHOLDS,
+            judgeReaderNumbers: 'show',
+        });
+        expect(shown).toMatch(/readerSeverity: 83/);
+        expect(shown).toMatch(/readerConfidence: 67/);
     });
 
     test('ignores what a pass may write and names what it may not', () => {

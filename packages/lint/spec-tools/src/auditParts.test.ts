@@ -183,7 +183,7 @@ const modelRequirement = (over: Partial<EvidenceRequirement> = {}): EvidenceRequ
             window: [3, 6],
         },
     ],
-    pointers: [{ file: 'apps/x/src/a.ts', line: 1, anchor: 'requirement-attach', kind: 'code' }],
+    pointers: [{ file: 'apps/x/src/a.ts', line: 1, anchor: 'requirement-attach', kind: 'code', window: [1, 3] }],
     terms: [
         {
             term: 'selectMethod',
@@ -351,6 +351,17 @@ describe('renderCapability', () => {
         }
         // The same evidence, the same cut — every job that reads the scope sees it alike.
         expect(cut(...Array.from({ length: 6 }, () => share(0.4))).slices).toEqual(slices);
+    });
+
+    test('carries only the requirements in the set when given one, and says the capability is in the run in part', () => {
+        const all = requirementsOf({ version: 1, root: 'x', requirements: [20, 20, 20].map((kb, i) => sized(i, kb)) });
+        const ctx = contextOf(all, reader({ 'openspec/specs/x/spec.md': spec }));
+        const part = renderCapability('x', ctx, new Set(['x#requirement-r1']));
+        expect(part.flatMap((s) => s.requirements.map(idOf))).toEqual(['x#requirement-r1']);
+        expect(part[0]!.text).toContain('in it only in part');
+        const whole = renderCapability('x', ctx, new Set(all.map(idOf)));
+        expect(whole[0]!.requirements).toEqual(all);
+        expect(whole[0]!.text).not.toContain('in it only in part');
     });
 
     test('gives a requirement larger than one reader holds a file of its own', () => {
