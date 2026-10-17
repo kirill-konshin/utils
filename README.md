@@ -39,11 +39,12 @@ The first `feat` commit publishes `0.1.0` as `latest`; normal releases use OIDC 
 - `yarn build` / `yarn test` / `yarn start` / `yarn serve` — run tasks for everything (packages + demos); no suffix means all
 - `yarn build:packages` / `yarn test` / ... — scoped to publishable packages (`@kirill.konshin/*`)
 - `yarn build:affected` / `yarn test:affected` — only projects affected vs `main`, demos excluded (used by PR CI)
-- `yarn lint` — lint everything (eslint + prettier)
+- `yarn lint` — format, lint and type-check everything (`vp check --fix`)
 - `yarn release --dry-run` — preview what the next release would do
 - Coordinated release of all packages at once (or force an exact version): GitHub → Actions → Release → Run workflow, with a specifier (`patch`, `minor`, `major`, or an exact version like `1.0.0`)
 - `git config remote.origin.tagOpt --tags` suggested to pull tags always
+- `npx nx login` once per machine — read-write access to the Nx Cloud remote cache (the workspace is visible to organization members only). CI repository secrets: `NX_CLOUD_ACCESS_TOKEN` (read-write, release workflow on `main`), `NX_CLOUD_ACCESS_TOKEN_READ_ONLY` (PR workflow)
 
 ## AI Commands
 
-`/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency `/lint-repo` — sets up/updates the ESLint·Prettier·Husky tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`)
+`/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency `/lint-repo` — sets up/updates the Vite+ (or ESLint·Prettier·Husky) tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`) `/lint-migrate` — upgrades a project to a newer `@kirill.konshin/lint` (0.6 → 0.7: Vite+)

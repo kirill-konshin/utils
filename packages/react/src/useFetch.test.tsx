@@ -4,7 +4,7 @@
 import { act } from 'react';
 
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vite-plus/test';
 
 import { useFetch } from './useFetch';
 

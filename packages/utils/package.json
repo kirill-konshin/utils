@@ -6,7 +6,7 @@
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
-    "build": "vite build",
+    "build": "vp pack",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js"
   },

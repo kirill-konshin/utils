@@ -2,7 +2,7 @@ import type { NeonHttpDatabase, NeonHttpQueryResultHKT } from 'drizzle-orm/neon-
 import type { NeonDatabase, NeonQueryResultHKT } from 'drizzle-orm/neon-serverless';
 import { pgTable, text } from 'drizzle-orm/pg-core';
 import type { PgliteDatabase, PgliteQueryResultHKT } from 'drizzle-orm/pglite';
-import { expect, expectTypeOf, test } from 'vitest';
+import { expect, expectTypeOf, test } from 'vite-plus/test';
 
 import type { DatabaseExecutorFor, DatabaseFor, DatabaseTransactionFor, TypesFor } from './index';
 

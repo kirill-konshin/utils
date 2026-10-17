@@ -16,13 +16,13 @@ export const appPath: string = app.getAppPath();
 // See https://cs.chromium.org/chromium/src/net/base/net_error_list.h
 const FILE_NOT_FOUND = -6;
 
-const getPath = async (path_, file = '') => {
+const _getPath = async (path_, file = '') => {
     try {
         const result = await fsp.stat(path_);
 
         if (result.isFile()) return path_;
 
-        if (result.isDirectory()) return getPath(path.join(path_, `${file}.html`));
+        if (result.isDirectory()) return _getPath(path.join(path_, `${file}.html`));
     } catch {
         /* empty */
     }

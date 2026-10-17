@@ -1,12 +1,12 @@
 # Stores
 
-Workflow: https://github.com/SmartPeripheral/Knowledge-Nexus/actions/workflows/app-build.yml
-iOS TestFlight: https://appstoreconnect.apple.com/apps/6449982756/testflight/ios
-Android Internal: https://play.google.com/console/u/0/developers/9100317934805877262/app/4974304246494486568/tracks/internal-testing
+- Workflow: https://github.com/SmartPeripheral/Knowledge-Nexus/actions/workflows/app-build.yml
+- iOS TestFlight: https://appstoreconnect.apple.com/apps/6449982756/testflight/ios
+- Android Internal: https://play.google.com/console/u/0/developers/9100317934805877262/app/4974304246494486568/tracks/internal-testing
 
-Submit iOS: https://docs.expo.dev/submit/ios/
-Submit Android: https://docs.expo.dev/submit/android/
-Automatic Submission Doc: https://docs.expo.dev/build/automating-submissions/
+- Submit iOS: https://docs.expo.dev/submit/ios/
+- Submit Android: https://docs.expo.dev/submit/android/
+- Automatic Submission Doc: https://docs.expo.dev/build/automating-submissions/
 
 # Issues
 

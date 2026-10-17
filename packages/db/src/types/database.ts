@@ -13,7 +13,8 @@ export type DatabaseTransactionFor<
 > = PgTransaction<TQueryResult, TSchema, ExtractTablesWithRelations<TSchema>>;
 
 export type DatabaseExecutorFor<TSchema extends Record<string, unknown>, TQueryResult extends PgQueryResultHKT> =
-    DatabaseFor<TSchema, TQueryResult> | DatabaseTransactionFor<TSchema, TQueryResult>;
+    | DatabaseFor<TSchema, TQueryResult>
+    | DatabaseTransactionFor<TSchema, TQueryResult>;
 
 export type TypesFor<TSchema extends Record<string, unknown>> = {
     Database: DatabaseFor<TSchema, PgQueryResultHKT>;

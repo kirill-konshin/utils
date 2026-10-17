@@ -18,8 +18,11 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 permissions:
   contents: read
 
-# Checks run as parallel jobs; release needs all of them. Only test and build save an Nx cache:
-# with one cache key per job, parallel jobs never race for a key.
+# Checks run as parallel jobs; release needs all of them. Nx outputs come from the Nx Cloud remote cache
+# (nxCloudId in nx.json); main writes to it with a read-write CI access token.
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
 jobs:
   commits:
     name: Commit Messages
@@ -35,8 +38,6 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
-        with:
-          nx-cache: build # postinstall reuses the build job's lint build; this job does not save
 
       # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
       # `sha`, making the range invalid.
@@ -56,11 +57,9 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
-        with:
-          nx-cache: build # postinstall reuses the build job's lint build; this job does not save
 
       - name: Lint
-        run: yarn lint
+        run: yarn vp check # format, lint and (type-aware) type checks; no --fix, so drift fails CI
 
   test:
     name: Test
@@ -80,11 +79,6 @@ jobs:
 
       - name: Coverage Summary
         uses: ./.github/actions/coverage-summary
-
-      - name: Save Nx cache
-        uses: ./.github/actions/nx-cache
-        with:
-          mode: save
 
   build:
     name: Build & Preview
@@ -133,11 +127,6 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Save Nx cache
-        uses: ./.github/actions/nx-cache
-        with:
-          mode: save
-
   release:
     name: Release
     runs-on: ubuntu-latest
@@ -162,14 +151,13 @@ jobs:
         uses: ./.github/actions/setup
         with:
           registry-url: 'https://registry.npmjs.org' # publish job needs .npmrc auth config
-          nx-cache: build # exact key of the build job's cache; this job does not save
 
       - name: Configure git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Different runner: outputs come from the build job's Nx cache, so nothing should rebuild
+      # Different runner: outputs come from the Nx Cloud remote cache the build job filled, so nothing should rebuild
       - name: Build packages
         run: yarn build:packages
 

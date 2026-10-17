@@ -26,13 +26,13 @@ Sanity check first: `eslintExtsRaw` and `prettierExtsRaw` must not intersect, an
 | File | What must match |
 | --- | --- |
 | `.editorconfig` | 4-space section = `[*.{<eslintExtsRaw>}]`; 2-space section = `[*.{<prettierExtsRaw>}]` |
-| `.idea/prettier.xml` | `myFilesPattern` = `{**/*,*}.{<eslintExtsRaw + prettierExtsRaw>}` (the `{**/*,*}` shape covers root-level files) |
-| `.idea/jsLinters/eslint.xml` | `files-pattern` = `**/*.{<eslintExtsRaw>}` — add the option if missing |
+| `.idea/prettier.xml` (without Vite+; with Vite+ Prettier is disabled and the Oxc plugin keeps its default extension lists) | `myFilesPattern` = `{**/*,*}.{<eslintExtsRaw + prettierExtsRaw>}` (the `{**/*,*}` shape covers root-level files) |
+| `.idea/jsLinters/eslint.xml` (without Vite+; deleted with Vite+) | `files-pattern` = `**/*.{<eslintExtsRaw>}` — add the option if missing |
 | `packages/lint/skills/lint-webstorm/SKILL.md` | the `prettier.xml` and `jsLinters/eslint.xml` templates — same values as the two rows above |
 | `packages/lint/README.md` | "IDEA settings" section: Eslint line = `eslintExtsRaw`, Prettier line = full Prettier scope, same pattern shapes as the `.idea` files |
-| `eslint.config.mjs` (root) | hardcoded code-file globs (e.g. the Nx module-boundaries `files`) should import `tsExts` from the package instead of inlining a list |
+| `vite.config.ts` (root) | hardcoded code-file globs (e.g. the Nx module-boundaries `files`) should import `tsExts` from `@kirill.konshin/lint/vite-plus` instead of inlining a list |
 
-In JS/TS files prefer importing `tsExts` / `eslintExts` / `prettierExts` from `@kirill.konshin/lint` over pasting literals. In non-importable formats (xml, editorconfig, md docs) paste the literal expansion.
+In JS/TS files prefer importing `tsExts` / `eslintExts` / `prettierExts` from `@kirill.konshin/lint` (`tsExts` also from `/vite-plus`) over pasting literals. In non-importable formats (xml, editorconfig, md docs) paste the literal expansion.
 
 # Discover other occurrences
 

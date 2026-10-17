@@ -1,5 +1,4 @@
-This repo uses [Conventional Commits](https://www.conventionalcommits.org) with [Nx Release](https://nx.dev/docs/guides/nx-release) to automate releases. For you, the
-contributor, this means commit messages (and PR titles, since PRs are squash-merged) must follow the convention — they are validated by a git hook and by CI:
+This repo uses [Conventional Commits](https://www.conventionalcommits.org) with [Nx Release](https://nx.dev/docs/guides/nx-release) to automate releases. For you, the contributor, this means commit messages (and PR titles, since PRs are squash-merged) must follow the convention — they are validated by a git hook and by CI:
 
 - `fix(scope): ...` — patch release
 - `feat(scope): ...` — minor release

@@ -75,5 +75,6 @@
       "pushArgs": ["origin", "refs/tags/*:refs/tags/*"]
     }
   },
-  "analytics": false
+  "analytics": false,
+  "nxCloudId": "6ad2cd18e17fc9d5a868e6d9"
 }

@@ -16,9 +16,12 @@ env:
   # Base for `nx affected` — test and build fetch full history, so origin/main is always present
   NX_BASE: origin/main
   NX_HEAD: HEAD
+  # Nx Cloud remote cache (nxCloudId in nx.json): PRs only read it, with a read-only CI access token (repository
+  # secret); fork PRs get no secrets and run without the cache (workspace visible to organization members only).
+  # Only main writes.
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN_READ_ONLY }}
 
-# Checks run as parallel jobs. Only test and build save an Nx cache: with one cache key per job,
-# parallel jobs never race for a key.
+# Checks run as parallel jobs.
 jobs:
   title:
     name: PR Title
@@ -43,11 +46,9 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
-        with:
-          nx-cache: build # postinstall reuses the build job's lint build; this job does not save
 
       - name: Lint
-        run: yarn lint
+        run: yarn vp check # format, lint and (type-aware) type checks; no --fix, so drift fails CI
 
   test:
     name: Test
@@ -75,11 +76,6 @@ jobs:
           recreate: true
           path: code-coverage-results.md
 
-      - name: Save Nx cache
-        uses: ./.github/actions/nx-cache
-        with:
-          mode: save
-
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -95,8 +91,3 @@ jobs:
 
       - name: Build
         run: yarn build:affected
-
-      - name: Save Nx cache
-        uses: ./.github/actions/nx-cache
-        with:
-          mode: save

@@ -16,7 +16,9 @@
     "isolatedDeclarations": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    /* TypeScript 6 no longer includes every @types package by default; Vite client types declare asset and CSS imports */
+    "types": ["node", "vite-plus/client"]
   },
   "include": ["src"],
   "exclude": [],

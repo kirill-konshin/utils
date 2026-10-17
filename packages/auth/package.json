@@ -6,14 +6,14 @@
   "scripts": {
     "----- BUILD -----": "",
     "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
-    "build": "vite build",
+    "build": "vp pack",
     "build:index": "cti create ./src",
     "build:check-types": "attw --pack .",
     "start": "yarn build --watch",
     "wait": "wait-on ./dist/index.js",
     "----- TEST -----": "",
-    "test": "vitest run --coverage",
-    "test:watch": "vitest watch --coverage",
+    "test": "vp test run --coverage",
+    "test:watch": "vp test watch --coverage",
     "----- STORYBOOK -----": "",
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"

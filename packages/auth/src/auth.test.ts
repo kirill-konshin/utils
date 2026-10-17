@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vite-plus/test';
 
 import { createAuth, createPasswordAuth, MIN_SECRET_LENGTH, timingSafeEqualStrings } from './auth';
 import { AUTHENTICATED, ERROR_PARAM, PATHNAME_HEADER, STATE_PARAM } from './client';

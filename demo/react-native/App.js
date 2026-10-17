@@ -87,7 +87,7 @@ function MainView() {
         })();
     }, [getCredentials, user]);
 
-    const sendStatus = useCallback((status) => {
+    const _sendStatus = useCallback((status) => {
         webViewRef.current.postMessage(JSON.stringify({ type: 'recording-status', ...status }), '*');
     }, []);
 

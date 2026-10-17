@@ -41,19 +41,9 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 
 const NAVIGATION = [{ segment: 'admin', title: 'Dashboard', icon: <DashboardIcon /> }];
 
-export function AdminShell({
-    children,
-    logoutAction,
-}: {
-    children: React.ReactNode;
-    logoutAction: PasswordAuth['logout'];
-}) {
+export function AdminShell({ children, logoutAction }: { children: React.ReactNode; logoutAction: PasswordAuth['logout'] }) {
     return (
-        <AdminAppProvider
-            branding={{ title: 'Admin', homeUrl: '/admin' }}
-            navigation={NAVIGATION}
-            logoutAction={logoutAction}
-        >
+        <AdminAppProvider branding={{ title: 'Admin', homeUrl: '/admin' }} navigation={NAVIGATION} logoutAction={logoutAction}>
             <AdminDashboardLayout>{children}</AdminDashboardLayout>
         </AdminAppProvider>
     );
@@ -67,13 +57,7 @@ export function AdminShell({
 import type { PasswordAuth } from '@kirill.konshin/auth';
 import { AdminAppProvider, AdminSignInPage } from '@kirill.konshin/mui/admin';
 
-export function AdminSignIn({
-    loginAction,
-    isConfigured,
-}: {
-    loginAction: PasswordAuth['loginFormAction'];
-    isConfigured: boolean;
-}) {
+export function AdminSignIn({ loginAction, isConfigured }: { loginAction: PasswordAuth['loginFormAction']; isConfigured: boolean }) {
     return (
         <AdminAppProvider branding={{ title: 'Admin' }}>
             <AdminSignInPage loginAction={loginAction} isConfigured={isConfigured} />

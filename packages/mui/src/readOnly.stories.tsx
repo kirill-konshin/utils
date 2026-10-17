@@ -82,7 +82,7 @@ export const ComparisonWithTextField: Story = {
         },
     },
     render: () => (
-        <Stack direction="row" spacing={3} alignItems="flex-start">
+        <Stack direction="row" spacing={3} sx={{ alignItems: 'flex-start' }}>
             <GenericControl>
                 <InputLabel shrink>ReadOnly Component</InputLabel>
                 <ReadOnly>

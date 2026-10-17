@@ -1,6 +1,6 @@
 import '@vitest/web-worker';
 
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vite-plus/test';
 
 import { wrpc } from './wrpc';
 import type { responder } from './wrpc.fixture'; // DO NOT IMPORT ANYTHING OTHER THAN TYPES!!!
@@ -246,6 +246,7 @@ describe('WRPC', async () => {
 
         expect((caller as any)[Symbol.asyncIterator]).toBeUndefined();
         expect((caller as any)[Symbol.iterator]).toBeUndefined();
+        // oxlint-disable-next-line typescript/no-base-to-string -- asserts the default stringification
         expect(String(caller)).toBe('[object Object]');
         expect(JSON.stringify(caller)).toBe('{}');
     });

@@ -1,13 +1,9 @@
 name: Setup
-description: Node.js + Corepack + Nx cache restore + Yarn install. The repo must already be checked out (a local action cannot run before checkout). Jobs that keep their Nx outputs end with ./.github/actions/nx-cache (mode save).
+description: Node.js + Corepack + Yarn install. The repo must already be checked out (a local action cannot run before checkout). Nx outputs come from the Nx Cloud remote cache (nxCloudId in nx.json).
 
 inputs:
   registry-url:
     description: npm registry URL — set only on jobs that publish (configures .npmrc auth)
-    required: false
-    default: ''
-  nx-cache:
-    description: Job whose Nx cache to restore (defaults to this job); a job that does not save reuses another job's cache
     required: false
     default: ''
 
@@ -25,11 +21,6 @@ runs:
         registry-url: ${{ inputs.registry-url }}
         cache: yarn
         cache-dependency-path: yarn.lock
-
-    - name: Restore Nx cache
-      uses: ./.github/actions/nx-cache
-      with:
-        job: ${{ inputs.nx-cache }}
 
     - name: Install dependencies
       run: yarn install --immutable

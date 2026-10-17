@@ -32,6 +32,7 @@ export const Label: FC<LabelProps> = memo(function Label({ name, reset, value, d
             {name}
             {value !== defaultValue && (
                 <>
+                    {/* oxlint-disable-next-line jsx-a11y/anchor-is-valid -- Bootstrap link styling of an inline action */}
                     <a href="javascript: void(0)" onClick={reset}>
                         <small>reset</small>
                     </a>

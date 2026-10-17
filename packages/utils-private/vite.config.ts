@@ -1,88 +1,61 @@
 import * as path from 'node:path';
 import react from '@vitejs/plugin-react';
-import preserveDirectives from 'rollup-preserve-directives';
-import dts from 'vite-plugin-dts';
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite-plus';
 
-import {
-    checkTypes,
-    distDir,
-    entry,
-    excludeGlob,
-    external,
-    fixDtsExtensions,
-    fixExports,
-    formats,
-    generateIndex,
-    includeGlob,
-    pkg,
-} from './vite.exports';
+import { checkTypes, distDir, entry, fixExports, generateIndex, pkg } from './vite.exports';
 
-// https://rbardini.com/how-to-build-ts-library-with-vite/
-// https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma
-
-const isWatch = process.argv.includes('--watch'); // https://github.com/vitejs/vite/discussions/7565#discussioncomment-2939256
+const isWatch = process.argv.includes('--watch');
 const isStorybook = process.argv[1]?.includes('storybook') || process.env.STORYBOOK === 'true';
 const isVitest = process.env.VITEST === 'true'; // index/exports/attw are build-time codegen; under vitest cwd may be the workspace root
 const isUmbrella = pkg.nx?.tags?.includes('platform:umbrella');
 
 export default defineConfig({
-    build: {
-        ssr: true,
-        sourcemap: true,
+    /*
+     * `vp pack` (tsdown on Rolldown): ESM only, one output file per source module (`unbundle`, the old
+     * `preserveModules`), declarations from `isolatedDeclarations` (tsconfig.json). Every bare import stays
+     * external, as the static list of dependencies, builtins and `@kirill.konshin/*` did. Module directives
+     * (`'use client'`) survive in unbundled output.
+     */
+    pack: {
+        entry,
         outDir: distDir,
-        emptyOutDir: !isWatch,
-        // target: 'esnext',
-        lib: {
-            entry,
-            formats: [...formats],
-        },
-        rolldownOptions: {
-            external,
-            output: {
-                preserveModules: true,
-                preserveModulesRoot: 'src',
-            },
-        },
-    },
-    test: {
-        passWithNoTests: true,
-        setupFiles: [path.join(__dirname, 'vitest.setup.ts')], // absolute: setupFiles resolve against each project's root
-        coverage: {
-            reporter: ['text', 'html', 'cobertura'],
-            include: ['src/**/*.{ts,tsx,js,jsx}'],
-        } as any,
-    },
-    resolve: {
-        extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'], // https://vite.dev/guide/performance#reduce-resolve-operations
-        preserveSymlinks: true,
-    },
-    plugins: [
-        react(),
-        preserveDirectives(), // https://github.com/vitejs/vite/discussions/15721#discussioncomment-10572828
-        //TODO Check https://github.com/alloc/vite-dts
-        dts({
-            include: [includeGlob],
-            exclude: [excludeGlob],
-            beforeWriteFile: (filePath, content) => ({ filePath, content: fixDtsExtensions(filePath, content) }),
-            afterDiagnostic: (diagnostics) => {
-                if (diagnostics.length > 0)
-                    throw new Error(`TypeScript found ${diagnostics.length} error(s) in ${pkg.name}`);
-            },
-        }),
-        {
-            name: 'Generate Index & Exports',
-            async buildStart() {
+        format: 'esm',
+        platform: 'node',
+        unbundle: true,
+        fixedExtension: false,
+        sourcemap: true,
+        dts: true,
+        clean: !isWatch,
+        deps: { neverBundle: true },
+        hooks: {
+            async 'build:prepare'() {
                 if (isWatch || isStorybook || isVitest || isUmbrella) return;
                 await generateIndex();
             },
-            async closeBundle() {
+            async 'build:done'() {
                 if (isWatch || isStorybook || isVitest) return;
                 await fixExports();
                 await checkTypes();
             },
         },
-    ],
+    },
+    test: {
+        passWithNoTests: true,
+        // Nx runs several packages at once (NX_PARALLEL), so a Vitest inside an Nx task takes half of the cores; a direct
+        // run (IDE, `vp test` in a package) takes all of them
+        maxWorkers: process.env.NX_TASK_TARGET_PROJECT ? '50%' : '100%',
+        setupFiles: [path.join(__dirname, 'vitest.setup.ts')], // absolute: setupFiles resolve against each project's root
+        coverage: {
+            reporter: ['text', 'html', 'cobertura'],
+            include: ['src/**/*.{ts,tsx,js,jsx}'],
+        },
+    },
+    resolve: {
+        extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'], // https://vite.dev/guide/performance#reduce-resolve-operations
+        preserveSymlinks: true,
+    },
+    // Storybook and Vitest only - `vp pack` transforms JSX itself
+    plugins: [react()],
     server: {
         watch: {
             ignored: ['**/package.json', '**/index.ts'],

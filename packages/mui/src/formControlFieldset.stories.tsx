@@ -22,7 +22,7 @@ const meta: Meta<typeof GenericControl> = {
                 <Rule top={12} />
                 <Rule top={37} />
                 <Rule top={48} />
-                <Stack direction="row" gap={3} sx={{ alignItems: 'flex-start' }}>
+                <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 3 }}>
                     <FormControlFieldset>
                         <FormLabelLegend>Radios</FormLabelLegend>
                         <ReadOnly>

@@ -33,9 +33,7 @@ Use a short-lived pool for connection-oriented work:
 ```ts
 import { withNeonDatabase } from '@kirill.konshin/db/neon-serverless';
 
-const result = await withNeonDatabase({ schema, url: () => resolveDatabaseUrl(process.env) }, async (database) =>
-    database.transaction(operation),
-);
+const result = await withNeonDatabase({ schema, url: () => resolveDatabaseUrl(process.env) }, async (database) => database.transaction(operation));
 ```
 
 Apply checked-in migrations from an application script:
