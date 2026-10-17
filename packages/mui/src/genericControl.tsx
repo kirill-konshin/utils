@@ -9,12 +9,15 @@ export const GenericControl: FC<GenericControlProps> = memo(function GenericCont
     return (
         <FormControl
             variant="standard"
-            sx={{
-                ...sx,
-                [`& .${inputClasses.root}`]: {
-                    '&:before, &:after': { display: 'none' },
+            // `sx` may be an object, a function or an array - MUI merges the array form, later entries win
+            sx={[
+                ...(Array.isArray(sx) ? sx : [sx]),
+                {
+                    [`& .${inputClasses.root}`]: {
+                        '&:before, &:after': { display: 'none' },
+                    },
                 },
-            }}
+            ]}
             {...props}
         >
             {children}

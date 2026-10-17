@@ -15,12 +15,15 @@ export const FormControlFieldset: FC<FormControlFieldsetProps> = memo(function F
         <GenericControl
             {...props}
             component="fieldset"
-            sx={{
-                ...sx,
-                [`legend + .${inputClasses.root}`]: {
-                    marginTop: 2, //FIXME 16px, hardcoded from @mui/material/Input/Input.js @ 59
+            // `sx` may be an object, a function or an array - MUI merges the array form, later entries win
+            sx={[
+                ...(Array.isArray(sx) ? sx : [sx]),
+                {
+                    [`legend + .${inputClasses.root}`]: {
+                        marginTop: 2, //FIXME 16px, hardcoded from @mui/material/Input/Input.js @ 59
+                    },
                 },
-            }}
+            ]}
         >
             {children}
         </GenericControl>
