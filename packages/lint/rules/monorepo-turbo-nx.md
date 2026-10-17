@@ -21,6 +21,7 @@ paths:
 - The orchestrator (Nx / Turbo) runs every task, tests included, with its cache: the full run (`nx run-many -t test`, `turbo run test`) on `main`/`master` — unchanged packages are cache hits — and the affected run on PRs (`nx affected -t test`, `turbo run test --affected`)
 - The test tool at the root (Vitest `test.projects`, Jest `projects`) is the local / IDE full-speed run: one worker pool over every package, all cores, no cache
 - Inside an orchestrator task a test runner takes half of the cores, as the orchestrator runs several tasks at once (Nx: detect with `NX_TASK_TARGET_PROJECT`)
+- Type checking (`vp check`, `tsc`) resolves workspace packages through their built declarations: CI lint jobs run after the build job (`needs: build`) and build the packages first through the orchestrator (cache hits), and so does a fresh clone before `lint`
 - Suites that need running apps (e2e, integration): the orchestrator starts them — the test target `dependsOn` the continuous `start` / `dev` / `serve` plus a `wait` probe, `cache: false` — or Docker Compose does; the test tool never starts them (Playwright `webServer`), see playwright.md and testing.md
 
 # Task Consistency

@@ -190,6 +190,8 @@ jobs:
     lint:
         name: Lint
         runs-on: ubuntu-latest
+        # type checks read the built declarations; after the build job its build is all cache hits
+        needs: build
 
         steps:
             - name: Checkout Repo
@@ -199,6 +201,10 @@ jobs:
               uses: ./.github/actions/setup
               with:
                   nx-cache: build # reuses the build job's cache; this job does not save
+
+            # type checks read the built declarations of workspace packages
+            - name: Build packages
+              run: yarn build # the orchestrator, cache hits
 
             - name: Lint
               run: yarn vp check # Vite+: format + lint + type checks, no --fix; without Vite+: yarn lint

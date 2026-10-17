@@ -48,6 +48,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    # type checks read the packages' built declarations: after the build job filled the Nx Cloud cache, its own
+    # package build is all cache hits
+    needs: build
 
     if: github.repository == 'kirill-konshin/utils'
 
@@ -57,6 +60,11 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+
+      # type checks resolve workspace packages through their built declarations (dist/*.d.ts); Nx Cloud makes these
+      # builds cache hits
+      - name: Build packages
+        run: yarn build:packages
 
       - name: Lint
         run: yarn vp check # format, lint and (type-aware) type checks; no --fix, so drift fails CI

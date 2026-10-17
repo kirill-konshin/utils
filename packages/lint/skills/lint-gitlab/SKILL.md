@@ -92,6 +92,7 @@ install:
 lint:
     stage: test
     script:
+        - yarn build # type checks read the built declarations of workspace packages; the orchestrator, cache hits
         - yarn vp check # Vite+: format + lint + type checks, no --fix; without Vite+: yarn lint
 
 test:
