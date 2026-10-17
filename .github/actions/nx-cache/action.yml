@@ -1,0 +1,72 @@
+name: Nx cache
+description: Caches .nx/cache with the Nx DB under the fixed name default-v*.db. Restore runs before install (./.github/actions/setup does it); save is the last step of a job that keeps its Nx outputs.
+
+inputs:
+  mode:
+    description: restore | save
+    required: false
+    default: restore
+  job:
+    description: Job whose cache to use (defaults to this job); save only your own job's cache, parallel jobs must not share a key
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Check mode
+      if: inputs.mode != 'restore' && inputs.mode != 'save'
+      shell: bash
+      run: echo "::error::nx-cache mode must be restore or save, got '${{ inputs.mode }}'" && exit 1
+
+    # Nx indexes .nx/cache in a SQLite DB, cached next to it as default-v*.db.
+    # One key per job and commit: parallel jobs never race for a key.
+    - name: Restore Nx cache
+      if: inputs.mode == 'restore'
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          .nx/cache
+          .nx/workspace-data/default-v*.db
+        key: ${{ runner.os }}-nx-${{ inputs.job || github.job }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-nx-${{ inputs.job || github.job }}-
+          ${{ runner.os }}-nx-
+
+    # Nx names the DB after the machine ID and ignores outputs it has no DB records for.
+    # Give the DB this runner's ID before install (postinstall runs Nx).
+    - name: Adopt Nx cache DB
+      if: inputs.mode == 'restore'
+      shell: bash
+      run: |
+        d=.nx/workspace-data
+        id=$(cat /var/lib/dbus/machine-id 2>/dev/null || cat /etc/machine-id 2>/dev/null || echo machine)
+        db=$(ls $d/default-v*.db 2>/dev/null | head -n 1 || true)
+        if [ -z "$db" ]; then
+          rm -rf .nx/cache # outputs without their DB are unusable
+        else
+          to=$d/$id-v${db##*-v}
+          rm -f "$to" "$to-wal" "$to-shm"
+          mv "$db" "$to"
+        fi
+        echo "Nx cache DB for machine ID $id: $(ls $d/*.db 2>/dev/null || echo none)"
+
+    # After the last Nx step: store the DB under the fixed name the cache holds
+    - name: Store Nx cache DB
+      if: inputs.mode == 'save'
+      shell: bash
+      run: |
+        d=.nx/workspace-data
+        db=$(ls -t $d/*-v*.db 2>/dev/null | head -n 1 || true)
+        to=$d/default-v${db##*-v}
+        [ -z "$db" ] || [ "$db" = "$to" ] || mv -f "$db" "$to"
+        echo "Nx cache DB to save: $(ls $d/default-v*.db 2>/dev/null || echo none)"
+
+    - name: Save Nx cache
+      if: inputs.mode == 'save'
+      uses: actions/cache/save@v6
+      with:
+        path: |
+          .nx/cache
+          .nx/workspace-data/default-v*.db
+        key: ${{ runner.os }}-nx-${{ inputs.job || github.job }}-${{ github.sha }}

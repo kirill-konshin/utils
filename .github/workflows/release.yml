@@ -15,15 +15,82 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions:
+  contents: read
+
+# Checks run as parallel jobs; release needs all of them. Only test and build save an Nx cache:
+# with one cache key per job, parallel jobs never race for a key.
 jobs:
-  verify:
-    name: Verify & Preview
+  commits:
+    name: Commit Messages
     runs-on: ubuntu-latest
 
     if: github.repository == 'kirill-konshin/utils'
 
-    permissions:
-      contents: read
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # commitlint reads the pushed commit range
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          nx-cache: build # postinstall reuses the build job's lint build; this job does not save
+
+      # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
+      # `sha`, making the range invalid.
+      - name: Validate commit messages
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && !github.event.forced
+        run: yarn commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    if: github.repository == 'kirill-konshin/utils'
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          nx-cache: build # postinstall reuses the build job's lint build; this job does not save
+
+      - name: Lint
+        run: yarn lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    if: github.repository == 'kirill-konshin/utils'
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Test
+        run: yarn test
+
+      - name: Coverage Summary
+        uses: ./.github/actions/coverage-summary
+
+      - name: Save Nx cache
+        uses: ./.github/actions/nx-cache
+        with:
+          mode: save
+
+  build:
+    name: Build & Preview
+    runs-on: ubuntu-latest
+
+    if: github.repository == 'kirill-konshin/utils'
 
     outputs:
       has_releases: ${{ steps.preview.outputs.has_releases }}
@@ -38,23 +105,8 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
-      # `sha`, making the range invalid.
-      - name: Validate commit messages
-        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && !github.event.forced
-        run: yarn commitlint --from ${{ github.event.before }} --to ${{ github.sha }}
-
-      - name: Lint
-        run: yarn lint
-
-      - name: Test
-        run: yarn test
-
       - name: Build packages
         run: yarn build:packages
-
-      - name: Coverage Summary
-        uses: ./.github/actions/coverage-summary
 
       - name: Release preview
         id: preview
@@ -81,12 +133,17 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Save Nx cache
+        uses: ./.github/actions/nx-cache
+        with:
+          mode: save
+
   release:
     name: Release
     runs-on: ubuntu-latest
 
-    needs: verify
-    if: needs.verify.outputs.has_releases == 'true'
+    needs: [commits, lint, test, build]
+    if: needs.build.outputs.has_releases == 'true'
 
     environment: npm-publish
 
@@ -105,13 +162,14 @@ jobs:
         uses: ./.github/actions/setup
         with:
           registry-url: 'https://registry.npmjs.org' # publish job needs .npmrc auth config
+          nx-cache: build # exact key of the build job's cache; this job does not save
 
       - name: Configure git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Build again since this job runs on different runner, but shared NX cache should speed it up
+      # Different runner: outputs come from the build job's Nx cache, so nothing should rebuild
       - name: Build packages
         run: yarn build:packages
 

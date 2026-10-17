@@ -12,23 +12,48 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+env:
+  # Base for `nx affected` — test and build fetch full history, so origin/main is always present
+  NX_BASE: origin/main
+  NX_HEAD: HEAD
+
+# Checks run as parallel jobs. Only test and build save an Nx cache: with one cache key per job,
+# parallel jobs never race for a key.
 jobs:
-  pr:
-    name: PR Check
+  title:
+    name: PR Title
     runs-on: ubuntu-latest
-    env:
-      # Base for `nx affected` — full history is fetched below, so origin/main is always present
-      NX_BASE: origin/main
-      NX_HEAD: HEAD
+
+    if: github.event_name == 'pull_request'
 
     steps:
       # PRs are squash-merged with the PR title as the commit message, which Nx Release then parses as a conventional commit on main — so the title must be valid.
       - name: Validate PR title
-        if: github.event_name == 'pull_request'
         uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          nx-cache: build # postinstall reuses the build job's lint build; this job does not save
+
+      - name: Lint
+        run: yarn lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout Repo
         uses: actions/checkout@v7
         with:
@@ -36,9 +61,6 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
-
-      - name: Lint
-        run: yarn lint
 
       - name: Test
         run: yarn test:affected
@@ -53,5 +75,28 @@ jobs:
           recreate: true
           path: code-coverage-results.md
 
+      - name: Save Nx cache
+        uses: ./.github/actions/nx-cache
+        with:
+          mode: save
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
       - name: Build
         run: yarn build:affected
+
+      - name: Save Nx cache
+        uses: ./.github/actions/nx-cache
+        with:
+          mode: save
