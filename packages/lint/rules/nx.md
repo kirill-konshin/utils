@@ -10,6 +10,7 @@ paths:
 # NX
 
 - If NX is used root `package.json` must have `nx show projects > /dev/null` in the `prepare`/`postinstall` script, so the project graph cache exists for tools that read it outside `nx` — e.g. `@nx/eslint-plugin` rules in a bare `eslint` run silently skip without it. With `prepare`, Yarn 2+ skips it on install — run `yarn prepare` explicitly (after cloning + as a CI step); with `postinstall` (private root) Yarn runs it on install, so no extra step
+- Nx 20+ indexes `.nx/cache` in a SQLite DB in `.nx/workspace-data`, named after the machine ID. A CI cache must carry both, with the DB under the fixed name `default-v*.db`: rename it to the machine ID before install and back before saving (see `github.md` / `gitlab.md`). One cache entry holds one DB, so restoring several entries does not merge their outputs.
 - NX Release (v23+) with conventional commits silently demotes bumps for `0.x` packages (breaking → minor, `feat` → patch) while the log still claims `Applied semver relative bump "minor"`;
     - set `release.version.adjustSemverBumpsForZeroMajorVersion: false` in `nx.json` if `feat:` must bump minor before `1.0.0`
 - Root NX task-script convention: bare name = `nx run-many -t <target>` over all projects (`build`/`test`/`start`/`serve`), with concurrency flags set once here;

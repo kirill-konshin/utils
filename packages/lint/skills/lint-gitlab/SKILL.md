@@ -24,6 +24,7 @@ cache:
       paths:
           - .turbo
           - .nx/cache
+          - .nx/workspace-data/default-v*.db # Nx indexes .nx/cache in a SQLite DB, cached under this fixed name
           - '**/.tscache'
           - '**/.tsbuildinfo'
           - '**/.next/cache'
@@ -37,8 +38,31 @@ stages:
 # separate so that cache can pre-populate if other steps would fail, it speeds things up
 before_script:
     - corepack enable
+    # Nx names the DB after the machine ID and ignores outputs it has no DB records for.
+    # Give the DB this runner's ID before install (postinstall may run Nx).
+    - |
+        d=.nx/workspace-data
+        id=$(cat /var/lib/dbus/machine-id 2>/dev/null || cat /etc/machine-id 2>/dev/null || echo machine)
+        db=$(ls $d/default-v*.db 2>/dev/null | head -n 1 || true)
+        if [ -z "$db" ]; then
+          rm -rf .nx/cache # outputs without their DB are unusable
+        else
+          to=$d/$id-v${db##*-v}
+          rm -f "$to" "$to-wal" "$to-shm"
+          mv "$db" "$to"
+        fi
+        echo "Nx cache DB for machine ID $id: $(ls $d/*.db 2>/dev/null || echo none)"
     - yarn install --immutable
     - yarn prepare # Add this if Yarn 2+ is used and package is NOT private, otherwise postinstall should be configured, and this line skipped
+
+# GitLab saves the cache after after_script: store the DB under the fixed name the cache holds
+after_script:
+    - |
+        d=.nx/workspace-data
+        db=$(ls -t $d/*-v*.db 2>/dev/null | head -n 1 || true)
+        to=$d/default-v${db##*-v}
+        [ -z "$db" ] || [ "$db" = "$to" ] || mv -f "$db" "$to"
+        echo "Nx cache DB to save: $(ls $d/default-v*.db 2>/dev/null || echo none)"
 
 install:
     stage: install
