@@ -66,6 +66,9 @@ Do not use `.claude/commands` for anything. It's not portable (`.agent/commands`
     - Directory-specific rules & instructions should be in `AGENTS.md` of that folder
     - Lift rules & instructions up the tree to higher `AGENTS.md` if multiple dirs must adhere to them, don't copy-paste them
 - All `AGENTS.md` files should be accompanied by a symlink `CLAUDE.md`
+- Tool-provided agent instructions: tools install and maintain their own — NEVER copy or hand-wire their content
+    - `lint-prepare` writes each tool's empty marker pair into the generated `AGENTS.md` (e.g. `<!--VITE PLUS START-->`); the tool runs AFTER it in the same install script and fills it (`lint-prepare init && vp config`); content between the markers is the tool's, do not edit it
+    - Do not run a tool's setup command just to get its agent files when it also rewrites the project (`vp migrate --agent`, `vp create`); the anchor is enough
 
 # `.agents/rules`
 

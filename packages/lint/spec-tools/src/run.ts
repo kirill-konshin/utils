@@ -41,8 +41,10 @@ export function progress(event: Event, now = new Date()): string {
         .filter((c) => c.type === 'tool_use')
         .map((c) => {
             const i = c.input ?? {};
-            const what = String(i.description ?? i.file_path ?? i.pattern ?? i.command ?? '').slice(0, 120);
-            return `[${clock}]${event.parent_tool_use_id ? '   ↳' : ''} ${c.name} ${what}\n`;
+            const what =
+                [i.description, i.file_path, i.pattern, i.command].find((v): v is string => typeof v === 'string') ??
+                '';
+            return `[${clock}]${event.parent_tool_use_id ? '   ↳' : ''} ${c.name} ${what.slice(0, 120)}\n`;
         })
         .join('');
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
 
 import { hasNextPluginIn, hasNextSettingsIn, inTempDir, nextSettingsBlockOf } from '../testUtils.js';
 import { nextConfig, reactConfig } from './react.js';

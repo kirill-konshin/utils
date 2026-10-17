@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { Linter } from 'eslint';
 import nextTs from 'eslint-config-next/typescript';
@@ -9,50 +8,10 @@ import { globSync } from 'glob';
 
 import { tsExts } from '../exts.js';
 import type { NextOptions } from '../index.js';
-import { findWorkspaceRoot, GLOBAL_IGNORES, hasNext, scanWorkspace, toolGate } from '../lib.js';
+import { findNextRoots, findWorkspaceRoot, GLOBAL_IGNORES, hasNext, toolGate } from '../lib.js';
 
 // lazy so consumers without Next don't pay the load cost - re-exported from index.js
 export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
-
-/**
- * Does this `package.json` declare `next` as a dependency? Peer/optional declarations are
- * deliberately ignored - they mark component libraries, not apps.
- */
-function dependsOnNext(file: string): boolean {
-    try {
-        const { dependencies, devDependencies } = JSON.parse(readFileSync(file, 'utf-8'));
-        return Boolean(dependencies?.next ?? devDependencies?.next);
-    } catch {
-        return false; // unreadable / malformed - not evidence
-    }
-}
-
-/**
- * Auto-find Next.js app roots below the workspace root (scanned like the Tailwind entry - see
- * `scanWorkspace`). `next.config.*` is optional in Next.js, so any of three signals marks an app
- * root:
- * - a `next.config.*` file
- * - a `package.json` depending on `next` (see {@link dependsOnNext})
- * - a `src/app` or `src/pages` directory - the reported root is the directory CONTAINING `src`,
- *   because the plugin resolves both layouts (`pages`/`app` and `src/pages`/`src/app`) from the
- *   package root itself; the bare root-level dir names are too generic to scan for, but such apps
- *   are caught by the other two signals
- *
- * Returns absolute directories, deduplicated (one app usually shows several signals) and sorted
- * so the emitted settings block is deterministic across filesystems.
- */
-export function findNextRoots(ignores: string[]): string[] {
-    return [
-        ...new Set([
-            ...scanWorkspace('next.config.*', ignores).map((file) => dirname(file)),
-            ...scanWorkspace('package.json', ignores)
-                .filter(dependsOnNext)
-                .map((file) => dirname(file)),
-            // the trailing slash makes glob match directories only
-            ...scanWorkspace('src/{app,pages}/', ignores).map((dir) => dirname(dirname(dir))),
-        ]),
-    ].sort();
-}
 
 /**
  * Next.js blocks: the whole `eslint-config-next` flat config, plus `settings.next.rootDir`.

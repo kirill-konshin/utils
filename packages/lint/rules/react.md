@@ -23,9 +23,7 @@ paths:
 
 ```tsx
 import { FC, memo } from 'react';
-export type CmpProps = {
-    /* types */
-}; // or never if no props needed
+export type CmpProps = {/* types */}; // or never if no props needed
 export const Cmp: FC<CmpProps> = memo(function Cmp(props) {
     /* code */
 });

@@ -3,6 +3,26 @@ name: lint-gitlab
 description: Describes how to work with Gitlab Pipelines & example pipeline as a reference which essential jobs and concepts usual Gitlab project should have
 ---
 
+# With Nx Cloud (`nxCloudId` in `nx.json`)
+
+The remote cache replaces the local Nx cache. Take the pipeline below without the `.nx/cache` and `.nx/workspace-data/default-v*.db` cache paths and without the Nx DB steps in `before_script` / `after_script`.
+
+- Nx Cloud workspace settings: Workspace visibility → Organization members only (pipelines without a token run without the cache); create two CI access tokens, read-write and read-only
+- CI/CD variables, masked: `NX_CLOUD_ACCESS_TOKEN` (read-write, **protected** — protected branches only), `NX_CLOUD_ACCESS_TOKEN_READ_ONLY` (not protected)
+- Developers: `npx nx login` once per machine
+
+```yml
+workflow:
+    rules:
+        # merge requests read the remote cache only
+        - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+          variables:
+              NX_CLOUD_ACCESS_TOKEN: $NX_CLOUD_ACCESS_TOKEN_READ_ONLY
+        - when: always
+```
+
+# Without Nx Cloud
+
 ```yml
 image: node:lts
 
@@ -72,7 +92,7 @@ install:
 lint:
     stage: test
     script:
-        - yarn lint
+        - yarn vp check # Vite+: format + lint + type checks, no --fix; without Vite+: yarn lint
 
 test:
     stage: test

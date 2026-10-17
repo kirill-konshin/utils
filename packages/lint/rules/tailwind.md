@@ -34,6 +34,7 @@ description: Set of rules for projects which use Tailwind
 
 # ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
 
+- With Vite+ the same plugin runs as an Oxlint JS plugin with the same detection; pass `tailwind: { cssConfigPath }` as `vitePlusConfig` options instead of `eslint.config.mjs`
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
 - Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned across the root + every workspace package, `.gitignore`-aware), rules auto-enable with that entry
 - Rules auto-scope to the workspace package owning the entry CSS (block `basePath`); pass `tailwind: { scoped: false }` to lint the whole workspace

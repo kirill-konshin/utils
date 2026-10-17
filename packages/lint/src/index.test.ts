@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { ESLint, type Linter } from 'eslint';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
 
 import {
     baseConfig,

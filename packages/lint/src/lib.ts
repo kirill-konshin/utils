@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { includeIgnoreFile } from '@eslint/config-helpers';
 import { findRootSync } from '@manypkg/find-root';
@@ -240,6 +240,47 @@ export function scanWorkspace(
     // debug('scanWorkspace', { fileGlob, root, packages, dot, ignores, files });
 
     return files;
+}
+
+/**
+ * Does this `package.json` declare `next` as a dependency? Peer/optional declarations are
+ * deliberately ignored - they mark component libraries, not apps.
+ */
+function dependsOnNext(file: string): boolean {
+    try {
+        const { dependencies, devDependencies } = JSON.parse(readFileSync(file, 'utf-8'));
+        return Boolean(dependencies?.next ?? devDependencies?.next);
+    } catch {
+        return false; // unreadable / malformed - not evidence
+    }
+}
+
+/**
+ * Auto-find Next.js app roots below the workspace root (scanned like the Tailwind entry - see
+ * {@link scanWorkspace}). `next.config.*` is optional in Next.js, so any of three signals marks an app
+ * root:
+ * - a `next.config.*` file
+ * - a `package.json` depending on `next` (see {@link dependsOnNext})
+ * - a `src/app` or `src/pages` directory - the reported root is the directory CONTAINING `src`,
+ *   because the plugin resolves both layouts (`pages`/`app` and `src/pages`/`src/app`) from the
+ *   package root itself; the bare root-level dir names are too generic to scan for, but such apps
+ *   are caught by the other two signals
+ *
+ * Returns absolute directories, deduplicated (one app usually shows several signals) and sorted
+ * so the emitted settings block is deterministic across filesystems. Lives here, not in the React
+ * block, so the Vite+ config detects Next.js without loading `eslint-config-next`.
+ */
+export function findNextRoots(ignores: string[]): string[] {
+    return [
+        ...new Set([
+            ...scanWorkspace('next.config.*', ignores).map((file) => dirname(file)),
+            ...scanWorkspace('package.json', ignores)
+                .filter(dependsOnNext)
+                .map((file) => dirname(file)),
+            // the trailing slash makes glob match directories only
+            ...scanWorkspace('src/{app,pages}/', ignores).map((dir) => dirname(dirname(dir))),
+        ]),
+    ].sort();
 }
 
 /*

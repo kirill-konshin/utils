@@ -10,5 +10,5 @@
     "checkJs": false,
     "noEmit": true
   },
-  "include": ["src", "spec-tools/src", "tsdown.config.ts"]
+  "include": ["src", "spec-tools/src", "vite.config.ts"]
 }

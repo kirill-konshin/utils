@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 import { dotenv, memoryOf, tier, workersFor } from './tier';
 import type { OpenChangeClass } from './workflowEvidence';

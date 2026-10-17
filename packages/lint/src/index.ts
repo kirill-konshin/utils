@@ -63,7 +63,8 @@ export type TypeAwareOptions = ToggleOptions &
     };
 
 export type DefaultIgnoreOptions =
-    { enabled: false; importMetaUrl?: string } | { enabled?: true; importMetaUrl: string };
+    | { enabled: false; importMetaUrl?: string }
+    | { enabled?: true; importMetaUrl: string };
 
 export type LintOptions = {
     detection?: boolean | DetectionOptions;

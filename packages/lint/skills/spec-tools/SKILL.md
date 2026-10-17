@@ -14,18 +14,18 @@ One CLI, `spec-tools`, installed with `@kirill.konshin/lint` beside `spec-stewar
 
 ## Commands
 
-| Need | Command |
-| --- | --- |
-| The gate a merge request runs | `spec-tools gates` (spec-steward's check, then the change gates) |
-| Is this branch's change finished? | `spec-tools evidence` |
-| What changed in the specifications, by requirement | `spec-tools diff [<base>]` |
-| Check a spec edit before handing it back | `spec-tools changed`, then `/spec-verify changed` |
-| The full code-conformance audit, locally | `spec-tools audit` (`--here` for uncommitted edits, `--dry` to stop after the scope) |
+| Need                                                    | Command                                                                                                                   |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| The gate a merge request runs                           | `spec-tools gates` (spec-steward's check, then the change gates)                                                          |
+| Is this branch's change finished?                       | `spec-tools evidence`                                                                                                     |
+| What changed in the specifications, by requirement      | `spec-tools diff [<base>]`                                                                                                |
+| Check a spec edit before handing it back                | `spec-tools changed`, then `/spec-verify changed`                                                                         |
+| The full code-conformance audit, locally                | `spec-tools audit` (`--here` for uncommitted edits, `--dry` to stop after the scope)                                      |
 | spec-steward's corpus-quality audit, on the same engine | `spec-tools audit --audit spec-steward`, then consolidate `.spec-audit/spec-review.yaml` as the `spec-steward` skill says |
-| One pass of a CI audit | `spec-tools tier`, `scope`, `workers [--complete\|--verify]`, `report [--gate]` |
-| A headless skill review in CI | `spec-tools run <skill> --verdict .spec-audit/<report>.yaml` |
-| Gate a review's report | `spec-tools verdict .spec-audit/spec-verify.yaml` or `.spec-audit/<report>.yaml` |
-| The merge-request comment and HTML reports | `spec-tools comment <name>=<report.md>...`, `spec-tools html <file.md>...` |
+| One pass of a CI audit                                  | `spec-tools tier`, `scope`, `workers [--complete\|--verify]`, `report [--gate]`                                           |
+| A headless skill review in CI                           | `spec-tools run <skill> --verdict .spec-audit/<report>.yaml`                                                              |
+| Gate a review's report                                  | `spec-tools verdict .spec-audit/spec-verify.yaml` or `.spec-audit/<report>.yaml`                                          |
+| The merge-request comment and HTML reports              | `spec-tools comment <name>=<report.md>...`, `spec-tools html <file.md>...`                                                |
 
 In CI: `gates`, `evidence`, `diff`, `tier`, `scope`, `workers`, `report`, `verdict`, `comment`, `html`, for spec-verify. Locally: any of them, plus `audit --audit spec-steward`, which never runs in CI.
 

@@ -384,7 +384,7 @@ async function runClaude(
     const session = typeof r?.session_id === 'string' ? r.session_id : run.resume;
     if (killed) return { status: `killed after ${Math.round(budget / 60_000)}m`, session };
     if (code !== 0) {
-        const why = String(r?.result ?? '').slice(0, 200);
+        const why = typeof r?.result === 'string' ? r.result.slice(0, 200) : '';
         return { status: `exit ${code}${why ? ` (${why})` : ''}`, session };
     }
     if (wrote()) {

@@ -51,6 +51,32 @@ export function findTailwindEntry(ignores: string[]): string | null {
  *
  */
 export async function tailwindConfig(option?: boolean | TailwindOptions, strict = false): Promise<Linter.Config[]> {
+    const gate = tailwindGate(option, strict);
+    if (!gate) return [];
+
+    const { cssConfigPath, packageDir } = gate;
+    const basePath = packageDir ? { basePath: packageDir } : {};
+
+    const tailwindPlugin = (await import('eslint-plugin-tailwindcss')).default;
+    return [
+        {
+            // The plugin still publishes @typescript-eslint's ESLint 9 config types.
+            ...(tailwindPlugin.configs.recommended as unknown as Linter.Config),
+            ...basePath,
+            settings: { tailwindcss: { cssConfigPath } },
+        },
+    ];
+}
+
+/**
+ * The Tailwind activation decision shared by the ESLint block and the Vite+ config: `null` when off, otherwise the
+ * entry CSS (in the consumer's own notation when given) and the absolute directory of the one package to scope the
+ * rules to (`null` = the whole workspace).
+ */
+export function tailwindGate(
+    option?: boolean | TailwindOptions,
+    strict = false,
+): { cssConfigPath: string; absoluteCssConfigPath: string; packageDir: string | null } | null {
     /*
      * Detection is evidence-based: the entry CSS marker, NOT the package probe (`needs` makes the
      * evidence mandatory in the gate) - in a monorepo `tailwindcss` is often installed only in a
@@ -77,31 +103,22 @@ export async function tailwindConfig(option?: boolean | TailwindOptions, strict 
                 : [],
         scan: () => findTailwindEntries(GLOBAL_IGNORES),
     });
-    if (!enabled) return [];
+    if (!enabled) return null;
 
     // an explicit path is passed through in the consumer's own notation (the absolutized copy only
     // served the probes); an auto-found entry is the absolute evidence file
     const cssConfigPath = options.cssConfigPath ?? files[0];
 
     /*
-     * The entry CSS pins down the ONE package that uses Tailwind, so by default the block is
-     * scoped to it via `basePath` (ESLint >= 9.30, absolute paths supported) instead of flagging
-     * class-like strings across the whole workspace. `files[0]` is the absolutized evidence path
-     * even when `cssConfigPath` was supplied relative. Owning package == workspace root (single-
-     * package repo, or the entry is not inside a declared workspace package) makes scoping a
-     * no-op - the block stays untouched.
+     * The entry CSS pins down the ONE package that uses Tailwind, so by default the rules are
+     * scoped to it (ESLint `basePath`, Vite+ override `files`) instead of flagging class-like
+     * strings across the whole workspace. `files[0]` is the absolutized evidence path even when
+     * `cssConfigPath` was supplied relative. Owning package == workspace root (single-package
+     * repo, or the entry is not inside a declared workspace package) makes scoping a no-op.
      */
     const { scoped = true } = options;
-    const packageDir = scoped ? packageDirOf(files[0]) : null;
-    const basePath = packageDir && packageDir !== findWorkspaceRoot() ? { basePath: packageDir } : {};
+    const owner = scoped ? packageDirOf(files[0]) : null;
+    const packageDir = owner && owner !== findWorkspaceRoot() ? owner : null;
 
-    const tailwindPlugin = (await import('eslint-plugin-tailwindcss')).default;
-    return [
-        {
-            // The plugin still publishes @typescript-eslint's ESLint 9 config types.
-            ...(tailwindPlugin.configs.recommended as unknown as Linter.Config),
-            ...basePath,
-            settings: { tailwindcss: { cssConfigPath } },
-        },
-    ];
+    return { cssConfigPath, absoluteCssConfigPath: files[0], packageDir };
 }

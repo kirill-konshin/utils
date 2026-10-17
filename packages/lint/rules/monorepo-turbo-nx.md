@@ -13,7 +13,15 @@ paths:
     - Public entrypoints for use in other tools (like `lint-staged`, CLI, Webstorm, CI) & useful presets
     - Tasks to launch inner tasks (main `build` that launches `build` in each sub-package)
 - Inner `package.json` MUST only define atomic orchestrator-agnostic tasks
+- Repo-wide defaults (parallelism, worker counts, cache and tool settings) live in env files (`.env`) or tool configs (`nx.json`, `turbo.json`, `vite.config.ts`), NEVER in `package.json` scripts — scripts stay as simple as possible; CI-specific behavior is set on the CI command (flags or env) where it is needed
 - Prefer NX for new projects
+
+# Test Ownership
+
+- The orchestrator (Nx / Turbo) runs every task, tests included, with its cache: the full run (`nx run-many -t test`, `turbo run test`) on `main`/`master` — unchanged packages are cache hits — and the affected run on PRs (`nx affected -t test`, `turbo run test --affected`)
+- The test tool at the root (Vitest `test.projects`, Jest `projects`) is the local / IDE full-speed run: one worker pool over every package, all cores, no cache
+- Inside an orchestrator task a test runner takes half of the cores, as the orchestrator runs several tasks at once (Nx: detect with `NX_TASK_TARGET_PROJECT`)
+- Suites that need running apps (e2e, integration): the orchestrator starts them — the test target `dependsOn` the continuous `start` / `dev` / `serve` plus a `wait` probe, `cache: false` — or Docker Compose does; the test tool never starts them (Playwright `webServer`), see playwright.md and testing.md
 
 # Task Consistency
 

@@ -72,6 +72,8 @@ export function rootsOf(opts: Record<string, any>, cwd: string = process.cwd()) 
 /** A `P,F` pair of size lines, or the default. */
 function pair(value: unknown, fallback: [number, number]) {
     if (value === undefined) return fallback;
+    if (typeof value !== 'string' && typeof value !== 'number')
+        throw new UsageError(`bad size line: ${JSON.stringify(value)}`);
     const [p, f] = String(value).split(',').map(Number);
     if (!Number.isFinite(p) || (f !== undefined && !Number.isFinite(f)))
         throw new UsageError(`bad size line: ${value}`);

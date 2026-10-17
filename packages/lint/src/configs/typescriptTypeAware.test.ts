@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { ParserOptions } from '@typescript-eslint/parser';
 import type { Linter } from 'eslint';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
 
 import { findWorkspaceRoot } from '../index.js';
 import { typeAwareConfig } from './typescriptTypeAware.js';

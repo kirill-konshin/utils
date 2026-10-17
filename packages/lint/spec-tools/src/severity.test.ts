@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 import { fuse, judgeGate, type Reading, THRESHOLDS, thresholds, tierOf } from './severity';
 

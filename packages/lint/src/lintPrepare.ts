@@ -62,6 +62,16 @@ Add your project-specific rules below the comment line.`;
 
 const GENERATED_MARKER = '<!-- @kirill.konshin/lint:generated -->';
 
+/**
+ * Marked sections of AGENTS.md that other tools own. Tools write their own agent instructions - nobody copies them by
+ * hand: this file only provides each anchor, an empty marker pair, on every generation. Sequencing does the rest: the
+ * tool runs right after `lint-prepare` in the same install script and fills its section - Vite+ on `vp config` (it
+ * never creates a section, and its creating commands rewrite dependencies).
+ */
+const TOOL_SECTIONS: { tool: string; start: string; end: string }[] = [
+    { tool: 'Vite+', start: '<!--VITE PLUS START-->', end: '<!--VITE PLUS END-->' },
+];
+
 const lstat = (file: string): fs.Stats | undefined => fs.lstatSync(file, { throwIfNoEntry: false });
 
 /**
@@ -474,7 +484,8 @@ export function generateAgentsFile(rules: Rule[], customSection: string | null):
         return `- **${toTitle(rule.name)}**${description}${scope}: [${rulePath}](${rulePath})`;
     });
 
-    const generated = `${HEADER}\n\n# Rules\n\n${entries.join('\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
+    const sections = TOOL_SECTIONS.map(({ start, end }) => `${start}\n${end}`);
+    const generated = `${HEADER}\n\n# Rules\n\n${entries.join('\n')}\n\n${sections.join('\n\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
 
     return customSection ? `${generated}\n\n${customSection}\n` : `${generated}\n`;
 }

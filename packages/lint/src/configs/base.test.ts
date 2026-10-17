@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
 
 import { inTempDir } from '../testUtils.js';
 import { defaultIgnoreConfig } from './base.js';

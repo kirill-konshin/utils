@@ -1,8 +1,6 @@
 ---
 type: always_apply
 description: Set of rules for projects with MUI
-paths:
-    - '**/*.tsx'
 ---
 
 - Always import components or icons this way: `import { Paper, Button } from '@mui/material';` and `import { Xxx } from '@mui/icons-material';`

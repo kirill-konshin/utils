@@ -6,9 +6,15 @@ description: NPM & Yarn patterns
 - Prefer using Corepack for all new projects.
 - Prefer Yarn v4+ for all new projects.
 
+# Vite+
+
+- IF `vite-plus` is installed, use `vp` commands: `vp check` (format + lint + type checks), `vp lint`, `vp fmt`, `vp test`, `vp pack` (libraries), `vp build` (apps), `vp staged`, `vp config` (git hooks)
+- IF `vite-plus` is not installed, use the old style: package scripts with ESLint, Prettier, lint-staged, Husky
+- Vite+ requires the `node-modules` linker (no Yarn PnP) and pins `vite` to its core and `vitest` to its bundled version at the root (see the `@kirill.konshin/lint` README)
+
 # Lifecycle Scripts: `prepare` vs `postinstall`
 
-- ⚠️ ALWAYS put install-time setup (husky, codegen, cache warmup) in the install lifecycle — `prepare` by default, `postinstall` for a private root (tradeoff below)
+- ⚠️ ALWAYS put install-time setup (git hooks: `vp config` or `husky`, codegen, cache warmup) in the install lifecycle — `prepare` by default, `postinstall` for a private root (tradeoff below)
 - ⚠️ Yarn 2+ (Berry) skips top-level `prepare` on install ([lifecycle scripts](https://yarnpkg.com/advanced/lifecycle-scripts)) — run `yarn prepare` yourself / in CI. For a **private** root, prefer `postinstall`: Yarn does run it on install, so hooks land automatically (incl. CI) with no manual step and no [pinst](https://github.com/typicode/pinst) guard. Keep `prepare` for **published** packages — an unguarded `postinstall` would run on consumers' installs.
 
 # Prefer Libraries with Long History
@@ -93,6 +99,9 @@ approvedGitRepositories:
     - '**'
 
 compressionLevel: mixed
+
+# print install-time script output (postinstall / prepare, dependency builds) live instead of buffering it into a log
+enableInlineBuilds: true
 
 enableScripts: true
 

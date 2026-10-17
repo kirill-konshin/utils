@@ -4,6 +4,7 @@ import importXPlugin, { createNodeResolver } from 'eslint-plugin-import-x';
 import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 
+import { defaultExportFiles } from '../conventions.js';
 import { tsExts } from '../exts.js';
 
 /**
@@ -51,36 +52,7 @@ export function importXConfig(): Linter.Config[] {
         },
         {
             name: 'Default export overrides',
-            // files that legitimately default-export (framework/tooling conventions)
-            files: [
-                '**/*.config.*',
-                `**/*.stories.${tsExts}`,
-                `**/.storybook/main.${tsExts}`,
-                `**/.storybook/preview.${tsExts}`,
-                '**/.lintstagedrc*',
-                '**/.prettierrc*',
-                `**/App.${tsExts}`,
-                `**/index.${tsExts}`,
-                `**/main.${tsExts}`,
-                '**/*.d.ts',
-                `**/default.${tsExts}`,
-                `**/error.${tsExts}`,
-                `**/forbidden.${tsExts}`,
-                `**/global-error.${tsExts}`,
-                `**/layout.${tsExts}`,
-                `**/loading.${tsExts}`,
-                `**/not-found.${tsExts}`,
-                `**/page.${tsExts}`,
-                `**/template.${tsExts}`,
-                `**/unauthorized.${tsExts}`,
-                `**/apple-icon.${tsExts}`,
-                `**/icon.${tsExts}`,
-                `**/manifest.${tsExts}`,
-                `**/opengraph-image.${tsExts}`,
-                `**/robots.${tsExts}`,
-                `**/sitemap.${tsExts}`,
-                `**/twitter-image.${tsExts}`,
-            ],
+            files: defaultExportFiles,
             rules: {
                 /*
                  * Stories always default-export `meta`, and story exports (`Default`, `WithArgs`, ...) are PascalCase by
@@ -116,8 +88,11 @@ export function importSortConfig(): Linter.Config[] {
                     'error',
                     {
                         groups: [
-                            // 1. Polyfills - side-effect imports that must run first
-                            ['^\\u0000.*(polyfill|core-js|regenerator-runtime|whatwg-fetch|@vitest/web-worker)'],
+                            // 1. Polyfills and `server-only` / `client-only` guards - side-effect imports that must run first
+                            [
+                                '^\\u0000(server-only|client-only)$',
+                                '^\\u0000.*(polyfill|core-js|regenerator-runtime|whatwg-fetch|@vitest/web-worker)',
+                            ],
                             // 2. React
                             ['^react(-dom)?(/|$)'],
                             // 3. Third-party packages (node: builtins + npm packages)

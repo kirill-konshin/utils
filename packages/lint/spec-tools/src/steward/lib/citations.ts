@@ -34,8 +34,11 @@ const SKIP =
     /(?:^|\/)(?:node_modules|dist|build|coverage|\.git|\.nx|\.yarn|\.yalc|\.turbo|\.next|\.docusaurus|\.eve)(?:\/|$)|^openspec\/changes\/|(?:^|\/)spec\.md$/;
 const TEST_FILE =
     /(?:^|\/)(?:__tests__|e2e)\/|\.(?:test|spec|test-d)\.[cm]?[jt]sx?$|(?:^|\/)test_[^/]+\.py$|_test\.(?:py|go)$/;
-/** Lint configurations: a citation anywhere in one binds (a lint rule is the cheapest evidence). */
-const LINT_CONFIG = /(?:^|\/)(?:eslint\.config\.[cm]?[jt]s|yarn\.config\.cjs)$/;
+/**
+ * Lint configurations: a citation anywhere in one binds (a lint rule is the cheapest evidence). Vite+ keeps its lint
+ * rules in `vite.config.*`.
+ */
+const LINT_CONFIG = /(?:^|\/)(?:(?:eslint|vite)\.config\.[cm]?[jt]s|yarn\.config\.cjs)$/;
 
 export const isTestFile = (file: string) => TEST_FILE.test(file) && !isDoc(file);
 

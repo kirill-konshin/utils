@@ -5,6 +5,30 @@ description: Describes how to work with Github & example workflow as a reference
 
 Reference CI: two local composite actions and a workflow. Checks run as parallel jobs; publishing needs all of them.
 
+# With Nx Cloud (`nxCloudId` in `nx.json`)
+
+The remote cache replaces the local Nx cache. Take the templates below without the `nx-cache` action: no `Restore Nx cache` step and `nx-cache` input in `setup`, no `Save Nx cache` steps and `nx-cache:` inputs in workflows.
+
+- Nx Cloud workspace settings: Workspace visibility → Organization members only (fork PRs run without the cache); create two CI access tokens, read-write and read-only
+- GitHub **repository** secrets — environment secrets reach only jobs that declare the environment, and every Nx job needs the token: `NX_CLOUD_ACCESS_TOKEN` (read-write), `NX_CLOUD_ACCESS_TOKEN_READ_ONLY`
+- Developers: `npx nx login` once per machine
+
+Workflow running only on `main` (release):
+
+```yml
+env:
+    NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+```
+
+PR workflow (fork PRs get no secrets and run without the cache):
+
+```yml
+env:
+    NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN_READ_ONLY }}
+```
+
+# Without Nx Cloud
+
 `.github/actions/nx-cache/action.yml` — Nx 20+ ignores a restored `.nx/cache` without its DB:
 
 ```yml
@@ -177,7 +201,7 @@ jobs:
                   nx-cache: build # reuses the build job's cache; this job does not save
 
             - name: Lint
-              run: yarn lint
+              run: yarn vp check # Vite+: format + lint + type checks, no --fix; without Vite+: yarn lint
 
     test:
         name: Test

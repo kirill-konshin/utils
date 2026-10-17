@@ -25,13 +25,38 @@ These rules tell what a finding is, how severe it is, and how sure you are of it
 
 - Give each finding a severity, an integer from 0 to 100, on this scale:
 
-| Band | Severity | The finding is |
-| --- | --- | --- |
-| ERROR | 90–100 | data loss, a leak of sensitive data, a security hole, or a main flow that fails in production |
-| ERROR | 70–89 | a demonstrated defect with a production effect: a flow fails, a contract or an invariant is broken, or users or operators see a performance problem |
-| WARN | 40–69 | a suspected defect; a demonstrated defect with no production effect; a conflict between rules |
-| INFO | 1–39 | a state or a risk for a reviewer: a duplicate rule, a test that asserts less than its scenario, a wording problem. It is never a failure. |
-| — | 0 | not true |
+<table>
+  <thead>
+    <tr><th>Band</th><th>Severity</th><th>The finding is</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ERROR</td>
+      <td>90–100</td>
+      <td>data loss, a leak of sensitive data, a security hole, or a main flow that fails in production</td>
+    </tr>
+    <tr>
+      <td>ERROR</td>
+      <td>70–89</td>
+      <td>a demonstrated defect with a production effect: a flow fails, a contract or an invariant is broken, or users or operators see a performance problem</td>
+    </tr>
+    <tr>
+      <td>WARN</td>
+      <td>40–69</td>
+      <td>a suspected defect; a demonstrated defect with no production effect; a conflict between rules</td>
+    </tr>
+    <tr>
+      <td>INFO</td>
+      <td>1–39</td>
+      <td>a state or a risk for a reviewer: a duplicate rule, a test that asserts less than its scenario, a wording problem. It is never a failure.</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>0</td>
+      <td>not true</td>
+    </tr>
+  </tbody>
+</table>
 
 - For a severity in the ERROR band, write the production scenario in one sentence: what occurs, to whom, and what breaks, leaks or becomes slow.
 - The tool turns severity and confidence into ERROR, WARN or INFO with its thresholds. The bands above are its defaults; a run can move them. Give the severity that the finding has. Do not aim at a band.

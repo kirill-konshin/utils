@@ -11,7 +11,8 @@ paths:
 
 - ALL projects must use TypeScript by default
     - JavaScript is acceptable for service scripts, but discouraged, use `ts-node`
-- Do NOT upgrade to TypeScript 7 until `typescript-eslint` supports it
+- Do NOT upgrade to TypeScript 7 while tools load the TypeScript JS API (typescript-eslint, ctix, `@arethetypeswrong/core`, Storybook docgen, Next.js type checks, `spec-tools`): TS 7 ships only an unstable API; use its engine through Vite+ type-aware checks
+- With Vite+ (`vite-plus` installed) type-check with `vp check` (`vitePlusConfig` has `typeAware` on by default, the TypeScript 7 engine via tsgolint); NEVER add `tsc --noEmit` scripts; without Vite+ use `tsc --noEmit`
 - ALL configs should use TypeScript if possible via `defineConfig` or at least import TS type for configuration.
 - Prefer short-circuit evaluation and early exit
 - Use structured logging with context, consider adding function arguments to log:
@@ -72,8 +73,8 @@ paths:
 - Import siblings directly `./file.ts`
 - Do not import more than one level up: `../file` OK, but not preferred
     - NOT OK: more than one level `../../file` or stepping aside from parent dir `../dir/file`
-- Order imports in this sequence, one blank line between groups (enforced and autofixed by `simple-import-sort`):
-    1. Polyfills — side-effect imports that must run first (`core-js`, `regenerator-runtime`, `whatwg-fetch`, `@vitest/web-worker`)
+- Order imports in this sequence, one blank line between groups (autofixed by Oxfmt `sortImports` with Vite+, `simple-import-sort` otherwise):
+    1. Polyfills and guards — side-effect imports that must run first (`server-only`, `client-only`, `core-js`, `regenerator-runtime`, `whatwg-fetch`, `@vitest/web-worker`)
     2. React (`react`, `react-dom`)
     3. Third-party library imports (other packages, incl. `node:` builtins)
     4. Local imports (path aliases `@/...`, then relative `./`, `../`)
@@ -92,7 +93,7 @@ paths:
 # Type Annotation Patterns
 
 - Use `interface` only for declaration merging/augmentation (e.g. extending a third-party global interface) - a class can `implements` a `type` alias just as well, so that's not a reason to reach for `interface`
-    - This is enforced by lint (`@typescript-eslint/consistent-type-definitions`), which can't special-case augmentation - when it's genuinely needed, add `// eslint-disable-next-line @typescript-eslint/consistent-type-definitions` above the `interface`
+    - This is enforced by lint (`@typescript-eslint/consistent-type-definitions`), which can't special-case augmentation - when it's genuinely needed, add `// oxlint-disable-next-line typescript/consistent-type-definitions` (Vite+) or `// eslint-disable-next-line @typescript-eslint/consistent-type-definitions` above the `interface`
 - Prefer to inline types into function signature or variable declarations
 - Introduce types when reused or complex. Avoid creating a type for every single thing
 - Try to reuse types that exist in project (e.g. redux state, zod schema, component props, final function signature can have one shared type + derivatives like `Omit<>`, `Partial<>` etc.)

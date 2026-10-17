@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 import { PART_BYTES } from './auditParts';
 import { modeFor, partition, renderScope } from './auditScope';

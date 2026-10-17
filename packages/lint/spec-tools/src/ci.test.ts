@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 import { diffBase, isNightly, jobLog, mergeRequest, pipeline, shard } from './ci';
 

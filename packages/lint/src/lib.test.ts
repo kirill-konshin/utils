@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
 
 import type { ToggleOptions } from './index.js';
 import { asOptions, findWorkspaceRoot, toolGate } from './lib.js';

@@ -1,6 +1,6 @@
 ---
 name: lint-webstorm
-description: Templates and checks for JetBrains IDEA / WebStorm `.idea` project files - excluded folders, Prettier & ESLint scopes, VCS, code style, Tailwind, JSON schemas, index exclusions. Use when setting up, checking or fixing a project's `.idea` configuration.
+description: Templates and checks for JetBrains IDEA / WebStorm `.idea` project files - Oxc plugin (Vite+ - Oxlint, Oxfmt) or Prettier & ESLint scopes, excluded folders, VCS, code style, Tailwind, JSON schemas, index exclusions. Use when setting up, checking or fixing a project's `.idea` configuration.
 ---
 
 # Check
@@ -42,7 +42,59 @@ Compare the project's `.idea` files with the templates below and the `webstorm` 
 </project>
 ```
 
-# Configure `.idea/prettier.xml`
+# Vite+: Oxc plugin
+
+When the project uses `vite-plus`: the [Oxc plugin](https://plugins.jetbrains.com/plugin/27061-oxc) runs `vp lint --lsp` / `vp fmt --lsp` (AUTOMATIC mode finds `vite-plus`), so the `vite.config.ts` blocks apply. Prettier is disabled and `.idea/jsLinters/eslint.xml` deleted. The plugin stores booleans as attributes while the Vite+ docs write `<option>` - keep both; the IDE rewrites the file in its own form on save. Ask the user to confirm Settings → Tools → Oxc after reopening.
+
+`.idea/externalDependencies.xml` (required plugin; un-ignore it if `.idea` is gitignored: `!.idea/externalDependencies.xml`):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalDependencies">
+    <plugin id="com.github.oxc.project.oxcintellijplugin" />
+  </component>
+</project>
+```
+
+`.idea/OxcSettings.xml` (Oxlint, fix all on save):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="OxcSettings" configurationMode="AUTOMATIC" fixAllOnSave="true">
+    <option name="configurationMode" value="AUTOMATIC" />
+    <option name="fixAllOnSave" value="true" />
+  </component>
+</project>
+```
+
+`.idea/OxfmtSettings.xml` (Oxfmt, format on save, IDE code style from Oxfmt):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="OxfmtSettings" configurationMode="AUTOMATIC" fixAllOnSave="true" preferOxfmtCodeStyleSettings="true">
+    <option name="configurationMode" value="AUTOMATIC" />
+    <option name="fixAllOnSave" value="true" />
+    <option name="preferOxfmtCodeStyleSettings" value="true" />
+  </component>
+</project>
+```
+
+`.idea/prettier.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PrettierConfiguration">
+    <option name="myConfigurationMode" value="DISABLED" />
+    <option name="myRunOnSave" value="false" />
+  </component>
+</project>
+```
+
+# Configure `.idea/prettier.xml` (without Vite+)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -56,7 +108,7 @@ Compare the project's `.idea` files with the templates below and the `webstorm` 
 </project>
 ```
 
-# Configure `.idea/jsLinters/eslint.xml`
+# Configure `.idea/jsLinters/eslint.xml` (without Vite+)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>

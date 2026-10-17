@@ -12,7 +12,8 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
+import { parse } from 'yaml';
 
 import {
     generateAgentsFile,
@@ -51,6 +52,19 @@ test('readRules: every shipped rule has a frontmatter description', () => {
     }
 });
 
+test('readSkills: every shipped skill has valid YAML frontmatter naming it, with a description', () => {
+    const skillsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../skills');
+    for (const { name } of readSkills()) {
+        const content = readFileSync(join(skillsDir, name, 'SKILL.md'), 'utf8');
+        const frontmatter = /^---\n([\s\S]*?)\n---/.exec(content)?.[1];
+        assert.ok(frontmatter, `${name}: no frontmatter`);
+        // a plain scalar holding `: ` is a nested mapping - agents and IDEs reject the file, Oxfmt does not notice
+        const parsed = parse(frontmatter) as { name?: unknown; description?: unknown };
+        assert.equal(parsed.name, name, `${name}: frontmatter name`);
+        assert.equal(typeof parsed.description, 'string', `${name}: frontmatter description`);
+    }
+});
+
 test('generateAgentsFile: one plain entry per rule with its description, scope and .agents path, never an @ import', () => {
     const content = generateAgentsFile(
         [
@@ -72,11 +86,21 @@ test('generateAgentsFile: one plain entry per rule with its description, scope a
         '- **Monorepo turbo nx** — Monorepo rules; when touching `**/nx.json`, `**/turbo.json`: [.agents/rules/monorepo-turbo-nx.md](.agents/rules/monorepo-turbo-nx.md)',
         '- **I18n**: [.agents/rules/i18n.md](.agents/rules/i18n.md)',
         '',
+        '<!--VITE PLUS START-->',
+        '<!--VITE PLUS END-->',
+        '',
         '---',
     ].join('\n');
 
     assert.ok(content.includes(expected), content);
     assert.ok(!content.includes('@.agents'), content);
+});
+
+test('generateAgentsFile: an empty anchor for each tool section above the custom section - the tool run next fills it', () => {
+    const content = generateAgentsFile([], '# Mine');
+    assert.ok(content.includes('<!--VITE PLUS START-->\n<!--VITE PLUS END-->'), content);
+    assert.ok(content.indexOf('<!--VITE PLUS START-->') < content.indexOf('# Custom Rules'), content);
+    assert.ok(content.trimEnd().endsWith('# Mine'), content);
 });
 
 test('syncAgentDirs: real agent dirs, a rule file and a skill folder each linked straight to the package, from a symlinked cwd too', async () => {

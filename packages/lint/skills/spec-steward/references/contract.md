@@ -35,7 +35,7 @@ A citation of a scenario's anchor binds the scenario only where it sits in one o
 | In a test file (a JavaScript or TypeScript `*.test.*`, `*.spec.*` or `*.test-d.*` file, a file under `__tests__/` or `e2e/`, or a Python or Go test file), inside a `describe`, `it`, `test`, `suite` or `bench` call, with any `.only`, `.skip`, `.concurrent`, `.sequential`, `.todo`, `.each(…)`, `.for(…)`, `.runIf(…)`, `.skipIf(…)` or `.fails` chain, and Playwright's `test.describe`, `test.step`, `.serial`, `.parallel`, `.fixme` and `.fail`; in a Python test file, inside a `test_…` function or a `Test…` class; in a Go test file, inside a `Test…` function | yes |
 | In a test file, in the comment run directly above such a call or function (in Python, its decorators too), with no blank line between | yes |
 | In a test file, on a type assertion — an `Expect<…>` type alias, or an `expectTypeOf(…)` or `assertType(…)` call — at the top level or inside a block | yes |
-| In a lint configuration — `eslint.config.{js,mjs,cjs,ts,mts,cts}` or `yarn.config.cjs` — anywhere | yes |
+| In a lint configuration — `eslint.config.{js,mjs,cjs,ts,mts,cts}`, `vite.config.{js,mjs,cjs,ts,mts,cts}` (Vite+) or `yarn.config.cjs` — anywhere | yes |
 | In a file matching a `binds` glob the repository declares — `"spec-steward": { "binds": [...] }` in its root `package.json`, or `--binds <glob>` — (a check script, a Dockerfile, a CI configuration), anywhere | yes |
 | Anywhere else in a test file: its header, a fixture, a helper | no — it binds nothing and fails nothing |
 | Code, configuration, YAML, a Dockerfile or a document that no `--binds` glob matches | no — it is a pointer |
@@ -145,11 +145,11 @@ An explicit `--base <ref>` compares with the merge base of `<ref>` and `HEAD`. W
 
 ### Exit codes
 
-| Code | When |
-| --- | --- |
-| 0 | No error finding |
-| 1 | An error finding, or a warning under `--strict` |
-| 2 | A usage or environment error: an unknown flag, a base ref that does not exist, a git file listing that failed or came back empty, a missing specs directory |
+| Code | When                                                                                                                                                        |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | No error finding                                                                                                                                            |
+| 1    | An error finding, or a warning under `--strict`                                                                                                             |
+| 2    | A usage or environment error: an unknown flag, a base ref that does not exist, a git file listing that failed or came back empty, a missing specs directory |
 
 Exit 2 on an empty listing keeps a broken checkout from passing a scan that read nothing.
 

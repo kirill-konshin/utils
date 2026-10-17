@@ -1,6 +1,7 @@
 import type { Linter } from 'eslint';
 import unicornPlugin from 'eslint-plugin-unicorn';
 
+import { filenameCaseIgnore } from '../conventions.js';
 import { tsExts } from '../exts.js';
 
 /**
@@ -26,17 +27,7 @@ export function unicornConfig(): Linter.Config[] {
                          * directories (e.g. electron-builder, react-native) are an established convention.
                          */
                         checkDirectories: false,
-                        // Next.js App Router mandates these exact hyphenated filenames - not a naming choice.
-                        ignore: [
-                            /^not-found\.[jt]sx?$/,
-                            /^global-error\.[jt]sx?$/,
-                            /^opengraph-image\.[jt]sx?$/,
-                            /^twitter-image\.[jt]sx?$/,
-                            /^apple-icon\.[jt]sx?$/,
-                            /^mdx-components\.[jt]sx?$/,
-                            /\.d\.tsx?$/,
-                            /^electron-builder\..+$/,
-                        ],
+                        ignore: filenameCaseIgnore,
                     },
                 ],
                 'unicorn/prefer-node-protocol': 'error',

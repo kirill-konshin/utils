@@ -30,21 +30,78 @@ Procedures for an OpenSpec corpus. Five things live elsewhere and are not repeat
 
 Where the repository's `AGENTS.md` names a spec gate in its Checks list, such as `spec-tools gates`, run that gate: it runs `steward check --base auto` with the repository's binds. Elsewhere run `steward check --base auto` yourself. It compares the working tree with the branch point and checks the corpus and the files citing it. Add `--file <path>` to scope it, `--json` for machines, `--strict` to fail on warnings, and `--fix` for the safe mechanical repairs. A kind marked _base only_ runs only when a base is set, and under a base the prompts cover only what the diff added or edited.
 
-| Kind | Severity | What to do |
-| --- | --- | --- |
-| `dangling-citation` | error | Fix the path or anchor, or remove the citation. A citation is an optional pointer; the one rule is that it resolves. |
-| `renamed-anchor` | error, base only | `--fix` rewrites every citation of an anchor the diff renamed. |
-| `duplicate-anchor` | error | Two headings in one spec render the same slug. Rename one. |
-| `duplicate-requirement` | error | One requirement name in two capabilities, or one body twice. Keep it in the capability that owns the behaviour and reference it from the other. |
-| `size` | error past 500 words or 8 obligations, info past 300 or 5 | Split the requirement into coherent areas, never into one requirement per sentence ([model](references/model.md#tests-and-scenarios)). |
-| `scenario-unproven` | error, base only | A scenario you added or edited in a REQUIRED requirement has no binding. Cite it where its test, type assertion, lint entry or check proves it ([binding](references/contract.md#binding)); a test you add must catch a regression of that case. If no evidence can, the requirement takes a Known gap naming the scenario, or becomes ⚠️ ADVISORY — the owner's call. |
-| `weakened` | warn, base only | A rule was removed, lowered (MUST → SHOULD), lost an absolute, gained an exception or became advisory. **Stop and ask the owner** — unless they asked for exactly this. In a hand-back, map each finding to the decision that authorised it (a review item, a ticket, the owner's word) and list only the unmatched ones for a decision; a verbatim move is already reported as a rename. |
-| `textual-test` | warn | The test asserts on source, spec or doc text. Prefer a behavioural test, or a deterministic tool for structure. |
-| `marker-hygiene` | warn | `--fix` normalises a misspelt marker. A retired `**⚠️ Unenforced:**`, or a Known gap without a tracker, exempts nothing: replace it with Advisory, a tracked Known gap, or nothing, as the [model](references/model.md#advisory-known-gap-or-neither) says, and ask the owner, because each is a reclassification. |
-| `new-requirement` | info, base only | Say, in your reply, which observable failure it prevents and what cheapest evidence catches it. If there is none, it is advisory or belongs elsewhere. |
-| `absolute-unproven` | info | Name the absolute's exceptions, or confirm it has none. Advisory requirements are not reported. |
-| `impl-detail`, `vague-obligation`, `restating-scenario`, `duplicate-scenario`, `unbound-test` | info | Prompts for judgement, not orders. Answer them in the spec or in your reply. Never write a test just to silence one. |
-| `non-ears`, `non-bdd` | info, base only | Added or edited text only: write the statement in EARS and the scenario in Given/When/Then ([model](references/model.md#tests-and-scenarios)). Never fails. |
+<table>
+  <thead>
+    <tr><th>Kind</th><th>Severity</th><th>What to do</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>dangling-citation</code></td>
+      <td>error</td>
+      <td>Fix the path or anchor, or remove the citation. A citation is an optional pointer; the one rule is that it resolves.</td>
+    </tr>
+    <tr>
+      <td><code>renamed-anchor</code></td>
+      <td>error, base only</td>
+      <td><code>--fix</code> rewrites every citation of an anchor the diff renamed.</td>
+    </tr>
+    <tr>
+      <td><code>duplicate-anchor</code></td>
+      <td>error</td>
+      <td>Two headings in one spec render the same slug. Rename one.</td>
+    </tr>
+    <tr>
+      <td><code>duplicate-requirement</code></td>
+      <td>error</td>
+      <td>One requirement name in two capabilities, or one body twice. Keep it in the capability that owns the behaviour and reference it from the other.</td>
+    </tr>
+    <tr>
+      <td><code>size</code></td>
+      <td>error past 500 words or 8 obligations, info past 300 or 5</td>
+      <td>Split the requirement into coherent areas, never into one requirement per sentence (<a href="references/model.md#tests-and-scenarios">model</a>).</td>
+    </tr>
+    <tr>
+      <td><code>scenario-unproven</code></td>
+      <td>error, base only</td>
+      <td>A scenario you added or edited in a REQUIRED requirement has no binding. Cite it where its test, type assertion, lint entry or check proves it (<a href="references/contract.md#binding">binding</a>); a test you add must catch a regression of that case. If no evidence can, the requirement takes a Known gap naming the scenario, or becomes ⚠️ ADVISORY — the owner's call.</td>
+    </tr>
+    <tr>
+      <td><code>weakened</code></td>
+      <td>warn, base only</td>
+      <td>A rule was removed, lowered (MUST → SHOULD), lost an absolute, gained an exception or became advisory. <strong>Stop and ask the owner</strong> — unless they asked for exactly this. In a hand-back, map each finding to the decision that authorised it (a review item, a ticket, the owner's word) and list only the unmatched ones for a decision; a verbatim move is already reported as a rename.</td>
+    </tr>
+    <tr>
+      <td><code>textual-test</code></td>
+      <td>warn</td>
+      <td>The test asserts on source, spec or doc text. Prefer a behavioural test, or a deterministic tool for structure.</td>
+    </tr>
+    <tr>
+      <td><code>marker-hygiene</code></td>
+      <td>warn</td>
+      <td><code>--fix</code> normalises a misspelt marker. A retired <code>**⚠️ Unenforced:**</code>, or a Known gap without a tracker, exempts nothing: replace it with Advisory, a tracked Known gap, or nothing, as the <a href="references/model.md#advisory-known-gap-or-neither">model</a> says, and ask the owner, because each is a reclassification.</td>
+    </tr>
+    <tr>
+      <td><code>new-requirement</code></td>
+      <td>info, base only</td>
+      <td>Say, in your reply, which observable failure it prevents and what cheapest evidence catches it. If there is none, it is advisory or belongs elsewhere.</td>
+    </tr>
+    <tr>
+      <td><code>absolute-unproven</code></td>
+      <td>info</td>
+      <td>Name the absolute's exceptions, or confirm it has none. Advisory requirements are not reported.</td>
+    </tr>
+    <tr>
+      <td><code>impl-detail</code>, <code>vague-obligation</code>, <code>restating-scenario</code>, <code>duplicate-scenario</code>, <code>unbound-test</code></td>
+      <td>info</td>
+      <td>Prompts for judgement, not orders. Answer them in the spec or in your reply. Never write a test just to silence one.</td>
+    </tr>
+    <tr>
+      <td><code>non-ears</code>, <code>non-bdd</code></td>
+      <td>info, base only</td>
+      <td>Added or edited text only: write the statement in EARS and the scenario in Given/When/Then (<a href="references/model.md#tests-and-scenarios">model</a>). Never fails.</td>
+    </tr>
+  </tbody>
+</table>
 
 The exact rule behind each kind is in [contract.md](references/contract.md#kinds-and-severities). The edit hook runs the per-file checks on each file you touch, with no ratchet, and feeds them back at once. Treat its message as you would this table.
 

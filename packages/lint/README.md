@@ -1,14 +1,20 @@
 # @kirill.konshin/lint
 
-ESLint + Prettier + lint-staged + Husky configuration, plus AI agent rules & skills for monorepos — in one package.
+[Vite+](https://viteplus.dev) configuration (Oxlint, Oxfmt, staged checks) — or ESLint + Prettier + lint-staged + Husky without Vite+ — plus AI agent rules & skills for monorepos, in one package.
+
+Upgrading from an older version: use the `lint-migrate` skill (shipped in `skills/`, linked by `lint-prepare`).
 
 ## Installation
 
+Recommended, with [Vite+](#vite-recommended):
+
 ```bash
-$ yarn add -D eslint prettier @kirill.konshin/lint @yarnpkg/types husky lint-staged
+$ yarn add -D vite-plus @kirill.konshin/lint @yarnpkg/types
 ```
 
-Every project whose `packageManager` is Yarn must directly install `@yarnpkg/types`; Yarn PnP does not allow `yarn.config.cjs` to require a transitive dependency.
+Without Vite+, see [ESLint + Prettier](#eslint--prettier-without-vite).
+
+Every project whose `packageManager` is Yarn must directly install `@yarnpkg/types`; Yarn PnP does not allow `yarn.config.cjs` to require a transitive dependency (Vite+ does not support PnP anyway).
 
 ### PNPM
 
@@ -34,6 +40,17 @@ module.exports = defineConfig(defineYarnConfig());
 `defineYarnConfig` reads the root `overrides` and `resolutions`. Each named non-peer dependency in a leaf package must use the root override reference or resolution range; `overrides` wins when both fields name the same package. Nested npm overrides and `$dependency` references are supported.
 
 When the root has no `overrides` field, `@types/node`, `@types/react`, `@types/react-dom`, `next`, `eslint`, `typescript`, and `vite` must each use one range across the workspace. The root declaration wins; otherwise the first leaf path supplies the range. Run `yarn constraints --fix` to apply unambiguous changes.
+
+With Vite+, `vite` is an alias of the Vite+ core and `vitest` is the version Vite+ bundles — pin both at the root:
+
+```json
+{
+    "devDependencies": { "vite": "npm:@voidzero-dev/vite-plus-core@^1.3.0", "vite-plus": "^1.3.0" },
+    "resolutions": { "vite": "npm:@voidzero-dev/vite-plus-core@^1.3.0", "vitest": "5.0.5" }
+}
+```
+
+`@vitest/*` packages (`coverage-v8`, `web-worker`, …) must match the bundled Vitest exactly (`5.0.5`), or `vp test` refuses to run coverage.
 
 ## `.gitignore`
 
@@ -67,9 +84,109 @@ yarn-error*
 !.yarn/versions
 ```
 
-List need to be verified, especially `build`, `coverage`, `dist` must be verified not to exclude legit folders.
+List need to be verified, especially `build`, `coverage`, `dist` must be verified not to exclude legit folders. With Vite+ add `.vite-hooks/_` (the generated hook dispatcher).
 
-## `.prettierignore`
+## Vite+ (recommended)
+
+`vite.config.ts` at the workspace root — `vitePlusConfig` returns the `lint` (Oxlint), `fmt` (Oxfmt) and `staged` blocks; wrap it in `defineConfig` from `vite-plus`:
+
+```ts
+import { vitePlusConfig } from '@kirill.konshin/lint/vite-plus';
+import { defineConfig } from 'vite-plus';
+
+export default defineConfig(
+    vitePlusConfig(
+        {
+            lint: { rules: {}, overrides: [] }, // added to the defaults
+            fmt: { ignorePatterns: ['generated'] }, // added to the defaults (.idea, .husky, .yarn, OpenSpec files)
+            test: { projects: ['packages/*'] }, // any other Vite+ / Vite block passes through
+        },
+        // same toggles as ESLint's defineLintConfig, see Detection
+        { next: true, tailwind: { cssConfigPath: 'apps/web/src/app.css' }, typeAware: false }, // typeAware is on by default
+    ),
+);
+```
+
+- Merging: lists add up (`plugins`, `jsPlugins`, `overrides`, `ignorePatterns`), maps merge by key (`rules`, `settings`, `env`), a `staged` block replaces the default
+- Building blocks are exported: `lintConfig(options)`, `fmtConfig()`, `stagedConfig()`
+- Lint and format settings live in the **root** config only: Vite+ ignores nested `lint`/`fmt` blocks, use `lint.overrides` / `fmt.overrides` with workspace paths
+- `.gitignore` and `.prettierignore` are honoured by Oxfmt; the recommended `.prettierignore` entries are default `fmt.ignorePatterns`, add others there
+
+What maps where:
+
+<table>
+  <thead>
+    <tr><th>Before</th><th>Vite+</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ESLint recommended sets (JS, TS, React, jsx-a11y, Next, import, promise)</td>
+      <td>Oxlint <code>correctness</code> category + the same overrides, rule by rule</td>
+    </tr>
+    <tr>
+      <td><code>react-hooks</code></td>
+      <td>Oxlint <code>react/*</code> (incl. React Compiler rules)</td>
+    </tr>
+    <tr>
+      <td><code>unused-imports</code></td>
+      <td><code>no-unused-vars</code> with import autofix</td>
+    </tr>
+    <tr>
+      <td><code>simple-import-sort</code></td>
+      <td>Oxfmt <code>sortImports</code> (same groups)</td>
+    </tr>
+    <tr>
+      <td>Storybook, Tailwind, Turbo, <code>@nx/*</code>, <code>local/test-colocation</code></td>
+      <td>Oxlint JS plugins, loaded from this package</td>
+    </tr>
+    <tr>
+      <td>Prettier</td>
+      <td>Oxfmt <code>fmt</code> (same options)</td>
+    </tr>
+    <tr>
+      <td>lint-staged</td>
+      <td><code>staged</code>: one <code>vp check --fix</code></td>
+    </tr>
+    <tr>
+      <td>Husky</td>
+      <td><code>vp config</code> hook dispatcher, <code>.vite-hooks/pre-commit</code></td>
+    </tr>
+  </tbody>
+</table>
+
+Not carried over: `@nx/dependency-checks` (Oxlint does not lint JSON), `@typescript-eslint/naming-convention` (type-aware only, off by default). `@nx/eslint-plugin` needs the `eslint` package installed (as a library; ESLint itself does not run). Oxlint type-aware linting and type checking (tsgolint, the TypeScript 7 engine) are on by default — `vp check` is the type check, `vp pack` does not type-check; `typeAware: false` turns them off. tsgolint rejects tsconfig options TypeScript 7 removed (`target: es5`, `moduleResolution: node`, `downlevelIteration`).
+
+`package.json`:
+
+```jsonc
+{
+    "scripts": {
+        "postinstall": "lint-prepare init && vp config", // this order: vp config fills the Vite+ section lint-prepare writes; `prepare` for published roots, see npm-yarn rule
+        "lint": "vp check --fix",
+        "lint:staged": "vp staged",
+    },
+}
+```
+
+WebStorm: the Oxc plugin (`.idea/externalDependencies.xml`, `OxcSettings.xml`, `OxfmtSettings.xml`) with Prettier disabled — templates in the `lint-webstorm` skill.
+
+`.vite-hooks/pre-commit`:
+
+```sh
+vp staged
+```
+
+`vp config` installs the hook dispatcher and fills the Vite+ agent instructions into the `<!--VITE PLUS START-->` section `lint-prepare` writes into `AGENTS.md` — so it runs after `lint-prepare` (`vp config` never creates the section itself; `vp migrate --agent` would, but also rewrites dependencies). A `core.hooksPath` left by Husky blocks it: `git config --unset core.hooksPath` once. CI runs `vp check` (no `--fix`).
+
+Library packages build with `vp pack` from a `pack` block (tsdown) in their own `vite.config.ts`, and test with `vp test`; tests import from `vite-plus/test`.
+
+## ESLint + Prettier (without Vite+)
+
+```bash
+$ yarn add -D eslint prettier @kirill.konshin/lint @yarnpkg/types husky lint-staged
+```
+
+### `.prettierignore`
 
 Create `.prettierignore` file:
 
@@ -88,7 +205,7 @@ https://prettier.io/docs/ignore:
 
 > Prettier will also follow rules specified in the ".gitignore" file if it exists in the same directory from which it is run.
 
-## ESLint
+### ESLint
 
 `eslint.config.mjs`:
 
@@ -124,7 +241,7 @@ export default defineConfig([
 ]);
 ```
 
-### Full Config Example
+#### Full Config Example
 
 Default behavior in the comments, all tools are optional (see [Detection](#detection)). Enable/disable tools using:
 
@@ -173,24 +290,23 @@ export default defineConfig(
 );
 ```
 
-### Per-package configs (monorepo)
+#### Per-package configs (monorepo)
 
-ESLint 10 resolves the config **per linted file**: the nearest `eslint.config.mjs` up the tree wins **entirely** (no cascading/inheritance of rules). For full per-app Next/Tailwind linting in a multi-app monorepo, give each app its own config — either inherit the root and add overrides:
+ESLint 10 resolves the config **per linted file**: the nearest `eslint.config.mjs` up the tree wins **entirely** (no cascading/inheritance of rules). For full per-app Next/Tailwind linting in a multi-app monorepo, give each app its own config — either inherit the root and add overrides, `apps/web/eslint.config.mjs`:
 
 ```js
-// apps/web/eslint.config.mjs
 import { defineConfig } from 'eslint/config';
+
 import rootConfig from '../../eslint.config.mjs';
 
 export default defineConfig([...(await rootConfig), { rules: { 'tailwindcss/no-custom-classname': 'off' } }]);
 ```
 
-…or simply call `defineLintConfig` again with the options this app needs:
+…or simply call `defineLintConfig` again with the options this app needs, `apps/web/eslint.config.mjs`:
 
 ```js
-// apps/web/eslint.config.mjs
-import { defineConfig } from 'eslint/config';
 import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'eslint/config';
 import { defineLintConfig } from '@kirill.konshin/lint';
 
 export default defineConfig(
@@ -208,7 +324,7 @@ export default defineConfig(
 
 The Tailwind block auto-scopes to the **workspace package** owning the entry CSS (emitted as the block's `basePath`), so a single root config doesn't flag class-like strings in non-Tailwind packages; pass `tailwind: { scoped: false }` to apply it workspace-wide (no-op when the entry is owned by the workspace root itself).
 
-## Prettier `.prettierrc.mjs`:
+### Prettier `.prettierrc.mjs`
 
 ```js
 import { prettier } from '@kirill.konshin/lint/prettier';
@@ -228,7 +344,9 @@ export default {
 
 Import from `/prettier`, not the package root: the root loads every ESLint plugin, which would slow down each Prettier run.
 
-## Editor Config `.editorconfig`
+### Editor Config `.editorconfig`
+
+Oxfmt reads it too; `fmtConfig()` sets the Prettier behaviors that differ from it.
 
 ```editorconfig
 root = true
@@ -338,6 +456,7 @@ In the project root, `lint-prepare`:
 - Links every `rules/*.md` file and every `skills/<name>/` folder into both — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules. Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package). A rule or skill of yours with the same name in `.agents/` wins, the package one is not installed.
 - Mirrors your own top-level entries from `.agents/{rules,skills}/` into `.claude/`. Commands are not synced: make them skills.
 - Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs, including what older versions placed (per-file skill links, `commands/`). Each directory gets a generated `.gitignore` listing its links, so your own entries stay tracked.
+- Writes an empty marker pair for each section another tool owns into the generated `AGENTS.md` — currently Vite+ (`<!--VITE PLUS START-->`). The tool fills it, so run it **after** `lint-prepare` in the same install script (`lint-prepare init && vp config`): tools write their own agent content, nothing is copied by hand.
 - Generates `AGENTS.md` for other assistants (Codex, Cursor, Copilot, …) with a `# Rules` section — one entry per rule (the package's and yours): its title, frontmatter `description`, the `paths` it is scoped to and a plain link to its `.agents/rules/<file>` entry — and symlinks `CLAUDE.md` to it. The links are never `@` imports: Claude Code loads `.claude/rules` itself and honours each rule's `paths`, while an import would load every rule into every session.
 
 ### OpenSpec
@@ -351,23 +470,73 @@ For a repository specified with [OpenSpec](https://github.com/Fission-AI/OpenSpe
 
 Which to reach for:
 
-| Question | Tool | Outcome |
-| --- | --- | --- |
-| How do I write or change a rule? | `/spec-author` | The specification edited in place, with the code and tests that prove it |
-| Do citations resolve, is every new scenario bound, did a rule weaken? | `spec-tools steward check` (the gate, the edit hook) | Fails the merge request on an error |
-| Are these the right rules — placement, REQUIRED or ⚠️ ADVISORY, wording, evidence, duplicates, drift across repositories? | the `spec-steward` skill (audit on the `spec-tools` engine, review rounds, align) | A review file of proposals; the owner decides, steward applies; never a build failure |
-| Does the code satisfy the intent of the rules, and do the bound tests assert them? | the `spec-verify` skill, run by `spec-tools` | Graded, quote-proved findings; PASS / FAIL / INCOMPLETE gates CI |
-| Is the change finished, what did it change, how does CI run the audit? | `spec-tools` (gates, evidence, diff, tier, workers, verdict, comment, html) | Gates and reports for the pipeline |
+<table>
+  <thead>
+    <tr><th>Question</th><th>Tool</th><th>Outcome</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>How do I write or change a rule?</td>
+      <td><code>/spec-author</code></td>
+      <td>The specification edited in place, with the code and tests that prove it</td>
+    </tr>
+    <tr>
+      <td>Do citations resolve, is every new scenario bound, did a rule weaken?</td>
+      <td><code>spec-tools steward check</code> (the gate, the edit hook)</td>
+      <td>Fails the merge request on an error</td>
+    </tr>
+    <tr>
+      <td>Are these the right rules — placement, REQUIRED or ⚠️ ADVISORY, wording, evidence, duplicates, drift across repositories?</td>
+      <td>the <code>spec-steward</code> skill (audit on the <code>spec-tools</code> engine, review rounds, align)</td>
+      <td>A review file of proposals; the owner decides, steward applies; never a build failure</td>
+    </tr>
+    <tr>
+      <td>Does the code satisfy the intent of the rules, and do the bound tests assert them?</td>
+      <td>the <code>spec-verify</code> skill, run by <code>spec-tools</code></td>
+      <td>Graded, quote-proved findings; PASS / FAIL / INCOMPLETE gates CI</td>
+    </tr>
+    <tr>
+      <td>Is the change finished, what did it change, how does CI run the audit?</td>
+      <td><code>spec-tools</code> (gates, evidence, diff, tier, workers, verdict, comment, html)</td>
+      <td>Gates and reports for the pipeline</td>
+    </tr>
+  </tbody>
+</table>
 
 Where each runs:
 
-| What | In CI | Locally |
-| --- | --- | --- |
-| `spec-tools steward check` | `spec-tools gates`, every merge request: an error fails it | the edit hook on every edit Claude makes, and `spec-tools gates` before handing back |
-| `spec-tools steward coverage`, `spec-tools steward evidence --json` | the coverage report, and the evidence `spec-tools scope` builds the spec-verify audit from | on demand |
-| spec-steward's corpus audit, review rounds, `align` | never — it is heavy and its outcome is the owner's | on the owner's request: `spec-tools audit --audit spec-steward [--context <decisions file>]`, then the review rounds, where the accepted answers are applied |
-| `spec-verify` | one audit job — the reading, then the judging: its verdict gates merge requests and the release | `spec-tools audit`, and `/spec-verify changed` before handing back a spec edit |
-| `spec-tools gates`, `evidence`, `diff` | their own jobs | before handing back |
+<table>
+  <thead>
+    <tr><th>What</th><th>In CI</th><th>Locally</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>spec-tools steward check</code></td>
+      <td><code>spec-tools gates</code>, every merge request: an error fails it</td>
+      <td>the edit hook on every edit Claude makes, and <code>spec-tools gates</code> before handing back</td>
+    </tr>
+    <tr>
+      <td><code>spec-tools steward coverage</code>, <code>spec-tools steward evidence --json</code></td>
+      <td>the coverage report, and the evidence <code>spec-tools scope</code> builds the spec-verify audit from</td>
+      <td>on demand</td>
+    </tr>
+    <tr>
+      <td>spec-steward's corpus audit, review rounds, <code>align</code></td>
+      <td>never — it is heavy and its outcome is the owner's</td>
+      <td>on the owner's request: <code>spec-tools audit --audit spec-steward [--context &lt;decisions file&gt;]</code>, then the review rounds, where the accepted answers are applied</td>
+    </tr>
+    <tr>
+      <td><code>spec-verify</code></td>
+      <td>one audit job — the reading, then the judging: its verdict gates merge requests and the release</td>
+      <td><code>spec-tools audit</code>, and <code>/spec-verify changed</code> before handing back a spec edit</td>
+    </tr>
+    <tr>
+      <td><code>spec-tools gates</code>, <code>evidence</code>, <code>diff</code></td>
+      <td>their own jobs</td>
+      <td>before handing back</td>
+    </tr>
+  </tbody>
+</table>
 
 Specifications change only by hand, or when the steward skill applies the owner's accepted review answers; `spec-tools steward check --fix` makes the only mechanical repairs. No audit edits code or specifications.
 
@@ -379,67 +548,15 @@ Setup and the GitLab pipeline are in the `spec-tools` skill.
 
 Only the files `lint-prepare` knows (package files and mirrors of yours) and dead links are touched: real files are never overwritten (e.g. your own `.claude/rules/*.md`) and nothing is written through a symlinked directory. `.codex/` is not touched: Codex reads `.agents/skills` and `AGENTS.md`, and the links earlier versions placed in `.codex/` stay until you delete them. `init`/`update` refuse to run if `CLAUDE.md` isn't a symlink. If `AGENTS.md` exists and wasn't generated by this tool, `init` skips it; use `update` to force regeneration.
 
-## Migration
-
-### 0.2.x → 0.3.x
-
-The default-exported config array was replaced by the `defineLintConfig()` factory (see [Settings](#settings)) — every tool integration is auto-detected and controlled via options instead of hand-written blocks.
-
-Before (0.2.x):
-
-```js
-import { defineConfig } from 'eslint/config';
-import customConfig, { nextPlugin, includeIgnoreFile, tsExts } from '@kirill.konshin/lint';
-
-export default defineConfig([
-    ...customConfig,
-    {
-        files: [`**/*.${tsExts}`],
-        plugins: { next: nextPlugin },
-        settings: { next: { rootDir: 'path/to/next-app' } },
-    },
-    { name: 'Custom rules', rules: {} },
-    includeIgnoreFile(import.meta.url, '.gitignore'),
-    includeIgnoreFile(import.meta.url, '.prettierignore'),
-]);
-```
-
-After (0.3.x):
-
-```js
-import { defineLintConfig } from '@kirill.konshin/lint';
-
-export default [
-    ...(await defineLintConfig({
-        defaultIgnore: { importMetaUrl: import.meta.url },
-        next: { rootDir: 'path/to/next-app' },
-    })),
-    { name: 'Custom rules', rules: {} },
-];
-```
-
-- **Default export removed** — import `defineLintConfig` and call it. ESLint awaits the returned Promise, so a plain `export default defineLintConfig({...})` works when no extra blocks are needed
-- **Manual `settings.next.rootDir` block** → `next: { rootDir }` option — or nothing at all: it is auto-detected from `next.config.*` locations, `package.json`s depending on `next`, and `src/app`/`src/pages` trees (several apps → array)
-- **Scans are workspace-root-anchored** — the Tailwind entry / `next.config.*` scans and `nx.json` detection resolve the workspace root via the package manager instead of trusting cwd, so linting from inside a package behaves like linting from the root
-- **Manual Tailwind block** (`settings.tailwindcss.cssConfigPath`) → `tailwind: { cssConfigPath }` option; `tailwind: true` without a resolvable entry CSS is now a **hard error** instead of a silent skip, and several entry CSS candidates are a hard error even in auto mode
-- **`includeIgnoreFile(import.meta.url, '.gitignore' / '.prettierignore')` pair** → `defaultIgnore: { importMetaUrl: import.meta.url }` (`includeIgnoreFile` stays exported for extra ignore files)
-- **`tailwindEntry` const removed** → call the exported `findTailwindEntry(ignores)` when needed
-- **New:** every block is a composable exported `*Config()` function; gated ones accept `true` / `false` / an options object with optional `enabled` (defaults to `true` in the object form); `typeAware: true` enables the (slow) type-aware rules
-- **`prettier` is now a declared (required) peer dependency** — it was always required by the setup, so no action needed in practice
-- **TypeScript consumers get generated declarations** — `LintOptions` and all public exports are typed from source
-- **Hoisting** if tools can't find packages, fix it once in the package manager config: keep default hoisting (drop `installConfig.hoistingLimits`/`nohoist`), on pnpm add `public-hoist-pattern[]=<pkg>` to `.npmrc`, or add the tool to root `devDependencies`. Run eslint with `LINT_DEBUG=1` to trace detection.
-- **Scans follow the declared workspace.** `scanWorkspace` (also used by all evidence scans) now covers the root directory plus the real `workspaces`/`pnpm-workspace.yaml` packages via `@manypkg/get-packages` instead of a blind ≤5-level glob — config files in directories that are not declared workspace members are only found via the root scan, and the depth limit is gone.
-- `has*` probes are anchored at the **workspace root** (via `local-pkg`) instead of this package's install location — identical for standard root installs.
-
-Everything else — `prettier`, `listStaged`, extension lists (`tsExts`, …), `has*` detection exports, plugin re-exports (`nxPlugin`, …) — is unchanged.
-
 ## Development
 
 ### Build
 
-`tsdown` builds two things (`tsdown.config.ts`): the library — ESM and declarations from `src/*.ts`, one file per module, plus the CommonJS Yarn entry from `src/yarn.cts` — into `dist`, and the `spec-tools` CLI — spec-steward included — into one self-contained file, `skills/spec-tools/scripts/cli.js`, which the skills and CI jobs name. `yarn typecheck` (`tsc --noEmit`) checks types; the build does not. Consumers load `dist`, and this monorepo builds lint first in its root `postinstall` before running `lint-prepare`.
+`vp pack` (tsdown, the `pack` block of `vite.config.ts`) builds two things: the library — ESM and declarations from `src/*.ts`, one file per module, plus the CommonJS Yarn entry from `src/yarn.cts` — into `dist`, and the `spec-tools` CLI — spec-steward included — into one self-contained file, `skills/spec-tools/scripts/cli.js`, which the skills and CI jobs name. The root `vp check` checks types (type-aware Oxlint, the TypeScript 7 engine); the build does not. Consumers load `dist`, and this monorepo builds lint first in its root `postinstall` before running `lint-prepare`.
 
-### Eslint
+### ESLint and Vite+ configs
+
+`src/vitePlus.ts` reuses the detection gates and conventions (`src/conventions.ts`) of the ESLint blocks and imports no ESLint plugin: it references the JS plugins by resolved path. `src/oxlintPlugin.ts` is the Oxlint JS plugin with the custom rules.
 
 Declarations are generated from the TypeScript source and retain the underlying package types — `Linter.Config`, Tailwind plugin settings, Prettier `Config`, and lint-staged `Configuration`.
 
@@ -456,17 +573,59 @@ Due to limitations package visibility between leaf and root this package has to 
 3. **Hoisting, not bridging** — the plugins need the tool's package resolvable from the workspace root; a tool that is evidently in use (2) but not resolvable there (1) is a **hard error** with hoisting guidance (keep default hoisting, pnpm `public-hoist-pattern`, or a root devDependency — see the error text) instead of a silent skip or a cryptic plugin crash. Fix it once in the package manager config; nothing is symlinked at lint time.
 4. **Yarn Berry PnP** — there is no hoisting to configure; declare the tools at the workspace root as well, keeping versions in sync with the leaves (e.g. the `"vitest": "$vitest"` version-alias hack); `next` documents its own monorepo ESLint setup.
 
-| Option | Package | Evidence glob | When zero / many found |
-| --- | --- | --- | --- |
-| `tailwind` | `tailwindcss`¹ | `*.css` with `@import "tailwindcss"` | needs exactly **one**: zero → off (forced → error), several → **always** error; set `cssConfigPath` |
-| `next` | `next`¹ | `next.config.*`, `package.json` depending on `next`, `src/{app,pages}/` dir | zero → no `rootDir` (optional); many → all as array; or set `rootDir` (the package root, not `src`) |
-| `storybook` | `storybook`¹ | `.storybook/main.*` | presence is enough |
-| `jest` | `jest`¹ | `jest.config.*` | presence is enough |
-| `vitest` | `vitest`¹ | `{vitest,vite}.config.*` | presence is enough |
-| `nx` | (plugin bundled) | `nx.json` at the workspace root | — |
-| `turbo` | `turbo` | package probe only | — |
+<table>
+  <thead>
+    <tr><th>Option</th><th>Package</th><th>Evidence glob</th><th>When zero / many found</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>tailwind</code></td>
+      <td><code>tailwindcss</code>¹</td>
+      <td><code>*.css</code> with <code>@import "tailwindcss"</code></td>
+      <td>needs exactly <strong>one</strong>: zero → off (forced → error), several → <strong>always</strong> error; set <code>cssConfigPath</code></td>
+    </tr>
+    <tr>
+      <td><code>next</code></td>
+      <td><code>next</code>¹</td>
+      <td><code>next.config.*</code>, <code>package.json</code> depending on <code>next</code>, <code>src/{app,pages}/</code> dir</td>
+      <td>zero → no <code>rootDir</code> (optional); many → all as array; or set <code>rootDir</code> (the package root, not <code>src</code>)</td>
+    </tr>
+    <tr>
+      <td><code>storybook</code></td>
+      <td><code>storybook</code>¹</td>
+      <td><code>.storybook/main.*</code></td>
+      <td>presence is enough</td>
+    </tr>
+    <tr>
+      <td><code>jest</code></td>
+      <td><code>jest</code>¹</td>
+      <td><code>jest.config.*</code></td>
+      <td>presence is enough</td>
+    </tr>
+    <tr>
+      <td><code>vitest</code></td>
+      <td><code>vitest</code>¹</td>
+      <td><code>{vitest,vite}.config.*</code></td>
+      <td>presence is enough</td>
+    </tr>
+    <tr>
+      <td><code>nx</code></td>
+      <td>(plugin bundled)</td>
+      <td><code>nx.json</code> at the workspace root</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>turbo</code></td>
+      <td><code>turbo</code></td>
+      <td>package probe only</td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
 
 ¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires.
+
+`vitePlusConfig` runs the same gates, with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`) and `nx` (needs `eslint`) demand a resolvable package; `vitest` is ON unless set to `false` (Vite+ bundles it); `next` needs no package (Oxlint's `nextjs` plugin is native).
 
 The machinery is controlled by the `detection` option (same toggle notation as the tools):
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { isAbsolute, join } from 'node:path';
-import { test } from 'vitest';
+import { test } from 'vite-plus/test';
 
 import { inTempDir, TAILWIND_ENTRY, tailwindBlockOf } from '../testUtils.js';
 import { findTailwindEntry, tailwindConfig } from './tailwind.js';

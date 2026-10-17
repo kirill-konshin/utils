@@ -13,7 +13,7 @@ export const isCLike = (file: string) => /\.(?:[cm]?[jt]sx?|go)$/i.test(file);
 
 export const isDoc = (file: string) => /\.mdx?$/i.test(file);
 
-const REGEX_AFTER = new Set([...'(,=:[!&|?{};+-*%<>~^', '']);
+const REGEX_AFTER = new Set([...'(,=:[!&|?{};+-*%<>~^'.split(''), '']);
 const REGEX_KEYWORD = /^(?:return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/;
 
 /**

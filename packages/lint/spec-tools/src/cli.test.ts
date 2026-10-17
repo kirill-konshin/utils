@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 /** The published bundle — the package's `test` script builds it first. */
 const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../skills/spec-tools/scripts/cli.js');
