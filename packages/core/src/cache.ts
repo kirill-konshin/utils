@@ -216,7 +216,7 @@ export abstract class TransformerMap<Key, Val = Key> extends Map<Key, Val> {
 
     clear(): void {
         console.log('CLEAR cache', this.name);
-        this.forEach(this.dispose);
+        this.forEach((value, key) => this.dispose(value, key));
         super.clear();
     }
 
