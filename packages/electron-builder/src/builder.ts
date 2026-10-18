@@ -59,7 +59,7 @@ function getTarget() {
 export function builerConfig(options: {
     config: Configuration;
     s3?: Pick<S3Options, 'bucket'> & Partial<S3Options>; //TODO Omit?
-    githubReleases: Pick<GithubOptions, 'owner' | 'repo'> & Partial<GithubOptions>;
+    githubReleases?: Pick<GithubOptions, 'owner' | 'repo'> & Partial<GithubOptions>;
 }): Configuration {
     if (options.s3 && (!AWS_URL || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY)) {
         throw new Error('Missing AWS configuration');
@@ -76,7 +76,8 @@ export function builerConfig(options: {
             '!electron-builder.yml',
             '!package.json',
             'assets',
-            ...(options.config.files as never),
+            // `files` may be omitted, one string, one FileSet or an array of both
+            ...[options.config.files ?? []].flat(),
         ],
         directories: {
             buildResources: 'assets',

@@ -23,12 +23,12 @@
   "devDependencies": {
     "@kirill.konshin/utils-private": "*",
     "builder-util-runtime": "^9.7.0",
-    "electron": "^43.4.0",
+    "electron": "^44.9.0",
     "electron-builder": "^26.15.7"
   },
   "peerDependencies": {
     "builder-util-runtime": "^9",
-    "electron": "^43",
+    "electron": "^44",
     "electron-builder": "^26"
   },
   "publishConfig": {
