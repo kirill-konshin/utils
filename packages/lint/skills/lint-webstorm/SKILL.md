@@ -164,6 +164,8 @@ AugmentWebviewStateStore.xml
 
 # Configure `.idea/codeStyles/codeStyleConfig.xml`
 
+`DiS` is the owner's personal IDE scheme; other developers may not have it. With Vite+ Oxfmt drives the IDE code style (`preferOxfmtCodeStyleSettings` in `OxfmtSettings.xml`) whatever this file selects, so the project never depends on it:
+
 ```xml
 <component name="ProjectCodeStyleConfiguration">
   <state>

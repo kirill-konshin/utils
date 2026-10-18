@@ -164,6 +164,8 @@ Not carried over: `@nx/dependency-checks` (Oxlint does not lint JSON), `@typescr
         "postinstall": "lint-prepare init && vp config", // this order: vp config fills the Vite+ section lint-prepare writes; `prepare` for published roots, see npm-yarn rule
         "lint": "vp check --fix",
         "lint:staged": "vp staged",
+        "build": "vp run -r build", // every workspace package, in dependency order
+        "start": "vp run -r --parallel start",
     },
 }
 ```

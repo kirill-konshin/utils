@@ -24,7 +24,7 @@ Write the config by hand. `vp migrate` is only an optional first pass: it copies
 
 1. **Install** — add `vite-plus`, `@kirill.konshin/lint` (+ `eslint` only for Nx module-boundary rules); pin `vite`/`vitest` at the root (README "Yarn constraints").
 2. **Config** — root `vite.config.ts`: `defineConfig(vitePlusConfig({ ...project blocks }, { ...toggles }))`; move project rule overrides into `lint.rules` / `lint.overrides`, ignores into `ignorePatterns`. Keep `.editorconfig`.
-3. **Hooks** — `lint-prepare init && vp config` in `prepare`/`postinstall` — in this order: `vp config` fills the Vite+ section `lint-prepare` writes into `AGENTS.md` (same choice as below), `.vite-hooks/pre-commit` with `vp staged`; scripts `lint: vp check --fix`, `lint:staged: vp staged`.
+3. **Hooks** — `lint-prepare init && vp config` in `prepare`/`postinstall` — in this order: `vp config` fills the Vite+ section `lint-prepare` writes into `AGENTS.md` (same choice as below), `.vite-hooks/pre-commit` with `vp staged`; scripts `lint: vp check --fix`, `lint:staged: vp staged`; workspace-wide scripts move from `yarn workspaces foreach` to `vp run -r` (npm-yarn rule).
 4. **Tests/builds** — tests import from `vite-plus/test`; libraries `vp pack`, apps `vp build`.
 5. **CI** — `vp check` (no `--fix`), see `lint-github` / `lint-gitlab`.
 6. **IDEA** — apply `lint-webstorm` if the repo has a JetBrains `.idea`.

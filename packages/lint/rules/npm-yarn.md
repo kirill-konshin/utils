@@ -9,6 +9,7 @@ description: NPM & Yarn patterns
 # Vite+
 
 - IF `vite-plus` is installed, use `vp` commands: `vp check` (format + lint + type checks), `vp lint`, `vp fmt`, `vp test`, `vp pack` (libraries), `vp build` (apps), `vp staged`, `vp config` (git hooks)
+- Workspace-wide root scripts use `vp run`, not `yarn workspaces foreach`: `"build": "vp run -r build"` (dependency order), `"start": "vp run -r --parallel start"`, `"clean": "vp run -r clean && rm -rf node_modules"`; `-r` includes the root package, so the root script's other steps run too
 - IF `vite-plus` is not installed, use the old style: package scripts with ESLint, Prettier, lint-staged, Husky
 - Vite+ requires the `node-modules` linker (no Yarn PnP) and pins `vite` to its core and `vitest` to its bundled version at the root (see the `@kirill.konshin/lint` README)
 
@@ -27,7 +28,8 @@ description: NPM & Yarn patterns
 
 - Hoist everything: keep the package manager's DEFAULT hoisting — do not set `installConfig.hoistingLimits`/`nmHoistingLimits` or Yarn 1 `nohoist`; the historical React Native/Expo/Electron reasons are obsolete (Metro follows symlinks since RN 0.72, Expo SDK 54+ supports monorepos with any strategy, hoisting limits break Electron Forge and duplicate React instances)
 - Electron + pnpm needs MORE hoisting, not less: set `node-linker=hoisted` (or `shamefully-hoist=true`) in `.npmrc`, otherwise packaged apps miss dependencies (electron-builder/electron-vite guidance)
-- Binary packagers don't need hoisting limits either: bundle to a single file first (esbuild), then package — node_modules layout becomes irrelevant; use Node's SEA (stable since Node 22, one-step `--build-sea` since 25.5) or `@yao-pkg/pkg` (maintained fork of the deprecated `vercel/pkg`)
+- Electron + Next.js `output: 'standalone'` in a hoisted workspace: Next.js traces dependencies into `.next/standalone/node_modules`, beside the app folder `.next/standalone/<app>` — package that folder too (electron-builder `files`), never limit hoisting for it; see the `lint-electron` skill
+- Binary packagers don't need hoisting limits either: bundle to a single file first, then package — node_modules layout becomes irrelevant; build Node SEA executables with `vp pack` (`exe`, Node ≥ 25.7) when Vite+ is used, else `@yao-pkg/pkg` (maintained fork of the deprecated `vercel/pkg`); a Next.js standalone server cannot be bundled into one file: ship its files as SEA assets and extract them on the first start
 - Shared root configs (e.g. `@kirill.konshin/lint`) must be able to resolve leaf tools (`next`, `tailwindcss`, `storybook`, `jest`) from the workspace root:
     - npm / Yarn: default hoisting already exposes them
     - pnpm: add to `.npmrc`: `public-hoist-pattern[]=next`, `public-hoist-pattern[]=tailwindcss`, `public-hoist-pattern[]=storybook`, `public-hoist-pattern[]=jest` (`*eslint*`/`*prettier*` are hoisted by default)
