@@ -6,6 +6,7 @@ import { type PasswordAuth } from '@kirill.konshin/auth';
 import type { STATE_PARAM as StateParam } from '@kirill.konshin/auth/client';
 import { formLabelClasses } from '@mui/material/FormLabel';
 import { SignInPage } from '@toolpad/core/SignInPage';
+import { unstable_rethrow } from 'next/navigation';
 
 type SignInPageProps = ComponentProps<typeof SignInPage>;
 
@@ -32,10 +33,21 @@ const DEFAULT_PROVIDERS: SignInPageProps['providers'] = [{ id: 'credentials', na
 
 const NOT_CONFIGURED_SUBTITLE = 'Set ADMIN_PASSWORD and a SESSION_SECRET of at least 32 characters, then restart.';
 
+/** Whether Next.js handles `error` itself, like the redirect it rejects a redirecting Server Action call with. */
+const isNextNavigation = (error: unknown): boolean => {
+    try {
+        unstable_rethrow(error);
+        return false;
+    } catch {
+        return true;
+    }
+};
+
 /**
  * Toolpad `SignInPage` preconfigured for the password-only login of `@kirill.konshin/auth`: single
  * credentials provider, no email/rememberMe fields, errors surfaced through the form. On success
- * `loginAction` redirects (handled by Next.js), on failure its message is shown.
+ * `loginAction` redirects (handled by Next.js) and the form stays busy until the next page replaces it,
+ * on failure its message is shown.
  */
 export const AdminSignInPage: FC<AdminSignInPageProps> = memo(function AdminSignInPage({
     loginAction,
@@ -54,8 +66,15 @@ export const AdminSignInPage: FC<AdminSignInPageProps> = memo(function AdminSign
             // thread the return URL through the form only — never store it in the session,
             // multiple tabs logging in concurrently would clash
             if (state) formData.set(STATE_PARAM, state);
-            const error = await loginAction(null, formData);
-            return error ? { error } : {};
+            try {
+                const error = await loginAction(null, formData);
+                return error ? { error } : {};
+            } catch (error) {
+                // Next.js rejects the call with its redirect error while it navigates; Toolpad's submit
+                // handler has no catch, so stay pending instead of leaving an unhandled rejection
+                if (isNextNavigation(error)) return new Promise<never>(() => {});
+                throw error;
+            }
         },
         [loginAction, state],
     );
