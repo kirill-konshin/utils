@@ -1,3 +1,4 @@
+import type * as NextServer from 'next/server';
 import { beforeEach, describe, expect, test, vi } from 'vite-plus/test';
 
 import { createAuth, createPasswordAuth, MIN_SECRET_LENGTH, timingSafeEqualStrings } from './auth';
@@ -21,6 +22,12 @@ vi.mock('next/headers', () => ({
     headers: async () => ({
         get: (name: string) => headerJar.get(name) ?? null,
     }),
+}));
+
+// Outside a Next.js request `connection()` throws for a missing request store; here every call is "the request".
+vi.mock('next/server', async (importOriginal) => ({
+    ...(await importOriginal<typeof NextServer>()),
+    connection: async () => undefined,
 }));
 
 vi.mock('next/navigation', () => ({

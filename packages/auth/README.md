@@ -19,6 +19,7 @@ yarn add @kirill.konshin/auth iron-session server-only
 - Cookie secret `SESSION_SECRET` (≥32 chars) and login password `ADMIN_PASSWORD` are SEPARATE env vars, never reuse one for the other
 - NEVER compare passwords with `===`, use `verifyPassword` / `timingSafeEqualStrings` (timing-safe)
 - Guard pages/layouts with `redirectNonAuthenticated()` (redirects to login), Server Actions and Route Handlers with `throwNonAuthenticated()` or `authenticatedRouteHandler()` (401), the whole `/api` surface with `proxyGuard()` in `proxy.ts`, login page with `redirectIfAuthenticated()`
+- Call page/layout guards inside a `<Suspense>` boundary of that page or layout: the session check is request-time (`connection()`), so under `cacheComponents` it blocks prerendering and instant navigation outside one
 - Login page is ONE Server Component file with `<form action={loginAction}>` — errors return via the `?error=` search param; a Client Component (`useActionState` + `loginFormAction`) ONLY for pending/inline-error UI
 - Reuse `auth.urls.*` (resolved, defaults applied) instead of repeating route literals, e.g. `redirect(auth.urls.afterLogin)`
 - Declare API visibility as `urls.public` / `urls.protected` globs and keep them exhaustive — `proxyGuard()` throws on overlap and warns (treating as public) on unknown paths; `allow` is only for request-level tweaks
@@ -97,9 +98,19 @@ App-specific logic (e.g. OAuth token refresh) composes on top: `auth.setSession(
 ## Protected layout — `app/(auth)/layout.tsx` or `app/app/layout.tsx`
 
 ```tsx
+import { type ReactNode, Suspense } from 'react';
+
 import { auth } from '@/auth';
 
-export default async function Layout({ children }: LayoutProps<'/app'>) {
+export default function Layout({ children }: LayoutProps<'/app'>) {
+    return (
+        <Suspense>
+            <Protected>{children}</Protected>
+        </Suspense>
+    );
+}
+
+async function Protected({ children }: { children: ReactNode }) {
     await auth.redirectNonAuthenticated(); // redirects to urls.login
     return <>{children}</>;
 }

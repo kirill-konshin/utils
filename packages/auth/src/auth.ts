@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { getIronSession, type IronSession, type SessionOptions } from 'iron-session';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { type NextRequest, NextResponse } from 'next/server';
+import { connection, type NextRequest, NextResponse } from 'next/server';
 import picomatch from 'picomatch';
 
 import { AUTHENTICATED, ERROR_PARAM, PATHNAME_HEADER, STATE_PARAM } from './client';
@@ -253,7 +253,12 @@ export function createAuth<T extends object = PasswordSession, R extends string 
         }
     };
 
-    const getSession = async (): Promise<IronSession<T>> => getIronSession<T>(await cookies(), getSessionOptions());
+    // Unsealing checks the TTL with `Date.now()`, which Next.js rejects while prerendering (Partial Prefetching
+    // prerenders link prefetches with cookies); `connection()` holds the session read until request time.
+    const getSession = async (): Promise<IronSession<T>> => {
+        await connection();
+        return getIronSession<T>(await cookies(), getSessionOptions());
+    };
 
     const isAuthenticated = async (): Promise<boolean> => isValid(await getSession());
 
