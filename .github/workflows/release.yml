@@ -18,15 +18,32 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 permissions:
   contents: read
 
-# Checks run as parallel jobs; release needs all of them. Nx outputs come from the Nx Cloud remote cache
-# (nxCloudId in nx.json); main writes to it with a read-write CI access token.
+# Checks run as parallel jobs after `install`, which warms the Yarn cache; they only restore it. Release needs all of
+# them. Nx outputs come from the Nx Cloud remote cache (nxCloudId in nx.json); main writes to it with a read-write CI
+# access token.
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 jobs:
+  install:
+    name: Install
+    runs-on: ubuntu-latest
+
+    if: github.repository == 'kirill-konshin/utils'
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          yarn-cache: warm
+
   commits:
     name: Commit Messages
     runs-on: ubuntu-latest
+    needs: install
 
     if: github.repository == 'kirill-konshin/utils'
 
@@ -38,6 +55,8 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          yarn-cache: restore
 
       # Skipped on `forced` pushes (e.g. a rebase): `before` may no longer be an ancestor of
       # `sha`, making the range invalid.
@@ -60,6 +79,8 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          yarn-cache: restore
 
       # type checks resolve workspace packages through their built declarations (dist/*.d.ts); Nx Cloud makes these
       # builds cache hits
@@ -72,6 +93,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: install
 
     if: github.repository == 'kirill-konshin/utils'
 
@@ -81,6 +103,8 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          yarn-cache: restore
 
       - name: Test
         run: yarn test
@@ -91,6 +115,7 @@ jobs:
   build:
     name: Build & Preview
     runs-on: ubuntu-latest
+    needs: install
 
     if: github.repository == 'kirill-konshin/utils'
 
@@ -106,6 +131,8 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          yarn-cache: restore
 
       - name: Build packages
         run: yarn build:packages
@@ -159,6 +186,7 @@ jobs:
         uses: ./.github/actions/setup
         with:
           registry-url: 'https://registry.npmjs.org' # publish job needs .npmrc auth config
+          yarn-cache: restore
 
       - name: Configure git user
         run: |

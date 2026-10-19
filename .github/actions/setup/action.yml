@@ -1,15 +1,29 @@
 name: Setup
-description: Node.js + Corepack + Yarn install. The repo must already be checked out (a local action cannot run before checkout). Nx outputs come from the Nx Cloud remote cache (nxCloudId in nx.json).
+description: Node.js + Corepack + Yarn cache + Yarn install. The repo must already be checked out (a local action cannot run before checkout). Nx outputs come from the Nx Cloud remote cache (nxCloudId in nx.json). Install and cache rules - npm-yarn.md "Install on CI".
 
 inputs:
   registry-url:
     description: npm registry URL — set only on jobs that publish (configures .npmrc auth)
     required: false
     default: ''
+  yarn-cache:
+    description: 'save: restore, install, save on a miss. warm: the install job, fills and saves the cache, does not install. restore: a job after the install job, restores only.'
+    required: false
+    default: save
 
 runs:
   using: composite
   steps:
+    - name: Check yarn-cache
+      if: inputs.yarn-cache != 'save' && inputs.yarn-cache != 'warm' && inputs.yarn-cache != 'restore'
+      shell: bash
+      run: echo "::error::yarn-cache must be save, warm or restore, got '${{ inputs.yarn-cache }}'" && exit 1
+
+    # All packages go to .yarn/cache, the folder that CI caches
+    - name: Use local Yarn cache
+      run: echo "YARN_ENABLE_GLOBAL_CACHE=false" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Enable Corepack
       run: corepack enable
       shell: bash
@@ -19,12 +33,44 @@ runs:
       with:
         node-version: 24
         registry-url: ${{ inputs.registry-url }}
-        cache: yarn
-        cache-dependency-path: yarn.lock
+
+    - name: Look up Yarn cache
+      id: lookup
+      if: inputs.yarn-cache == 'warm'
+      uses: actions/cache/restore@v6
+      with:
+        path: .yarn/cache
+        key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+        lookup-only: true
+
+    # An older cache is safe: install fetches only the missing packages
+    - name: Restore Yarn cache
+      id: restore
+      if: steps.lookup.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: .yarn/cache
+        key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
 
     - name: Install dependencies
+      if: inputs.yarn-cache != 'warm'
       run: yarn install --immutable
       shell: bash
+
+    # The install job only fills the Yarn cache
+    - name: Fetch dependencies
+      if: inputs.yarn-cache == 'warm' && steps.lookup.outputs.cache-hit != 'true'
+      run: yarn install --immutable --mode=skip-build
+      shell: bash
+
+    - name: Save Yarn cache
+      if: inputs.yarn-cache != 'restore' && steps.lookup.outputs.cache-hit != 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: .yarn/cache
+        key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
 
 #      - name: Cache Next.js
 #        uses: actions/cache@v6
