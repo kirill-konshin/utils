@@ -13,7 +13,7 @@ Only what changes between versions; the target setup is the package README (`nod
 
 # 0.6 -> 0.7
 
-0.7 recommends Vite+. Keep the ESLint / Prettier / lint-staged exports only if the user declines Vite+ or the project uses Yarn PnP.
+0.7 recommends Vite+. Keep the ESLint / Prettier / lint-staged exports only if the user declines Vite+. Do not use Yarn PnP (npm-yarn.md). IF the project uses PnP, ask the user to move it to `nodeLinker: node-modules` first.
 
 - **Prerequisites**: Node `^22.18 || ^24.11 || >=26`, Vite 8+, Vitest 4.1+, `node-modules` linker
 - **Set up** Vite+ by hand per the README "Vite+" section — not `vp migrate`: it copies every expanded ESLint rule, writes absolute paths and broken regexes, and rewrites dependencies; if it was run, replace its `lint` / `fmt` blocks with `vitePlusConfig`

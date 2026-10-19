@@ -16,7 +16,9 @@ Full config templates: `node_modules/@kirill.konshin/lint/README.md`
 
 Follow `node_modules/@kirill.konshin/lint/README.md`, reconciling (never blindly overwriting project-specific overrides). When **upgrading** `@kirill.konshin/lint` from an older version, first apply the `lint-migrate` skill.
 
-Vite+ is the default. Use the ESLint + Prettier flow only when the user declines Vite+ or the project cannot run it (Yarn PnP).
+Vite+ is the default. Use the ESLint + Prettier flow only when the user declines Vite+.
+
+Do not use Yarn PnP (npm-yarn.md). IF the project uses PnP, ask the user to move it to `nodeLinker: node-modules` first.
 
 ### Vite+
 

@@ -12,6 +12,7 @@ description: NPM & Yarn patterns
 - Workspace-wide root scripts use `vp run`, not `yarn workspaces foreach`: `"build": "vp run -r build"` (dependency order), `"start": "vp run -r --parallel start"`, `"clean": "vp run -r clean && rm -rf node_modules"`; `-r` includes the root package, so the root script's other steps run too
 - IF `vite-plus` is not installed, use the old style: package scripts with ESLint, Prettier, lint-staged, Husky
 - Vite+ requires the `node-modules` linker (no Yarn PnP) and pins `vite` to its core and `vitest` to its bundled version at the root (see the `@kirill.konshin/lint` README)
+- NEVER use Yarn PnP (`nodeLinker: pnp`): Vite+ and most tools need `node_modules`. Move a project on PnP to `nodeLinker: node-modules`.
 
 # Lifecycle Scripts: `prepare` vs `postinstall`
 
@@ -100,8 +101,6 @@ Make sure `yarnPath` is not specified, rely on `packageManager` in `package.json
 approvedGitRepositories:
     - '**'
 
-compressionLevel: mixed
-
 # print install-time script output (postinstall / prepare, dependency builds) live instead of buffering it into a log
 enableInlineBuilds: true
 
@@ -115,6 +114,27 @@ npmMinimalAgeGate: 0
 npmPreapprovedPackages:
     - '@kirill.konshin/*'
 ```
+
+# Install on CI
+
+The single source for CI install rules. Platform steps: github.md, gitlab.md.
+
+- On CI, set `YARN_ENABLE_GLOBAL_CACHE=false`. Yarn then keeps all packages in `.yarn/cache`, and CI caches this folder.
+- Cache only `.yarn/cache`. NEVER cache `node_modules`: it has too many files to pack and unpack quickly.
+- IF parallel jobs follow the install, add an `install` job. This job fills the Yarn cache and saves it. The other jobs only read it.
+- IF the pipeline has one job, or its jobs run one after another, do not add an `install` job.
+- Exception: a shared cache volume. IF all runners mount the same volume (for example a Kubernetes PVC):
+    - Set `YARN_ENABLE_GLOBAL_CACHE=true` and put the Yarn global folder on the volume (`YARN_GLOBAL_FOLDER`). Do not use the CI cache for packages.
+    - Hardlinks do not cross filesystems. Yarn hardlinks package files from `<globalFolder>/index`. The `node-modules` linker then copies instead and downgrades `nmMode: hardlinks-global` to `hardlinks-local`. The `pnpm` linker has no fallback: it fails with "cross-device link".
+    - With Yarn's `nodeLinker: pnpm`, put `pnpmStoreFolder` on the same volume as the global folder, one folder per branch (`/cache/yarn/store/$CI_COMMIT_REF_SLUG`). The link step then takes seconds.
+    - Each Yarn `pnpm` install deletes all store entries that it does not use. The per-branch folder keeps installs on other branches away from your store.
+    - With pnpm, set `store-dir` on the volume.
+    - Clean the volume with a scheduled job: the global cache only grows, and the stores of deleted branches stay.
+- IF `yarn install` is still the CI bottleneck, measure it and evaluate alternatives. The principles of [Speed up NPM/Yarn install in Gitlab](https://www.konshin.org/publications/speed-up-npm-yarn-install-in-gitlab) ([Medium](https://medium.com/disdj/speed-up-npm-yarn-install-in-gitlab-1434437f9857)) still apply. Its tools are outdated.
+    - A faster linker: Yarn's `nodeLinker: pnpm` often links faster than `node-modules`, and pnpm is faster still. Both layouts are strict and not hoisted (see Hoisting). Undeclared dependencies fail, and Electron needs a hoisted layout. `@kirill.konshin/lint` is not verified with them.
+    - Jobs that need only some workspaces: `yarn workspaces focus <workspace>`
+    - A CI image with the dependencies installed
+- IF in doubt, keep `nodeLinker: node-modules`.
 
 # Yalc (Local Package Linking)
 

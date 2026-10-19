@@ -1,4 +1,5 @@
 - Files in `rules` dir must adhere to rules as defined for `.agents/rules` in `rules/agent.md`, since after installation this is how they will be consumed
+- Use ASD STE-100 language in `rules` and `skills` directories
 
 # spec-steward and spec-tools
 

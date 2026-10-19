@@ -26,17 +26,25 @@ workflow:
 ```yml
 image: node:lts
 
+# Install and cache rules: npm-yarn.md "Install on CI" and gitlab.md
 variables:
-    YARN_ENABLE_GLOBAL_CACHE: false # so that .yarn/cache is written
+    YARN_ENABLE_GLOBAL_CACHE: false # all packages go to .yarn/cache, the folder that CI caches
+    FF_USE_FASTZIP: 'true' # only for GitLab Runner < 19.4, where fastzip is not the default
+    CACHE_COMPRESSION_LEVEL: fastest # packs and unpacks the cache faster; needs fastzip
+
+# An older cache is safe: install fetches only the missing packages
+.yarn-cache: &yarn-cache
+    key: yarn-$CI_COMMIT_REF_SLUG
+    fallback_keys:
+        # Found only when "Use separate caches for protected branches" is cleared (gitlab.md)
+        - yarn-$CI_DEFAULT_BRANCH
+    paths:
+        - .yarn/cache
 
 cache:
-    - key:
-          prefix: yarn
-          files:
-              - yarn.lock # dependencies cached based on lockfile
-      paths:
-          - .yarn/cache
-      policy: pull-push
+    # Pull only: the install job uploads it. Without an install job, use pull-push.
+    - <<: *yarn-cache
+      policy: pull
     # Job-specific keys prevent parallel jobs from replacing each other's local build cache.
     - key: build-$CI_JOB_NAME_SLUG-$CI_COMMIT_REF_SLUG
       fallback_keys:
@@ -84,8 +92,13 @@ after_script:
         [ -z "$db" ] || [ "$db" = "$to" ] || mv -f "$db" "$to"
         echo "Nx cache DB to save: $(ls $d/default-v*.db 2>/dev/null || echo none)"
 
+# Fills the Yarn cache before the parallel jobs start. It is the only job that uploads the Yarn cache.
+# before_script does the install.
 install:
     stage: install
+    cache:
+        - <<: *yarn-cache
+          policy: pull-push
     script:
         - echo Done
 
@@ -118,4 +131,44 @@ build:
     artifacts:
         paths:
             - web/build
+```
+
+# Shared Cache Volume
+
+Use this when all runners mount the same volume (npm-yarn.md "Install on CI"). The packages stay on the volume. No job uploads or downloads them.
+
+Runner config (Kubernetes executor, a ReadWriteMany PVC):
+
+```toml
+[[runners.kubernetes.volumes.pvc]]
+name = "cache-yarn"
+mount_path = "/cache/yarn"
+```
+
+Pipeline changes:
+
+- Remove the `.yarn-cache` entries.
+- Set these variables. Keep the global folder and the store on this one volume: the `pnpm` linker cannot hardlink across filesystems.
+- With `nodeLinker: node-modules`, remove the `install` job. With `nodeLinker: pnpm`, keep it without its `cache:` entry: it fills the branch store before the parallel jobs start.
+
+```yml
+variables:
+    YARN_ENABLE_GLOBAL_CACHE: 'true' # explicit: a .yarnrc.yml can turn it off
+    YARN_GLOBAL_FOLDER: /cache/yarn # global cache in /cache/yarn/cache, hardlink index in /cache/yarn/index
+    YARN_PNPM_STORE_FOLDER: /cache/yarn/store/$CI_COMMIT_REF_SLUG # only with nodeLinker: pnpm; one store per branch
+```
+
+Clean the volume on a schedule (Build > Pipeline schedules, variable `CLEAR_CACHE: 'true'`). Run it at a quiet time: a job that installs during the cleanup can fail.
+
+```yml
+clear-cache:
+    stage: .post
+    rules:
+        - if: $CI_PIPELINE_SOURCE == "schedule" && $CLEAR_CACHE == "true"
+    cache: []
+    before_script: [] # no install
+    after_script: []
+    script:
+        - rm -rf /cache/yarn/store/* # stores of deleted branches; active branches refill from the index
+        - rm -rf /cache/yarn/cache/* /cache/yarn/index/* # the global cache and the index only grow
 ```
