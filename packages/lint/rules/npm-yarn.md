@@ -121,6 +121,7 @@ The single source for CI install rules. Platform steps: github.md, gitlab.md.
 
 - On CI, set `YARN_ENABLE_GLOBAL_CACHE=false`. Yarn then keeps all packages in `.yarn/cache`, and CI caches this folder.
 - Cache only `.yarn/cache`. NEVER cache `node_modules`: it has too many files to pack and unpack quickly.
+    - Exception: the Vite+ task cache `node_modules/.vite/task-cache` (experimental, https://viteplus.dev/guide/github-actions-cache). Measure first. Restore it after install. Use a rolling key `vite-task-<os>-<arch>-<run id>` with a `vite-task-<os>-<arch>-` restore prefix. Do not put sources or lockfiles in the key: Vite Task fingerprints them.
 - IF parallel jobs follow the install, add an `install` job. This job fills the Yarn cache and saves it. The other jobs only read it.
 - IF the pipeline has one job, or its jobs run one after another, do not add an `install` job.
 - Exception: a shared cache volume. IF all runners mount the same volume (for example a Kubernetes PVC):

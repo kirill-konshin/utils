@@ -1,6 +1,6 @@
 ---
 type: always_apply
-description: Set of rules for MONOREPO projects which use Turbo or NX
+description: Set of rules for MONOREPO projects which use Turbo, NX or Vite+
 paths:
     - '**/turbo.json'
     - '**/nx.json'
@@ -14,7 +14,25 @@ paths:
     - Tasks to launch inner tasks (main `build` that launches `build` in each sub-package)
 - Inner `package.json` MUST only define atomic orchestrator-agnostic tasks
 - Repo-wide defaults (parallelism, worker counts, cache and tool settings) live in env files (`.env`) or tool configs (`nx.json`, `turbo.json`, `vite.config.ts`), NEVER in `package.json` scripts — scripts stay as simple as possible; CI-specific behavior is set on the CI command (flags or env) where it is needed
-- Prefer NX for new projects
+
+# Orchestrator Choice
+
+- IF NX Release publishes the packages, use NX for cache and task management
+- ELSE use Vite+ (`vp run`) — the default
+- IF Turbo is already used, keep it and offer to migrate: to NX if NX Release publishes, else to Vite+
+
+# Vite+ Task Runner
+
+https://viteplus.dev/guide/cache
+
+- Only `vp run` caches; a direct `vp build` / `vp test` does not
+- Define cacheable tasks in `vite.config.ts` `run.tasks` (cached by default); `package.json` scripts are cached only with `--cache` or `run.cache.scripts: true`
+- `clean`, `wait`, `start` / `dev` tasks: `cache: false`
+- Tasks run in a clean environment: list env vars that change outputs in `cache.env`, pass-through ones in `cache.untrackedEnv`
+- Verify each task: the second `vp run <task>` MUST print `cache hit`; else fix `cache.input` / `cache.output`
+- Cache lives in `node_modules/.vite/task-cache`; clear with `vp cache clean`; CI reuse: see npm-yarn.md "Install on CI"
+- No `affected` command: PR runs are fast only when CI restores the task cache
+- Concurrency defaults to 4 tasks: `--concurrency-limit` or `VP_RUN_CONCURRENCY_LIMIT`; `--parallel` is unlimited
 
 # Test Ownership
 
@@ -66,3 +84,18 @@ The `start` task uses `"dependsOn": ["^wait"]` (upstream):
 5. If file existed before, `A` starts immediately, the only issue could be `A`'s double-build if `B`'s `start` will eventually modify the file, causing `A`'s watcher to rebuild
 
 For Turbo sibling runtime services (`web` <> `api`, not a package dependency) see the `with` + `wait` pattern in turbo.md.
+
+## Vite+
+
+Vite Task has no `persistent` / `continuous` tasks (verified on 1.3.0):
+
+- `vp run -r start` waits for upstream `start` to exit, so downstream `start` never starts, `^wait` or not (https://github.com/voidzero-dev/vite-task/issues/258)
+- `--parallel` ignores every `dependsOn`, `^wait` included
+- `dependsOn` a persistent task is not supported (https://github.com/voidzero-dev/vite-task/issues/416)
+
+Chain the upstream probe inside the downstream command instead:
+
+- Root: `"start": "vp run -r --parallel start"`
+- Downstream package `A`: `"start": "vp run --filter 'A^...' wait && <watcher>"` — write the package name, `.^...` does not resolve
+- Upstream package `B` defines `wait` as above
+- Stopping only the `vp` process orphans its tasks; stop the whole process group (https://github.com/voidzero-dev/vite-plus/issues/3090)
