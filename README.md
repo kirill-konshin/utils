@@ -47,4 +47,4 @@ The first `feat` commit publishes `0.1.0` as `latest`; normal releases use OIDC 
 
 ## AI Commands
 
-`/normalize-extensions` — checks all usual places where Prettier / ESLint extensions are defined and normalizes the lists for consistency `/lint-repo` — sets up/updates the Vite+ (or ESLint·Prettier·Husky) tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`) `/lint-migrate` — upgrades a project to a newer `@kirill.konshin/lint` (0.6 → 0.7: Vite+)
+`/normalize-extensions` — checks all usual places where formatter / linter extensions (Oxfmt / Oxlint, or Prettier / ESLint) are defined and normalizes the lists for consistency `/lint-repo` — sets up/updates the Vite+ (or ESLint·Prettier·Husky) tooling, and/or audits the repo against the agent rules (`@kirill.konshin/lint`) `/lint-migrate` — upgrades a project to a newer `@kirill.konshin/lint` (0.6 → 0.7: Vite+)
