@@ -126,6 +126,8 @@ export function lintConfig(options: VitePlusOptions = {}): OxlintConfig {
     const { enabled: typeAware = true } = asOptions(options.typeAware);
 
     const jsPlugins: JsPlugin[] = [{ name: 'local', specifier: pluginPath('@kirill.konshin/lint/oxlint-plugin') }];
+    // `@nx/dependency-checks` is not supported: it lints `package.json` through `jsonc-eslint-parser`, and Oxlint reads
+    // only JS/TS files and takes no custom parsers, so undeclared imports in a package go unreported
     if (nx.enabled) jsPlugins.push({ name: '@nx', specifier: pluginPath('@nx/eslint-plugin') });
 
     const overrides: OxlintOverride[] = [
