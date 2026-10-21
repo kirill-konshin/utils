@@ -18,18 +18,18 @@ Follow `node_modules/@kirill.konshin/lint/README.md`, reconciling (never blindly
 
 Vite+ is the default. Use the ESLint + Prettier flow only when the user declines Vite+.
 
-Do not use Yarn PnP (npm-yarn.md). IF the project uses PnP, ask the user to move it to `nodeLinker: node-modules` first.
+Do not use Yarn PnP ([rules/npm-yarn.md](../../rules/npm-yarn.md)). IF the project uses PnP, ask the user to move it to `nodeLinker: node-modules` first.
 
 ### Vite+
 
-Write the config by hand. `vp migrate` is only an optional first pass: it copies every expanded ESLint rule, absolute paths and broken regexes into `vite.config.ts`, so clean up after it as `lint-migrate` describes.
+Write the config by hand. `vp migrate` is only an optional first pass: it copies every expanded ESLint rule, absolute paths and broken regexes into `vite.config.ts`, so clean up after it as the `lint-migrate` skill describes.
 
 1. **Install** — add `vite-plus`, `@kirill.konshin/lint` (+ `eslint` only for Nx module-boundary rules); pin `vite`/`vitest` at the root (README "Yarn constraints").
 2. **Config** — root `vite.config.ts`: `defineConfig(vitePlusConfig({ ...project blocks }, { ...toggles }))`; move project rule overrides into `lint.rules` / `lint.overrides`, ignores into `ignorePatterns`. Keep `.editorconfig`.
-3. **Hooks** — `lint-prepare init && vp config` in `prepare`/`postinstall` — in this order: `vp config` fills the Vite+ section `lint-prepare` writes into `AGENTS.md` (same choice as below), `.vite-hooks/pre-commit` with `vp staged`; scripts `lint: vp check --fix`, `lint:staged: vp staged`; workspace-wide scripts move from `yarn workspaces foreach` to `vp run -r` (npm-yarn rule).
+3. **Hooks** — `lint-prepare init && vp config` in `prepare`/`postinstall` — in this order: `vp config` fills the Vite+ section `lint-prepare` writes into `AGENTS.md` (same choice as below), `.vite-hooks/pre-commit` with `vp staged`; scripts `lint: vp check --fix`, `lint:staged: vp staged`; workspace-wide scripts move from `yarn workspaces foreach` to `vp run -r` ([rules/npm-yarn.md](../../rules/npm-yarn.md)).
 4. **Tests/builds** — tests import from `vite-plus/test`; libraries `vp pack`, apps `vp build`.
-5. **CI** — `vp check` (no `--fix`), see `lint-github` / `lint-gitlab`.
-6. **IDEA** — apply `lint-webstorm` if the repo has a JetBrains `.idea`.
+5. **CI** — `vp check` (no `--fix`), see the `lint-github` skill or the `lint-gitlab` skill.
+6. **IDEA** — apply the `lint-webstorm` skill if the repo has a JetBrains `.idea`.
 7. **Install** — run the package manager; then `vp check` and the tests.
 
 ### ESLint + Prettier
@@ -38,7 +38,7 @@ Write the config by hand. `vp migrate` is only an optional first pass: it copies
 2. **Config** — create/reconcile `.editorconfig`, `eslint.config.mjs` and `.prettierrc.mjs` (pass `defineLintConfig` options as needed — e.g. `defaultIgnore: { importMetaUrl: import.meta.url }`, `next: { rootDir }` — and keep project rule overrides).
 3. **Lint-staged** — create/reconcile `.lintstagedrc.mjs`.
 4. **Husky** — `prepare/postinstall` (`prepare` by default, `postinstall` if Yarn 2+ is used AND root package.json is **private**) script; `.husky/pre-commit`, plus `eslint`/`prettier`/`lint`/`lint:staged` scripts. Drop a legacy `lint:all` if it duplicates `lint`.
-5. **IDEA** — apply `lint-webstorm` if the repo has a JetBrains `.idea`.
+5. **IDEA** — apply the `lint-webstorm` skill if the repo has a JetBrains `.idea`.
 6. **Install** — run the package manager (`yarn` / `npm install` / `pnpm install`) so the new deps and Husky hooks land. Under Yarn 2+ check if root `package.json` has `prepare` script, and if it does, run it.
 
 Check the README's "Issues" section before debugging a lint crash.

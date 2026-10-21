@@ -6,7 +6,7 @@ paths:
     - '**/e2e/**'
 ---
 
-- The apps under test are started outside Playwright, never by its `webServer`: the e2e target `dependsOn` the continuous `start` / `dev` / `serve` targets plus their `wait` probes (`wait-on`), or Docker Compose runs the stack and the suite as a service; see monorepo-turbo-nx.md
+- The apps under test are started outside Playwright, never by its `webServer`: the e2e target `dependsOn` the continuous `start` / `dev` / `serve` targets plus their `wait` probes (`wait-on`), or Docker Compose runs the stack and the suite as a service; see [monorepo-turbo-nx.md](monorepo-turbo-nx.md)
 - The suite reaches the apps through `baseURL` (and other URLs) from the environment, so the same specs run locally, in Compose and against a deployment
 - E2E targets against running apps are `cache: false`; reports and traces (`test-results`, `playwright-report`) are their outputs and CI artifacts
 - How Playwright splits the work:

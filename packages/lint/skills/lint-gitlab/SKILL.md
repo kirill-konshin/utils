@@ -1,6 +1,6 @@
 ---
 name: lint-gitlab
-description: Describes how to work with Gitlab Pipelines & example pipeline as a reference which essential jobs and concepts usual Gitlab project should have
+description: Reference GitLab CI pipeline - install / lint / test / build jobs, Yarn and Nx caches, Nx Cloud tokens, a shared cache volume. Use when writing, reviewing or debugging `.gitlab-ci.yml`.
 ---
 
 # With Nx Cloud (`nxCloudId` in `nx.json`)
@@ -126,8 +126,8 @@ build:
     stage: build
     script:
         - yarn build
-    only:
-        - master
+    rules:
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     artifacts:
         paths:
             - web/build
@@ -135,7 +135,7 @@ build:
 
 # Shared Cache Volume
 
-Use this when all runners mount the same volume (npm-yarn.md "Install on CI"). The packages stay on the volume. No job uploads or downloads them.
+Use this when all runners mount the same volume (the `lint-npm-yarn` skill, "Install on CI"). The packages stay on the volume. No job uploads or downloads them.
 
 Runner config (Kubernetes executor, a ReadWriteMany PVC):
 

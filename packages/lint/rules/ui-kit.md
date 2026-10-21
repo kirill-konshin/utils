@@ -1,6 +1,12 @@
 ---
 type: always_apply
 description: Rules for UI kits
+paths:
+    - '**/*.tsx'
+    - '**/*.css'
+    - '**/*.sass'
+    - '**/*.scss'
+    - '**/*.less'
 ---
 
 - Follow UI kit docs and primitives; preserve semantics and accessibility

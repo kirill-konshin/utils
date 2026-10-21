@@ -1,15 +1,15 @@
 ---
 name: lint-github
-description: Describes how to work with Github & example workflow as a reference which essential jobs and concepts usual Github Workflow should have
+description: Reference GitHub Actions setup - composite setup and Nx-cache actions, install / lint / test / build / release jobs, Yarn and Nx Cloud caching, OIDC npm publishing. Use when writing, reviewing or debugging a `.github` workflow or action.
 ---
 
-Reference CI: two local composite actions and a workflow. Install and cache rules: npm-yarn.md "Install on CI" and github.md.
+Reference CI: two local composite actions and a workflow. Install and cache rules: [rules/npm-yarn.md](../../rules/npm-yarn.md#install-on-ci) and [rules/github.md](../../rules/github.md).
 
 - The `install` job fills the Yarn cache (`setup` with `yarn-cache: warm`).
 - The checks run after it as parallel jobs. They only restore the cache (`yarn-cache: restore`).
 - The publish job needs all checks.
 - A workflow with one job, or with jobs that run one after another, has no `install` job. It uses the default `yarn-cache: save`.
-- Self-hosted runners with a shared cache volume: remove the `Use local Yarn cache` step and the Yarn cache steps from `setup` (npm-yarn.md "Install on CI").
+- Self-hosted runners with a shared cache volume: remove the `Use local Yarn cache` step and the Yarn cache steps from `setup` (the `lint-npm-yarn` skill, "Install on CI").
 
 # With Nx Cloud (`nxCloudId` in `nx.json`)
 
@@ -329,9 +329,8 @@ jobs:
 
         needs: [lint, test, build]
 
-        # If project publishes to NPM
-        # https://davistobias.com/articles/adding-changeset/#2.1.b-adding-changeset-to-github-workflows
-        if: github.repository == 'kirill-konshin/utils'
+        # If project publishes to NPM; forks skip the release
+        if: github.repository == '<owner>/<repo>'
         permissions:
             id-token: write # Required for OIDC trusted publishing
             contents: write

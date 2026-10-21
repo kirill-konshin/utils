@@ -16,8 +16,8 @@ R-001:
     confidence: 85
     rule:
         text: |-
-            The server SHALL promote accountId, rcAccountId, rcRequestId and rcUserId…
-        location: 'SHOP openspec/specs/system-overview/logging/spec.md:47'
+            The server SHALL promote Xxx…
+        location: 'APP openspec/specs/system-overview/logging/spec.md:47'
     wrong: |
         The rule names the exact log fields. A field change breaks the rule with no effect in production.
     proposal: |
@@ -37,10 +37,10 @@ R-002:
     rules:
         - text: |-
               WHEN the dev server starts THEN it seeds the demo account
-          location: 'SHOP openspec/specs/apps/runtime/spec.md:88'
+          location: 'APP openspec/specs/apps/runtime/spec.md:88'
         - text: |-
               The local database SHALL reset on each start
-          location: 'SHOP openspec/specs/apps/db/spec.md:12'
+          location: 'APP openspec/specs/apps/db/spec.md:12'
           note: 'the reset is also in the README'
     wrong: |
         Both rules apply only on a developer machine. A violation has no effect in production.

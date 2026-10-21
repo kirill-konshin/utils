@@ -1,6 +1,6 @@
 # The spec-steward contract
 
-What `spec-steward` checks and reports in every repository that runs it. It ships with `@kirill.konshin/lint`, so a repository is held to the version it pins. A repository's constitution states only its own choices — the `--binds` globs it passes, the jobs that run the gate, the audits it runs and where it publishes — and points here for the rest. How a specification is written is [model.md](model.md); this file is what the tool does with it. `steward.test.mjs` proves the cases below.
+What `spec-steward` checks and reports in every repository that runs it. It ships with `@kirill.konshin/lint`, so a repository is held to the version it pins. A repository's constitution states only its own choices — the `--binds` globs it passes, the jobs that run the gate, the audits it runs and where it publishes — and points here for the rest. How a specification is written is [model.md](model.md); this file is what the tool does with it. `spec-tools/src/steward/steward.test.ts` proves the cases below.
 
 Terms used throughout:
 

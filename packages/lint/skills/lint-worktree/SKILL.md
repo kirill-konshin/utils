@@ -1,6 +1,6 @@
 ---
 name: lint-worktree
-description: Describes how to work with GIT Worktrees
+description: Git worktrees in `.worktrees` and the JetBrains IDEA / WebStorm module-name clash they cause. Use when creating, attaching or removing a git worktree.
 ---
 
 - Prefer creating worktrees inside the main repo in `.worktrees` directory
@@ -25,4 +25,4 @@ description: Describes how to work with GIT Worktrees
     1. Rename the `.iml` back and run `git update-index --no-skip-worktree` on every file marked above.
     2. Restore them with `git checkout -- <files>`.
     3. Redo the rename afterwards.
-- A worktree created **inside** the main checkout (e.g. `.worktrees/<name>`, where agents put theirs) is indexed by the main project as part of itself, a second copy of every source and `node_modules`, and the main project's save actions start reformatting the worktree's files. Exclude its folder in the main checkout's `.idea/%projectName%.iml` (`<excludeFolder url="file://$MODULE_DIR$/.worktrees" />`) and list it in `.gitignore`, so the excluded-folders baseline of the `webstorm` rule holds. Attaching such a worktree can replace the main checkout's own entry in its `.idea/modules.xml`: keep both — the main `.idea/%projectName%.iml` and the worktree's renamed one — then reload the project. A nested worktree shows as its own module node inside the tree, not as a separate top-level project; for a top-level entry, create the worktree outside the main checkout.
+- A worktree created **inside** the main checkout (e.g. `.worktrees/<name>`, where agents put theirs) is indexed by the main project as part of itself, a second copy of every source and `node_modules`, and the main project's save actions start reformatting the worktree's files. Exclude its folder in the main checkout's `.idea/%projectName%.iml` (`<excludeFolder url="file://$MODULE_DIR$/.worktrees" />`) and list it in `.gitignore`, so the excluded-folders baseline of [rules/webstorm.md](../../rules/webstorm.md) holds. Attaching such a worktree can replace the main checkout's own entry in its `.idea/modules.xml`: keep both — the main `.idea/%projectName%.iml` and the worktree's renamed one — then reload the project. A nested worktree shows as its own module node inside the tree, not as a separate top-level project; for a top-level entry, create the worktree outside the main checkout.

@@ -8,7 +8,7 @@ paths:
 ---
 
 - Agentic review MUST verify this effective CI order: checkout -> enable Corepack -> setup Node -> restore Yarn cache -> restore build caches -> immutable install -> prepare -> verification (lint/test/build) -> publish; publishing MUST depend on successful verification.
-- Yarn cache: follow npm-yarn.md "Install on CI". Use the key `${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}` and the restore key `${{ runner.os }}-yarn-`.
+- Yarn cache: follow [npm-yarn.md](npm-yarn.md#install-on-ci). Use the key `${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}` and the restore key `${{ runner.os }}-yarn-`.
 - With an `install` job, only this job saves the Yarn cache. The other jobs `need` it and restore with `actions/cache/restore`. See the `lint-github` skill.
 - Key build caches per commit when jobs run one after another: key `${{ runner.os }}-<tool>-${{ github.sha }}`, restore key `${{ runner.os }}-<tool>-`. A later job gets an exact hit and does not save again.
 - Key build caches per job and commit when jobs run in parallel: key `${{ runner.os }}-<tool>-${{ github.job }}-${{ github.sha }}`, restore key `${{ runner.os }}-<tool>-${{ github.job }}-`. Only the first job that saves a key keeps its outputs. A downstream job restores the producing job's key and does not save.

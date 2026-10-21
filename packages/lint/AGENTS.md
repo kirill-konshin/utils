@@ -1,5 +1,7 @@
 - Files in `rules` dir must adhere to rules as defined for `.agents/rules` in `rules/agent.md`, since after installation this is how they will be consumed
 - Use ASD STE-100 language in `rules` and `skills` directories
+- In `rules` and `skills`, refer to a rule with a Markdown link to its file, relative to the referring file: `[auth.md](auth.md)` in `rules`, `[rules/auth.md](../../rules/auth.md)` in a skill; add an anchor for a section: `[npm-yarn.md](npm-yarn.md#install-on-ci)`; inside code blocks, write the plain file name
+- Refer to a skill as "the `<name>` skill", one skill per mention; never by path or link
 
 # spec-steward and spec-tools
 

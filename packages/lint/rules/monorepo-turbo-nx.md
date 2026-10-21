@@ -31,7 +31,7 @@ https://viteplus.dev/guide/cache
 - `clean`, `wait`, `start` / `dev` tasks: `cache: false`
 - Tasks run in a clean environment: list env vars that change outputs in `cache.env`, pass-through ones in `cache.untrackedEnv`
 - Verify each task: the second `vp run <task>` MUST print `cache hit`; else fix `cache.input` / `cache.output`
-- Cache lives in `node_modules/.vite/task-cache`; clear with `vp cache clean`; CI reuse: see npm-yarn.md "Install on CI"
+- Cache lives in `node_modules/.vite/task-cache`; clear with `vp cache clean`; CI reuse: see [npm-yarn.md](npm-yarn.md#install-on-ci)
 - No `affected` command: PR runs are fast only when CI restores the task cache
 - Concurrency defaults to 4 tasks: `--concurrency-limit` or `VP_RUN_CONCURRENCY_LIMIT`; `--parallel` is unlimited
 
@@ -41,7 +41,7 @@ https://viteplus.dev/guide/cache
 - The test tool at the root (Vitest `test.projects`, Jest `projects`) is the local / IDE full-speed run: one worker pool over every package, all cores, no cache
 - Inside an orchestrator task a test runner takes half of the cores, as the orchestrator runs several tasks at once (Nx: detect with `NX_TASK_TARGET_PROJECT`)
 - Type checking (`vp check`, `tsc`) resolves workspace packages through their built declarations: CI lint jobs run after the build job (`needs: build`) and build the packages first through the orchestrator (cache hits), and so does a fresh clone before `lint`
-- Suites that need running apps (e2e, integration): the orchestrator starts them — the test target `dependsOn` the continuous `start` / `dev` / `serve` plus a `wait` probe, `cache: false` — or Docker Compose does; the test tool never starts them (Playwright `webServer`), see playwright.md and testing.md
+- Suites that need running apps (e2e, integration): the orchestrator starts them — the test target `dependsOn` the continuous `start` / `dev` / `serve` plus a `wait` probe, `cache: false` — or Docker Compose does; the test tool never starts them (Playwright `webServer`), see [playwright.md](playwright.md) and [testing.md](testing.md)
 
 # Task Consistency
 
@@ -84,7 +84,7 @@ The `start` task uses `"dependsOn": ["^wait"]` (upstream):
 4. Once the file exists, `B`'s `wait-on` unblocks and exits, and `A`'s `start` can proceed
 5. If file existed before, `A` starts immediately, the only issue could be `A`'s double-build if `B`'s `start` will eventually modify the file, causing `A`'s watcher to rebuild
 
-For Turbo sibling runtime services (`web` <> `api`, not a package dependency) see the `with` + `wait` pattern in turbo.md.
+For Turbo sibling runtime services (`web` <> `api`, not a package dependency) see the `with` + `wait` pattern in [turbo.md](turbo.md).
 
 ## Vite+
 

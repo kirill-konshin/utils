@@ -13,12 +13,11 @@ paths:
     - `ReactElement<...>` if object-specific
 - If extending functionality of existing component use it's Props:
     - `type DerivedProps = CmpProps & {...}` if `Cmp` provides `CmpProps` (preferred)
-    - `type DerivedProps = ComponentProps<typeof Cmp> & {...}` if `Cmp` does provide `CmpProps`
-- ALWAYS prefer using memoized components
-- Memoize everything
+    - `type DerivedProps = ComponentProps<typeof Cmp> & {...}` if `Cmp` does not provide `CmpProps`
+- Memoize components and callbacks unless React Compiler is enabled in the project
     - Prefer `memo<Props>(...)`
     - Use `FC<Props> = memo(...)` if `--isolatedDeclarations` flag is on
-    - ALWAYS use `useCallback` if React Compiler is not enabled in project
+    - Wrap callbacks in `useCallback`
 - Prefer to set defaults while destructuring props: `function Cmp({ children = 'xxx' })` where applicable
 
 ```tsx
@@ -42,14 +41,14 @@ const containerDefaultProps = SOME_GLOBAL_SETTING ? { ... } : {};
 ```tsx
 'use client';
 
-import { createContext, useContext, useMemo, useState, ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, Dispatch, ReactNode, SetStateAction } from 'react';
 
 // Always type Context explicitly
 // Never export context itself
 const ExampleContext = createContext<{
-    setEnabled: (prev: boolean) => boolean;
-    enabled: false;
-}>(null);
+    enabled: boolean;
+    setEnabled: Dispatch<SetStateAction<boolean>>;
+} | null>(null);
 
 // Export provider
 export function ExampleContextProvider({ children }: { children: ReactNode }) {
@@ -59,7 +58,7 @@ export function ExampleContextProvider({ children }: { children: ReactNode }) {
     // memoize context value
     const value = useMemo(() => ({ enabled, setEnabled }), [enabled, setEnabled]);
 
-    return <ExampleContext.Provider value={control}>{children}</ExampleContext.Provider>;
+    return <ExampleContext.Provider value={value}>{children}</ExampleContext.Provider>;
 }
 
 // Export hook for consumers

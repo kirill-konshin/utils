@@ -1,6 +1,6 @@
 # The specification model
 
-Where a piece of guidance lives is decided by `rules/agent.md`, shipped by `@kirill.konshin/lint`; in a repository it is `.agents/rules/agent.md`. Read it there; this file covers only what is specific to the specifications themselves. What the gate checks mechanically — citations, binding, markers, size lines, the scenario ratchet — is [contract.md](contract.md).
+Where a piece of guidance lives is decided by [rules/agent.md](../../../rules/agent.md), shipped by `@kirill.konshin/lint`; in a repository it is `.agents/rules/agent.md`. Read it there; this file covers only what is specific to the specifications themselves. What the gate checks mechanically — citations, binding, markers, size lines, the scenario ratchet — is [contract.md](contract.md).
 
 ## A rule in `openspec/specs` is a contract
 
@@ -10,7 +10,7 @@ Normative force is carried by the RFC 2119 keywords — MUST, MUST NOT, REQUIRED
 
 A specification describes only real, existing behaviour. What is knowingly absent or incomplete is recorded as a [Known gap](#advisory-known-gap-or-neither), never written as though implemented and never left as unmarked silence.
 
-Apply the two litmus questions from `rules/agent.md`; then the decision test:
+Apply the two litmus questions from [rules/agent.md](../../../rules/agent.md); then the decision test:
 
 > **Name the observable failure this rule prevents, and the cheapest evidence that would catch it.**
 

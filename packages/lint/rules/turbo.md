@@ -64,7 +64,7 @@ When an app needs a sibling service running in dev (`web` needs `api`), combine:
 
 - `"with": ["api#start"]` — launches the service alongside, so `turbo run start --filter=web` brings up both (convenience instead of whole-repo `start`)
 - `"dependsOn": ["api#wait"]` — blocks `web#start` until the readiness probe exits
-- Name the probe task `wait` (NOT `dev:ready` as in the Turbo guide) — same task the `^wait` pattern uses (see monorepo-turbo-nx.md)
+- Name the probe task `wait` (NOT `dev:ready` as in the Turbo guide) — same task the `^wait` pattern uses (see [monorepo-turbo-nx.md](monorepo-turbo-nx.md))
 - NEVER put persistent tasks in `dependsOn` — they never exit, so dependents never unblock; depend on the finite `wait` probe
 - `wait` lives in the service package so it self-identifies readiness: `"wait": "wait-on http://localhost:3001/health"` (URL, TCP port, file, socket)
 - Task overrides replace, they don't merge — keep `^wait` when overriding `start`

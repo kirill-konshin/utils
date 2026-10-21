@@ -12,8 +12,8 @@ paths:
 ---
 
 - If project use `vite` or `vite-plus` use `vitest` (`vp test`, imports from `vite-plus/test`), otherwise `jest`
-- With Nx / Turbo, CI runs tests through the orchestrator and its cache (full and affected); the test tool at the root over all projects (`vp test` with `test.projects`, `maxWorkers: '100%'`) is the local full-speed run (see monorepo-turbo-nx.md)
-- If project needs browser-based testing use `playwright`; it splits work over worker processes, test files and `--shard`s (see playwright.md)
+- With Nx / Turbo, CI runs tests through the orchestrator and its cache (full and affected); the test tool at the root over all projects (`vp test` with `test.projects`, `maxWorkers: '100%'`) is the local full-speed run (see [monorepo-turbo-nx.md](monorepo-turbo-nx.md))
+- If project needs browser-based testing use `playwright`; it splits work over worker processes, test files and `--shard`s (see [playwright.md](playwright.md))
 - Suites that need a real server (integration, e2e — Vitest / Jest too): a separate test config and target (e.g. `test:integration` with `vitest.integration.config.ts` over `*.spec.ts`), started by the orchestrator — `dependsOn` the continuous `dev` / `start` plus a `wait` probe, `cache: false` — with a JUnit report; a CI job against an external environment may be allowed to fail, and is not created where its credentials are missing
 - Naming
     - `*.test.ts` for unit tests

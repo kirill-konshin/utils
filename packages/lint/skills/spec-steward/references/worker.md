@@ -2,7 +2,7 @@
 
 This file tells how one worker of the corpus-quality audit runs. `spec-tools workers --audit spec-steward` starts one worker per unit of the scope. Its brief names the unit, the files to read and the findings file to write. The procedure around the workers is [audit.md](audit.md).
 
-What to judge is in the judging rules: [`common.md`](../../spec-tools/references/rules/common.md), then [`spec-steward.md`](../../spec-tools/references/rules/spec-steward.md). How a specification is written is [model.md](model.md). Where guidance belongs is the placement guide, `rules/agent.md` of this package. Read them before you judge.
+What to judge is in the judging rules: [`common.md`](../../spec-tools/references/rules/common.md), then [`spec-steward.md`](../../spec-tools/references/rules/spec-steward.md). How a specification is written is [model.md](model.md). Where guidance belongs is the placement guide, [rules/agent.md](../../../rules/agent.md) of this package. Read them before you judge.
 
 The audit is read-only. You write your findings file and nothing else. Your tools are Read, Glob, Grep, Write and the read-only git commands. Other commands are denied and only cost a turn.
 

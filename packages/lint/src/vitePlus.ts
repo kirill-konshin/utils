@@ -382,7 +382,7 @@ export function fmtConfig(): OxfmtConfig {
             customGroups: [
                 {
                     // side effects that must run first: polyfills, and the `server-only` / `client-only` guards a module
-                    // must start with (nextjs.md)
+                    // must start with (typescript.md)
                     groupName: 'polyfill',
                     selector: 'side_effect',
                     elementNamePattern: [

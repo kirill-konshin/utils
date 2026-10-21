@@ -6,7 +6,7 @@ The owner has answered a review file ([review-format.md](review-format.md)). Pro
 2. **Accepted (`✅`, `✅ <comment>`).** Apply the proposal, changed as the comment tells.
     - Before you change a requirement, read the requirements that name it and that it names, and the code and tests involved. A fix must not break a sibling.
     - A rule that several repositories share changes identically in each. `steward align` shows the drift.
-    - When a change moves guidance to a new place, put it where `rules/agent.md` tells, remove each copy, and reference it from its old place.
+    - When a change moves guidance to a new place, put it where [rules/agent.md](../../../rules/agent.md) tells, remove each copy, and reference it from its old place.
     - Add `applied: "R<round> — <what changed, with paths>"` to the item. A second application makes `applied` a list.
 3. **Rejected (`❌`, `❌ <comment>`).** Keep the rule as it is, or follow the owner's other instruction. Record what you did in `applied`.
 4. **Comment only.** Examine the item again, and change the proposal or the explanation in place. Move the owner's comment into `previousDecision: "R<n>: <comment>"` and set `decision` to `""`. A comment is never acceptance.

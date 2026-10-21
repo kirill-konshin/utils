@@ -1,6 +1,6 @@
 # Judging rules: common
 
-These rules tell what a finding is, how severe it is, and how sure you are of it. They apply to every audit that spec-tools runs: spec-verify, its judge, spec-steward and check-entity-hacks. The skill and the tool tell how a run works.
+These rules tell what a finding is, how severe it is, and how sure you are of it. They apply to every audit that spec-tools runs: spec-verify, its judge and spec-steward. The skill and the tool tell how a run works.
 
 ## Evidence
 

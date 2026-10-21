@@ -46,7 +46,7 @@ Scripts: `"start": "vp pack --watch"`, `"build:main": "vp pack"`.
 
 # Packaging a Next.js Standalone Server
 
-In a hoisted workspace (see npm-yarn rule) Next.js traces the server's dependencies into `.next/standalone/node_modules`, beside the app folder; package both, without Electron:
+In a hoisted workspace (see [rules/npm-yarn.md](../../rules/npm-yarn.md#hoisting)) Next.js traces the server's dependencies into `.next/standalone/node_modules`, beside the app folder; package both, without Electron:
 
 ```yaml
 files:
@@ -60,20 +60,21 @@ files:
 
 ## Gitlab
 
+Base the pipeline on the `lint-gitlab` skill (Corepack, install, cache). The Electron build job adds:
+
 ```yml
 variables:
     USE_HARD_LINKS: 'false' # https://github.com/electron-userland/electron-builder/issues/3179#issuecomment-408347702
 
 build:
-    image: macos-12-xcode-13 # not exact version, but the point is to use macos-compatible image
+    image: <current GitLab macOS image> # a macOS runner builds and signs mac targets
     tags:
-        - shared-macos-amd64
+        - saas-macos-medium-m1
     script:
-        - yarn --immutable
         - yarn build
         - rm -rf electron/dist/mac # some cleanup to make artifacts leaner
-    only:
-        - master
+    rules:
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     artifacts:
         paths:
             - electron/dist

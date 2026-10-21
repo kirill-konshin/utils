@@ -10,7 +10,7 @@ paths:
 - Always collect coverage from tests
 - Always publish important build stats as artifacts
 - Agentic review MUST verify this effective CI order: checkout and cache restore -> enable Corepack -> immutable install -> prepare -> verification (lint/test/build) -> publish; publishing MUST depend on successful verification.
-- Yarn cache: follow npm-yarn.md "Install on CI". Key it per branch, with the default branch as the fallback key.
+- Yarn cache: follow [npm-yarn.md](npm-yarn.md#install-on-ci). Key it per branch, with the default branch as the fallback key.
 - The fallback to the default-branch cache works only when "Use separate caches for protected branches" is cleared (Settings > CI/CD > General pipelines). Otherwise GitLab adds `-protected` or `-non_protected` to all keys, and other branches never find the default-branch cache. GitLab: clear it only when all users with the Developer role are highly trusted.
 - With an `install` job, only this job has Yarn cache `policy: pull-push`. The other jobs use `policy: pull`. See the `lint-gitlab` skill.
 - Use the fastzip archiver for cache and artifacts. It is the default from GitLab Runner 19.4. On older runners, set `FF_USE_FASTZIP: 'true'`.

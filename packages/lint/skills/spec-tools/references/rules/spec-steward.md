@@ -7,7 +7,7 @@ This audit judges if the specification holds the correct rules with the correct 
 ## Items to report
 
 1. A REQUIRED rule that must be ⚠️ Advisory (see Severity).
-2. A rule that belongs in `AGENTS.md`, a scoped rule, a skill, a command, the OpenSpec configuration or a README. The placement guide is `rules/agent.md`.
+2. A rule that belongs in `AGENTS.md`, a scoped rule, a skill, a command, the OpenSpec configuration or a README. The placement guide is [rules/agent.md](../../../../rules/agent.md).
 3. A rule that a deterministic tool can enforce better than an AI audit.
 4. A rule that causes tests of low value or artificial tests.
 5. A rule whose tests satisfy the wording while failing to protect the intent.

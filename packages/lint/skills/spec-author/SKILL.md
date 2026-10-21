@@ -1,7 +1,7 @@
 ---
 name: spec-author
-description: Write or edit a capability specification in openspec/specs — the default direct-edit path
-allowed-tools: Bash(openspec:*), Bash(spec-tools:*), Bash(spec-steward:*), Bash(yarn openspec:*), Bash(yarn spec-tools:*), Bash(yarn spec-steward:*), Bash(npx openspec:*), Bash(npx spec-tools:*), Bash(npx spec-steward:*), Bash(git diff*), Bash(git log*), Read, Edit, Write, Glob, Grep
+description: Write or edit a capability specification in openspec/specs — the default direct-edit path. Use when adding or changing a requirement or scenario, unless the user asks for the /opsx delta flow.
+allowed-tools: Bash(openspec:*), Bash(spec-tools:*), Bash(yarn openspec:*), Bash(yarn spec-tools:*), Bash(npx openspec:*), Bash(npx spec-tools:*), Bash(node:*), Bash(git diff*), Bash(git log*), Read, Edit, Write, Glob, Grep
 ---
 
 Write or edit a capability specification in place. This is the **default** path for specification work; the `/opsx:*` commands drive the full delta flow and run only when the user asks for them.

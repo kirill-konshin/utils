@@ -1,59 +1,20 @@
 ---
 type: always_apply
 description: Set of rules for projects which use Tailwind
+paths:
+    - '**/*.css'
+    - '**/*.tsx'
 ---
 
-- Use Tailwind ONLY for user-facing sites, NEVER for admin — admin interfaces ALWAYS use MUI + `@toolpad/core` (see mui.md)
+The `@utility` template and the lint-plugin setup: the `lint-tailwind` skill.
+
+- Use Tailwind ONLY for user-facing sites, NEVER for admin — admin interfaces ALWAYS use MUI + `@toolpad/core` (see the `lint-mui` skill)
 - Always use latest version of Tailwind
 - Default UI library for use with Tailwind is Hero UI v3+
 - Use the smallest possible configuration of Tailwind and Hero UI, adhere to their best practices (for Vite, Next.js integration, etc.)
 - Define safe-area insets as named Tailwind utilities; never repeat arbitrary `env(...)` or safe-area calculations in components
 - Safe-area positioning utilities must declare an unconditional design-system gutter first, then enhance it with the maximum of that gutter and the device-reported inset on every edge; use at least `1.5rem` for floating controls because insets can be zero and custom-property resolution can fail on real devices
-
-```css
-@utility top-safe {
-    top: 1.5rem;
-    top: max(1.5rem, env(safe-area-inset-top, 0px));
-}
-
-@utility right-safe {
-    right: 1.5rem;
-    right: max(1.5rem, env(safe-area-inset-right, 0px));
-}
-
-@utility bottom-safe {
-    bottom: 1.5rem;
-    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
-}
-
-@utility left-safe {
-    left: 1.5rem;
-    left: max(1.5rem, env(safe-area-inset-left, 0px));
-}
-```
-
-# ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
-
-- With Vite+ the same plugin runs as an Oxlint JS plugin with the same detection; pass `tailwind: { cssConfigPath }` as `vitePlusConfig` options instead of `eslint.config.mjs`
-- The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
-- Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned across the root + every workspace package, `.gitignore`-aware), rules auto-enable with that entry
-- Rules auto-scope to the workspace package owning the entry CSS (block `basePath`); pass `tailwind: { scoped: false }` to lint the whole workspace
-- `tailwindcss` must be resolvable from the workspace root — if lint fails with "not resolvable from the workspace root", hoist it (see npm-yarn.md "Hoisting") or add it to root `devDependencies`; run eslint with `LINT_DEBUG=1` to trace detection
-- Several entry CSS candidates are ALWAYS a HARD ERROR (a silent skip is hard to notice)
-    - pass `cssConfigPath` to pick one (if others are not useful) OR
-    - create multiple leaf `eslint.config.ts` per app (if ALL need to be linted)
-- When detection can't see `tailwindcss` (e.g. it lives only in leaf packages of a monorepo), force it with `tailwind: true` — then a missing entry CSS is a HARD ERROR instead of a silent skip
-- ONLY when auto-find finds nothing (or several entries) pass the MANDATORY entry explicitly in `eslint.config.mjs`:
-
-```js
-import { defineLintConfig } from '@kirill.konshin/lint';
-
-export default defineLintConfig({
-    tailwind: {
-        cssConfigPath: './src/styles/tailwind.css', // MANDATORY, relative to the package root
-    },
-});
-```
+- Lint (eslint-plugin-tailwindcss, also as an Oxlint JS plugin with Vite+) MUST resolve the Tailwind entry CSS, else it crashes; setup: the `lint-tailwind` skill
 
 # Hero UI
 

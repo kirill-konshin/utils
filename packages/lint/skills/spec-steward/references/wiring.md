@@ -12,7 +12,7 @@ A skill is discovered at the agent's discretion, so it cannot be the only thing 
 
 These five points keep to the placement rules:
 
-- Nothing restates `rules/agent.md` or the repository's own rules.
+- Nothing restates [rules/agent.md](../../../rules/agent.md) or the repository's own rules.
 - The OPSX `context` stays untouched: it already carries `AGENTS.md`.
 - The hook is a no-op where the skill is not installed, so teammates without it are not blocked.
 

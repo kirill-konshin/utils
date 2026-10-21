@@ -3,16 +3,20 @@ type: always_apply
 description: Set of rules for projects with TypeScript, and partially applicable to plain JavaScript
 paths:
     - '**/*.js'
+    - '**/*.jsx'
     - '**/*.mjs'
     - '**/*.cjs'
     - '**/*.ts'
     - '**/*.tsx'
+    - '**/*.mts'
+    - '**/*.cts'
 ---
 
 - ALL projects must use TypeScript by default
-    - JavaScript is acceptable for service scripts, but discouraged, use `ts-node`
+    - JavaScript is acceptable for service scripts, but discouraged; run TypeScript scripts with `node script.ts` (Node type stripping)
 - Do NOT upgrade to TypeScript 7 while tools load the TypeScript JS API (typescript-eslint, ctix, `@arethetypeswrong/core`, Storybook docgen, Next.js type checks, `spec-tools`): TS 7 ships only an unstable API; use its engine through Vite+ type-aware checks
 - With Vite+ (`vite-plus` installed) type-check with `vp check` (`vitePlusConfig` has `typeAware` on by default, the TypeScript 7 engine via tsgolint); NEVER add `tsc --noEmit` scripts; without Vite+ use `tsc --noEmit`
+- In Next.js apps, server-only modules (auth/session, DB access, anything touching secrets, `'use server'` actions files) MUST start with `import 'server-only'` (the npm package, add as dependency) — ENFORCED BY AGENT: no ESLint rule checks this, add it when creating such modules and flag it when reviewing
 - ALL configs should use TypeScript if possible via `defineConfig` or at least import TS type for configuration.
 - Prefer short-circuit evaluation and early exit
 - Use structured logging with context, consider adding function arguments to log:

@@ -5,7 +5,7 @@ description: Templates and checks for JetBrains IDEA / WebStorm `.idea` project 
 
 # Check
 
-Compare the project's `.idea` files with the templates below and the `webstorm` rule, list every discrepancy, ask before fixing:
+Compare the project's `.idea` files with the templates below and [rules/webstorm.md](../../rules/webstorm.md), list every discrepancy, ask before fixing:
 
 - Template settings missing or different in the project's files
 - Excluded folders out of sync between `.gitignore`, `.idea/%projectName%.iml` (usually only one IML file) and `.idea/indexLayout.xml` - look only in these files, infer nothing else
@@ -149,7 +149,7 @@ When the project uses `vite-plus`: the [Oxc plugin](https://plugins.jetbrains.co
 
 # GitIgnore
 
-Excluded folders follow the baseline of the `webstorm` rule.
+Excluded folders follow the baseline of [rules/webstorm.md](../../rules/webstorm.md).
 
 ## Configure `.idea/.gitignore`:
 
