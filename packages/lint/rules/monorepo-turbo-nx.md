@@ -6,6 +6,7 @@ paths:
     - '**/nx.json'
     - '**/package.json'
     - '**/project.json'
+    - '**/vite.config.ts'
 ---
 
 - Existing projects may use what they use
