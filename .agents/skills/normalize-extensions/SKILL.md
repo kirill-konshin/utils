@@ -1,6 +1,6 @@
 ---
 name: normalize-extensions
-description: Fix and normalize the formatter/linter file-extension lists (Oxfmt/Oxlint with Vite+, Prettier/ESLint without) everywhere they are defined (.editorconfig, vitePlus.ts, .idea/*, configs, docs) against the canonical sets in @kirill.konshin/lint
+description: Fix and normalize the formatter/linter file-extension lists (Oxfmt/Oxlint with Vite+, Prettier/ESLint without) everywhere they are defined (.editorconfig, vitePlus.ts, .idea/*, configs, docs) against the canonical sets in @kirill.konshin/lint. Use when extension lists in these files disagree, or after `exts.ts` changes.
 ---
 
 Normalize every place in this repo that defines which file extensions the formatter (Oxfmt with Vite+, Prettier without), the linter (Oxlint / ESLint) and the IDE apply to, so they all agree with the canonical sets.

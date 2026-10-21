@@ -47,8 +47,6 @@ All packages use identical scripts (copy exactly):
         "----- BUILD -----": "",
         "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
         "build": "vp pack",
-        "build:index": "cti create ./src",
-        "build:check-types": "attw --pack .",
         "start": "yarn build --watch",
         "wait": "wait-on ./dist/index.js",
         "----- TEST -----": "",
@@ -72,10 +70,9 @@ Exception: umbrella package `utils` omits the TEST and STORYBOOK sections — a 
 {
     "exports": {
         ".": {
-            "import": {
-                "import": "./dist/index.js",
-                "types": "./dist/index.d.ts"
-            }
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
         }
     },
     "main": "./dist/index.js",
