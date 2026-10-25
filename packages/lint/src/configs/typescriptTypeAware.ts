@@ -1,7 +1,7 @@
 import { isAbsolute, relative } from 'node:path';
 import type { Linter } from 'eslint';
 
-import type { TypeAwareOptions } from '../index.js';
+import type { TypeAwareOptions } from '../config.js';
 import { asOptions, findWorkspaceRoot } from '../lib.js';
 
 /**

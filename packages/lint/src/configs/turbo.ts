@@ -1,17 +1,18 @@
 import type { Linter } from 'eslint';
 
-import type { ToggleOptions } from '../index.js';
-import { hasTurbo, toolGate } from '../lib.js';
+import type { ToggleOptions } from '../config.js';
+import { turboGate } from '../gates.js';
+import { hasTurbo } from '../lib.js';
 
 // lazy so consumers without Turbo don't pay the load cost - re-exported from index.js
 export const turboPlugin = hasTurbo ? (await import('eslint-plugin-turbo')).default : null;
 
 /**
- * Turborepo rules. Probe-only gate (see `toolGate` in lib.js) - no evidence scan, no bridge.
+ * Turborepo rules. Probe-only gate (see `turboGate` in gates.js) - no evidence scan, no bridge.
  *
  */
 export async function turboConfig(option?: boolean | ToggleOptions): Promise<Linter.Config[]> {
-    const { enabled } = toolGate(option, false, { tool: 'turbo', has: hasTurbo });
+    const { enabled } = turboGate(option);
     if (!enabled) return [];
     const turbo = (await import('eslint-plugin-turbo')).default;
     const recommended = turbo.configs?.['flat/recommended'];

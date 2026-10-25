@@ -1,7 +1,6 @@
-import type { ParserOptions as TsParserOptions } from '@typescript-eslint/parser';
 import type { Linter } from 'eslint';
-import type { PluginSettings as TailwindPluginSettings } from 'eslint-plugin-tailwindcss';
 
+import { type LintConfig, resolveLintConfig } from './config.js';
 import { baseConfig, defaultIgnoreConfig } from './configs/base.js';
 import { importSortConfig, importXConfig, unusedImportsConfig } from './configs/imports.js';
 import { nxConfig } from './configs/nx.js';
@@ -29,71 +28,27 @@ export * from './configs/turbo.js';
 export * from './configs/typescriptTypeAware.js';
 export * from './configs/unicorn.js';
 
+export * from './config.js';
 export * from './exts.js';
+export * from './gates.js';
 export * from './lib.js';
 export * from './restrictions.js';
 export * from './lintStaged.js';
 export * from './prettier.js';
 
-type ProjectServiceOptions = Exclude<NonNullable<TsParserOptions['projectService']>, boolean>;
-
-export type ToggleOptions = {
-    enabled?: boolean;
-};
-
-export type DetectionOptions = ToggleOptions & {
-    strict?: boolean;
-};
-
-export type NextOptions = ToggleOptions & {
-    rootDir?: string | string[];
-};
-
-export type TailwindOptions = ToggleOptions & {
-    cssConfigPath?: TailwindPluginSettings['cssConfigPath'];
-    scoped?: boolean;
-};
-
-export type TypeAwareOptions = ToggleOptions &
-    Pick<
-        ProjectServiceOptions,
-        'allowDefaultProject' | 'maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING'
-    > & {
-        tsconfigRootDir?: TsParserOptions['tsconfigRootDir'];
-    };
-
-export type DefaultIgnoreOptions =
-    | { enabled: false; importMetaUrl?: string }
-    | { enabled?: true; importMetaUrl: string };
-
-export type LintOptions = {
-    detection?: boolean | DetectionOptions;
-    next?: boolean | NextOptions;
-    storybook?: boolean | ToggleOptions;
-    turbo?: boolean | ToggleOptions;
-    nx?: boolean | ToggleOptions;
-    jest?: boolean | ToggleOptions;
-    vitest?: boolean | ToggleOptions;
-    tailwind?: boolean | TailwindOptions;
-    typeAware?: boolean | TypeAwareOptions;
-    defaultIgnore?: boolean | DefaultIgnoreOptions;
-};
-
 /**
- * Build the shared flat ESLint config.
+ * Build the shared flat ESLint config from the workspace root `lint.config.ts` (see `defineLintConfig`), with
+ * `overrides` merged over it - per-package differences in a monorepo go here.
  *
- * By default every tool integration is auto-detected (see the `has*` exports); pass
- * {@link LintOptions} to force any of them on/off or to supply tool-specific settings.
+ * By default every tool integration is auto-detected (see the `has*` exports); the config forces any of them on/off or
+ * supplies tool-specific settings.
  *
- * Returns a Promise - ESLint natively awaits a Promise default export, so a plain
- * `export default defineLintConfig({...})` works; `await` it only when composing with extra blocks.
- *
+ * Returns a Promise - ESLint natively awaits a Promise default export, so a plain `export default eslintConfig()`
+ * works; `await` it only when composing with extra blocks.
  */
-export async function defineLintConfig(
-    options: LintOptions | Promise<LintOptions> | (() => LintOptions | Promise<LintOptions>) = {},
-): Promise<Linter.Config[]> {
-    if (typeof options === 'function') options = options();
-    options = (await options) ?? {};
+export async function eslintConfig(overrides: LintConfig = {}): Promise<Linter.Config[]> {
+    const options = await resolveLintConfig(overrides);
+    const { typeAware, defaultIgnore } = options.eslint ?? {};
 
     /*
      * `detection` uses the same toggle notation as the tool flags (true <> { enabled: true } <>
@@ -111,7 +66,7 @@ export async function defineLintConfig(
     return [
         // base.js
         ...baseConfig(),
-        ...defaultIgnoreConfig(options.defaultIgnore),
+        ...defaultIgnoreConfig(defaultIgnore),
         // react.js - the whole family (Next or plain React + TS wiring + overrides + settings)
         ...(await reactConfig(flag(options.next), strict)),
         // prettier.js
@@ -119,7 +74,7 @@ export async function defineLintConfig(
         // storybook.js
         ...(await storybookConfig(flag(options.storybook), strict)),
         // typescriptTypeAware (should be before imports)
-        ...typeAwareConfig(options.typeAware, strict),
+        ...typeAwareConfig(typeAware, strict),
         // imports.js
         ...importXConfig(),
         ...importSortConfig(),

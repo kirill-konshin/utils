@@ -2,7 +2,7 @@
 
 [Vite+](https://viteplus.dev) configuration (Oxlint, Oxfmt, staged checks) — or ESLint + Prettier + lint-staged + Husky without Vite+ — plus AI agent rules & skills for monorepos, in one package.
 
-Upgrading from an older version: use the `lint-migrate` skill (shipped in `skills/`, linked by `lint-prepare`).
+Upgrading from an older version: use the `lint-migrate` skill (shipped in `skills/`, installed by `lint-prepare`).
 
 ## Installation
 
@@ -12,7 +12,7 @@ Recommended, with [Vite+](#vite-recommended):
 $ yarn add -D vite-plus @kirill.konshin/lint @yarnpkg/types
 ```
 
-Without Vite+, see [ESLint + Prettier](#eslint--prettier-without-vite).
+Without Vite+, see [ESLint + Prettier](#eslint--prettier-without-vite). `vite-plus` is a required peer either way: the `vitePlus` key of `lint.config.ts` is typed with its config.
 
 Every project whose `packageManager` is Yarn must directly install `@yarnpkg/types`; Yarn PnP does not allow `yarn.config.cjs` to require a transitive dependency (Vite+ does not support PnP anyway).
 
@@ -86,29 +86,90 @@ yarn-error*
 
 List need to be verified, especially `build`, `coverage`, `dist` must be verified not to exclude legit folders. With Vite+ add `.vite-hooks/_` (the generated hook dispatcher).
 
+## `lint.config.ts`
+
+Every project that installs this package has one `lint.config.ts`, in the workspace root (a monorepo has exactly one; packages are never searched). Every entry point reads it: `vitePlusConfig`, `eslintConfig` and `lint-prepare` (which warns while it is missing; the defaults apply until then). Write it by hand (or let an agent write it per the `lint-repo` skill); no tool generates it. The smallest one:
+
+```ts
+import { defineLintConfig } from '@kirill.konshin/lint/config';
+
+export default defineLintConfig({});
+```
+
+Import from `@kirill.konshin/lint/config` — it loads no ESLint plugin. Node loads the file natively (type stripping, Node ≥ 22.18), so use erasable TypeScript only, and set `"type": "module"` in the root `package.json` (otherwise Node warns on every load).
+
+Toggle notation, the same for every key:
+
+- `undefined` (default) — auto-detect, see [Detection](#detection)
+- `true` — force ON (use when detection misses a tool, can be useful to see the error why tool is missing)
+- `false` — force OFF, same as `{ enabled: false }`
+- `{ /* options */ }` — implies `enabled: true` even if omitted; `enabled: false` turns OFF keeping the other options
+
+```ts
+import { defineLintConfig, tsExts } from '@kirill.konshin/lint/config'; // tsExts, scanWorkspace: for globs and file lists
+
+export default defineLintConfig({
+    // enabled (default true) = tools are ON unless said otherwise;
+    // strict (default false) = same-scope package probes only, no workspace evidence scans
+    detection: { enabled: true, strict: false }, // default
+
+    // ON by default; app roots auto-detected (next.config.*, package.json depending on next, src/{app,pages}/);
+    // several apps auto-detect as array; pass the package root, not src
+    next: { rootDir: 'apps/web' }, // string or array
+
+    storybook: true, // force ON if detection failed
+    turbo: false, // force OFF
+    nx: true,
+    jest: false,
+    vitest: { enabled: true },
+
+    // ON by default; auto-detected single entry CSS; explicit path always wins over the scan
+    tailwind: { cssConfigPath: 'apps/web/src/app/index.css' },
+
+    // ESLint only
+    eslint: {
+        defaultIgnore: { importMetaUrl: import.meta.url }, // OFF by default; .gitignore + .prettierignore as ESLint ignores
+        typeAware: true, // OFF by default (slow) - see "Type-aware rules"
+    },
+
+    // Vite+ only: settings, plus the project's own Vite+ blocks (merged over the defaults, see "Vite+")
+    vitePlus: {
+        typeAware: false, // ON by default: `vp check` is the type check
+        lint: { rules: {}, overrides: [], ignorePatterns: ['generated'] }, // added to the defaults
+        fmt: { ignorePatterns: ['generated'] }, // added to the defaults (.idea, .husky, .yarn, OpenSpec files)
+        test: { projects: ['packages/*'] }, // any other Vite+ / Vite block passes through
+    },
+
+    // skills lint-prepare installs, keyed by source, merged over the defaults (see "AI Agent Rules")
+    skills: {
+        'vercel-labs/agent-skills': { skills: { 'vercel-react-native-skills': false } }, // a default source, one skill left out
+        'heroui-inc/heroui': { skills: { 'heroui-react': true } }, // only this skill
+        'shadcn/ui': true, // every skill of the source
+        '@kirill.konshin/lint': { skills: { 'lint-electron': false } }, // this package's own skills
+    },
+
+    // package rules by name: false leaves a rule out
+    rules: { electron: false },
+});
+```
+
+Entry points take the same shape as their last argument, merged deep over the file (objects merge, arrays and values are replaced): use it only for per-package differences in a monorepo (e.g. a nested ESLint config).
+
 ## Vite+ (recommended)
 
-`vite.config.ts` at the workspace root — `vitePlusConfig` returns the `lint` (Oxlint), `fmt` (Oxfmt) and `staged` blocks; wrap it in `defineConfig` from `vite-plus`:
+`vite.config.ts` at the workspace root is always the same — every setting and every project block lives in the `vitePlus` key of [`lint.config.ts`](#lintconfigts):
 
 ```ts
 import { vitePlusConfig } from '@kirill.konshin/lint/vite-plus';
 import { defineConfig } from 'vite-plus';
 
-export default defineConfig(
-    vitePlusConfig(
-        {
-            lint: { rules: {}, overrides: [] }, // added to the defaults
-            fmt: { ignorePatterns: ['generated'] }, // added to the defaults (.idea, .husky, .yarn, OpenSpec files)
-            test: { projects: ['packages/*'] }, // any other Vite+ / Vite block passes through
-        },
-        // same toggles as ESLint's defineLintConfig, see Detection
-        { next: true, tailwind: { cssConfigPath: 'apps/web/src/app.css' }, typeAware: false }, // typeAware is on by default
-    ),
-);
+export default defineConfig(vitePlusConfig());
 ```
 
+`vitePlusConfig` returns the `lint` (Oxlint), `fmt` (Oxfmt) and `staged` blocks plus the project blocks as a `Promise`; `defineConfig` from `vite-plus` awaits it. Its optional arguments (`vitePlusConfig(config, overrides)`: Vite+ blocks, then `lint.config.ts` overrides) are for exceptions only.
+
 - Merging: lists add up (`plugins`, `jsPlugins`, `overrides`, `ignorePatterns`), maps merge by key (`rules`, `settings`, `env`), a `staged` block replaces the default
-- Building blocks are exported: `lintConfig(options)`, `fmtConfig()`, `stagedConfig()`
+- Building blocks are exported: `lintConfig(config)` (synchronous, takes a resolved config), `fmtConfig()`, `stagedConfig()`
 - Lint and format settings live in the **root** config only: Vite+ ignores nested `lint`/`fmt` blocks, use `lint.overrides` / `fmt.overrides` with workspace paths
 - `.gitignore` and `.prettierignore` are honoured by Oxfmt; the recommended `.prettierignore` entries are default `fmt.ignorePatterns`, add others there
 
@@ -154,7 +215,7 @@ What maps where:
   </tbody>
 </table>
 
-Not carried over: `@nx/dependency-checks` (Oxlint does not lint JSON), `@typescript-eslint/naming-convention` (type-aware only, off by default). `@nx/eslint-plugin` needs the `eslint` package installed (as a library; ESLint itself does not run). Oxlint type-aware linting and type checking (tsgolint, the TypeScript 7 engine) are on by default — `vp check` is the type check, `vp pack` does not type-check; `typeAware: false` turns them off. tsgolint rejects tsconfig options TypeScript 7 removed (`target: es5`, `moduleResolution: node`, `downlevelIteration`).
+Not carried over: `@nx/dependency-checks` (Oxlint does not lint JSON), `@typescript-eslint/naming-convention` (type-aware only, off by default). `@nx/eslint-plugin` needs the `eslint` package installed (as a library; ESLint itself does not run). Oxlint type-aware linting and type checking (tsgolint, the TypeScript 7 engine) are on by default — `vp check` is the type check, `vp pack` does not type-check; `vitePlus: { typeAware: false }` turns them off. tsgolint rejects tsconfig options TypeScript 7 removed (`target: es5`, `moduleResolution: node`, `downlevelIteration`).
 
 `package.json`:
 
@@ -185,7 +246,7 @@ Library packages build with `vp pack` from a `pack` block (tsdown) in their own 
 ## ESLint + Prettier (without Vite+)
 
 ```bash
-$ yarn add -D eslint prettier @kirill.konshin/lint @yarnpkg/types husky lint-staged
+$ yarn add -D eslint prettier vite-plus @kirill.konshin/lint @yarnpkg/types husky lint-staged
 ```
 
 ### `.prettierignore`
@@ -211,28 +272,24 @@ https://prettier.io/docs/ignore:
 
 `eslint.config.mjs`:
 
-Every tool integration — Next.js, Nx, Turborepo, Storybook, Jest, Vitest, Tailwind — is auto-detected (the detection results are exported as `has*` booleans for debugging). Pass options (JSDoc-typed, see `LintOptions` in `index.js`) to force any of them on/off or to supply tool-specific settings:
+Every tool integration — Next.js, Nx, Turborepo, Storybook, Jest, Vitest, Tailwind — is auto-detected (the detection results are exported as `has*` booleans for debugging). Settings come from [`lint.config.ts`](#lintconfigts); `eslintConfig(overrides)` merges its argument over them:
 
 ```js
 import { defineConfig } from 'eslint/config';
-import { defineLintConfig } from '@kirill.konshin/lint';
+import { eslintConfig } from '@kirill.konshin/lint';
 
-// every tool integration auto-detected
-export default defineConfig(
-    await defineLintConfig({
-        defaultIgnore: { importMetaUrl: import.meta.url }, // .gitignore + .prettierignore as ESLint ignores
-    }),
-);
+// every tool integration auto-detected, settings from lint.config.ts
+export default defineConfig(await eslintConfig());
 ```
 
-Config can be extended, `defineLintConfig` returns a `Promise` (natively awaited by ESLint), to compose with your own blocks, `await` it:
+`eslintConfig` returns a `Promise` (natively awaited by ESLint), to compose with your own blocks, `await` it:
 
 ```js
 import { defineConfig } from 'eslint/config';
-import { defineLintConfig, includeIgnoreFile } from '@kirill.konshin/lint';
+import { eslintConfig, includeIgnoreFile } from '@kirill.konshin/lint';
 
 export default defineConfig([
-    ...(await defineLintConfig({ defaultIgnore: { importMetaUrl: import.meta.url } })),
+    ...(await eslintConfig({ eslint: { defaultIgnore: { importMetaUrl: import.meta.url } } })),
     {
         name: 'Custom rules',
         rules: {
@@ -243,53 +300,23 @@ export default defineConfig([
 ]);
 ```
 
-#### Full Config Example
+#### Type-aware file list
 
-Default behavior in the comments, all tools are optional (see [Detection](#detection)). Enable/disable tools using:
+`eslint.typeAware` takes the typescript-eslint project service options:
 
-- `undefined` (default) — auto-detect, see [Detection](#detection)
-- `true` — force ON (use when detection misses a tool, can be useful to see the error why tool is missing)
-- `false` — force OFF
-- `{ /* tool options *./ }` — object configuration implies `enabled: true` even if omitted; set `enabled: false` to force OFF while keeping the other options in place, see example
+```ts
+import { defineLintConfig, scanWorkspace } from '@kirill.konshin/lint/config';
 
-```js
-import { defineConfig } from 'eslint/config';
-import { defineLintConfig, scanWorkspace } from '@kirill.konshin/lint';
-
-// function form shown
-export default defineConfig(
-    await defineLintConfig({
-        // enabled (default true) = tools are ON unless said otherwise;
-        // strict (default false) = same-scope package probes only, no workspace evidence scans
-        // `{ enabled: false, strict: true }` is ideal for per-package configs
-        detection: { enabled: true, strict: false }, // default
-
-        // ON by default; app roots auto-detected (next.config.*, package.json depending on next, src/{app,pages}/);
-        // can be force OFF; several apps auto-detect as array; pass the package root, not src
-        next: { rootDir: 'apps/web' }, // string or array
-
-        storybook: true, // force ON if detection failed
-        turbo: false, // force OFF
-        nx: true,
-        jest: false,
-        vitest: { enabled: true }, // object form implies ON; { enabled: false, ... } turns OFF keeping options
-
-        // ON by default; auto-detected single entry CSS; explicit path always wins over the scan
-        tailwind: { cssConfigPath: 'apps/web/src/app/index.css' },
-
-        // OFF by default
-        defaultIgnore: {
-            importMetaUrl: import.meta.url, // required, error if turned on via `defaultIgnore: true`
-        },
-
+export default defineLintConfig({
+    eslint: {
         // OFF by default (slow) - see "Type-aware rules"
         typeAware: {
             allowDefaultProject: scanWorkspace('{vite,vitest}.config.ts'), // no default; absolute paths are relativized; ** globs are not supported
             maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50, // defaults to the list length, (default 8), set it explicitly only when supplying multi-match globs
             tsconfigRootDir: process.cwd(), // defaults to the detected workspace root
         },
-    }),
-);
+    },
+});
 ```
 
 #### Per-package configs (monorepo)
@@ -304,15 +331,15 @@ import rootConfig from '../../eslint.config.mjs';
 export default defineConfig([...(await rootConfig), { rules: { 'tailwindcss/no-custom-classname': 'off' } }]);
 ```
 
-…or simply call `defineLintConfig` again with the options this app needs, `apps/web/eslint.config.mjs`:
+…or call `eslintConfig` again with the overrides this app needs, `apps/web/eslint.config.mjs`:
 
 ```js
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'eslint/config';
-import { defineLintConfig } from '@kirill.konshin/lint';
+import { eslintConfig } from '@kirill.konshin/lint';
 
 export default defineConfig(
-    await defineLintConfig({
+    await eslintConfig({
         detection: { enabled: false, strict: true }, // fully explicit: this config only sees its own scope
         // do not use workspace-wide auto-scan, provide exactly ONE from THIS leaf package
         tailwind: { cssConfigPath: fileURLToPath(new URL('src/app/index.css', import.meta.url)) },
@@ -320,7 +347,7 @@ export default defineConfig(
 );
 ```
 
-⚠️ Nearest-wins means root-only blocks (e.g. `defaultIgnore`, custom rules) do NOT apply to the subtree unless inherited or re-declared.
+⚠️ Nearest-wins means root-only blocks (e.g. custom rules) do NOT apply to the subtree unless inherited or re-declared.
 
 [Detection](#detection) runs against the **workspace root** even from a nested config, so per-app tool settings (`cssConfigPath`) should be explicit absolute paths — relative ones depend on the lint cwd.
 
@@ -454,10 +481,19 @@ The generated `AGENTS.md` has a `# Custom Rules` section at the bottom — add p
 
 In the project root, `lint-prepare`:
 
-- Creates real `rules/` and `skills/` directories in `.agents/` (canonical, cross-tool — Codex reads it) and `.claude/` (Claude Code), and symlinks the top-level entries it knows into them: a rule file, a skill folder.
-- Links every `rules/*.md` file and every `skills/<name>/` folder into both — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules. Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package). A rule or skill of yours with the same name in `.agents/` wins, the package one is not installed.
+- Creates real `rules/` and `skills/` directories in `.agents/` (canonical, cross-tool — Codex reads it) and `.claude/` (Claude Code).
+- Links every `rules/*.md` file into both, except the ones the `rules` map of [`lint.config.ts`](#lintconfigts) turns off (`rules: { electron: false }`). Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package). A rule of yours with the same name in `.agents/` wins, the package one is not installed.
+- Installs the skills of the `skills` map of `lint.config.ts`, merged over the defaults, with the [`skills` CLI](https://github.com/vercel-labs/skills), into `.agents/skills/` and from there into `.claude/skills/`. The map is keyed by source, each value uses the toggle notation; `skills: { name: true | false }` picks skills of a source — with no `true` entry every skill except the `false` ones:
+    - npm packages (`@scope/name`, or a name without `/`) are dependencies that ship skills: `skills experimental_sync -y -a codex claude-code` links every `skills/<name>/` folder of your dependencies; the map only leaves some out (`--exclude`). Default: this package's own skills (`'@kirill.konshin/lint': true`) — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules.
+    - Git sources (`owner/repo`) are installed with `skills add`, at `ref` when set (pin a full 40-character commit SHA). Default: `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-react-native-skills`, `vercel-react-view-transitions` and `web-design-guidelines` from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), pinned. A source whose skills `skills-lock.json` already has at the same ref is not fetched again. `lint.config.ts` owns the remote skills of `skills-lock.json`: a remote skill it no longer lists is removed (`skills remove`).
+    - A skill folder of yours with the same name in `.agents/skills/` wins.
+    - A failed CLI run is a warning, the install goes on: run `lint-prepare` again.
+    - On CI (`CI` set) nothing remote is fetched (`--no-remote`, no `skills add`): no network needed.
+    - Telemetry is off (`DISABLE_TELEMETRY=1`) unless you set it.
+    - It writes `skills-lock.json`: add it to `.gitignore`, `lint-prepare` creates it again on every install.
+    - A personal skill (`~/.claude/skills`) overrides a project skill with the same name in Claude Code.
 - Mirrors your own top-level entries from `.agents/{rules,skills}/` into `.claude/`. Commands are not synced: make them skills.
-- Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs, including what older versions placed (per-file skill links, `commands/`). Each directory gets a generated `.gitignore` listing its links, so your own entries stay tracked.
+- Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs, including what older versions placed (skill links, `commands/`). Each directory gets a generated `.gitignore` listing its links and the skills the `skills` CLI installed, so your own entries stay tracked.
 - Writes an empty marker pair for each section another tool owns into the generated `AGENTS.md` — currently Vite+ (`<!--VITE PLUS START-->`). The tool fills it, so run it **after** `lint-prepare` in the same install script (`lint-prepare init && vp config`): tools write their own agent content, nothing is copied by hand.
 - Generates `AGENTS.md` for other assistants (Codex, Cursor, Copilot, …) with a `# Rules` section — one entry per rule (the package's and yours): its title, frontmatter `description`, the `paths` it is scoped to and a plain link to its `.agents/rules/<file>` entry — and symlinks `CLAUDE.md` to it. The links are never `@` imports: Claude Code loads `.claude/rules` itself and honours each rule's `paths`, while an import would load every rule into every session.
 
@@ -550,6 +586,16 @@ Setup and the GitLab pipeline are in the `spec-tools` skill.
 
 Only the files `lint-prepare` knows (package files and mirrors of yours) and dead links are touched: real files are never overwritten (e.g. your own `.claude/rules/*.md`) and nothing is written through a symlinked directory. `.codex/` is not touched: Codex reads `.agents/skills` and `AGENTS.md`, and the links earlier versions placed in `.codex/` stay until you delete them. `init`/`update` refuse to run if `CLAUDE.md` isn't a symlink. If `AGENTS.md` exists and wasn't generated by this tool, `init` skips it; use `update` to force regeneration.
 
+## Migration
+
+Upgrading between minor versions: the `lint-migrate` skill, one section per version step. 0.7 → 0.8 in short:
+
+- One [`lint.config.ts`](#lintconfigts) in the workspace root holds every setting, `"type": "module"` in the root `package.json`; the entry points take overrides only
+- ESLint: `defineLintConfig(options)` → `eslintConfig(overrides)`; `typeAware` and `defaultIgnore` → the `eslint` key
+- Vite+: `vite.config.ts` becomes `defineConfig(vitePlusConfig())`; its blocks (`lint`, `fmt`, `test`, …) and toggles move into `lint.config.ts`, `typeAware` and the blocks under the `vitePlus` key; `vitePlusConfig` is now async
+- Skills: the root `package.json` `skills` field → the `skills` map of `lint.config.ts`; package rules can be turned off with the `rules` map
+- `vite-plus` is a required peer, also without Vite+ (it types `lint.config.ts`)
+
 ## Development
 
 ### Build
@@ -558,13 +604,13 @@ Only the files `lint-prepare` knows (package files and mirrors of yours) and dea
 
 ### ESLint and Vite+ configs
 
-`src/vitePlus.ts` reuses the detection gates and conventions (`src/conventions.ts`) of the ESLint blocks and imports no ESLint plugin: it references the JS plugins by resolved path. `src/oxlintPlugin.ts` is the Oxlint JS plugin with the custom rules.
+`src/config.ts` is the `lint.config.ts` schema, its defaults and its loader (the `./config` entry, no ESLint plugin). `src/gates.ts` holds every tool gate once; the ESLint blocks and `src/vitePlus.ts` both call it. `src/vitePlus.ts` reuses the conventions (`src/conventions.ts`) of the ESLint blocks and imports no ESLint plugin: it references the JS plugins by resolved path. `src/oxlintPlugin.ts` is the Oxlint JS plugin with the custom rules.
 
 Declarations are generated from the TypeScript source and retain the underlying package types — `Linter.Config`, Tailwind plugin settings, Prettier `Config`, and lint-staged `Configuration`.
 
-**Every** block lives in a themed `src/configs/*.ts` file and is exported as a standalone function for manual composition (and easy testing/mocking), in the order `defineLintConfig` applies them: `baseConfig` (JS recommended + global ignores + globals + core-rule overrides), `defaultIgnoreConfig`, `reactConfig` (the whole React family, see below), `prettierConfig`, `storybookConfig`, `typeAwareConfig` (off by default; ordered before the import blocks so its naming-convention rule loses to the default-export relaxation), `importXConfig` (includes the default-export relaxation for conventional files), `importSortConfig`, `unusedImportsConfig`, `promiseConfig`, `unicornConfig`, `turboConfig`, `tailwindConfig`, `nxConfig`, `jestConfig`, `vitestConfig`, `testConfig`.
+**Every** block lives in a themed `src/configs/*.ts` file and is exported as a standalone function for manual composition (and easy testing/mocking), in the order `eslintConfig` applies them: `baseConfig` (JS recommended + global ignores + globals + core-rule overrides), `defaultIgnoreConfig`, `reactConfig` (the whole React family, see below), `prettierConfig`, `storybookConfig`, `typeAwareConfig` (off by default; ordered before the import blocks so its naming-convention rule loses to the default-export relaxation), `importXConfig` (includes the default-export relaxation for conventional files), `importSortConfig`, `unusedImportsConfig`, `promiseConfig`, `unicornConfig`, `turboConfig`, `tailwindConfig`, `nxConfig`, `jestConfig`, `vitestConfig`, `testConfig`.
 
-Tool-gated functions take the same value as their `defineLintConfig` flag and gate themselves (`tailwindConfig(true)`, `nxConfig(false)` → `[]`, `tailwindConfig({ cssConfigPath })`). `reactConfig(nextFlag, strict)` is the whole family in its load-bearing order — Next is just a shortcut to an opinionated React/TypeScript setup, so the TS wiring, overrides and settings apply no matter whether Next or plain React won: `nextConfig` (chooser: `nextBaseConfig` when Next is enabled, `reactBaseConfig` fallback otherwise) → `typescriptOverridesConfig` → `nextOverridesConfig` → `reactSettingsConfig` — all exported individually too.
+Tool-gated functions take the same value as their `lint.config.ts` key and gate themselves (`tailwindConfig(true)`, `nxConfig(false)` → `[]`, `tailwindConfig({ cssConfigPath })`). `reactConfig(nextFlag, strict)` is the whole family in its load-bearing order — Next is just a shortcut to an opinionated React/TypeScript setup, so the TS wiring, overrides and settings apply no matter whether Next or plain React won: `nextConfig` (chooser: `nextBaseConfig` when Next is enabled, `reactBaseConfig` fallback otherwise) → `typescriptOverridesConfig` → `nextOverridesConfig` → `reactSettingsConfig` — all exported individually too.
 
 ### Detection
 
@@ -627,9 +673,9 @@ Due to limitations package visibility between leaf and root this package has to 
 
 ¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires.
 
-`vitePlusConfig` runs the same gates, with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`) and `nx` (needs `eslint`) demand a resolvable package; `vitest` is ON unless set to `false` (Vite+ bundles it); `next` needs no package (Oxlint's `nextjs` plugin is native).
+`vitePlusConfig` runs the same gates (`src/gates.ts`, shared with the ESLint blocks), with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`) and `nx` (needs `eslint`) demand a resolvable package; `vitest` is ON unless set to `false` (Vite+ bundles it); `next` needs no package (Oxlint's `nextjs` plugin is native). `typeAware` differs by backend: `eslint.typeAware` is OFF by default (slow), `vitePlus.typeAware` ON.
 
-The machinery is controlled by the `detection` option (same toggle notation as the tools):
+The machinery is controlled by the `detection` key of `lint.config.ts` (same toggle notation as the tools):
 
 - `detection: false` — tools are OFF unless explicitly enabled; enabled tools still auto-detect their settings (step 2)
 - `detection: { strict: true }` — only step 1 runs: the `has*` package probes **are** the strict detection — no workspace evidence scans (2). Mandatory settings (`cssConfigPath`) must then be explicit, and `nx.json` is checked at **cwd** instead of the workspace root (`hasNx` is the only non-package `has*`)
@@ -637,7 +683,7 @@ The machinery is controlled by the `detection` option (same toggle notation as t
 
 Set `LINT_DEBUG=1` to trace the machinery: `has*` probe results, every workspace scan (glob, root, files found) and each tool's gate verdict (supplied options, absolutized & scanned evidence files, effective enabled status + reason).
 
-> `basePath: 'packages/xxx'` (ESLint ≥ 9.30) can scope a config object to a directory within a single root config, but it won't help with detection — `defineLintConfig` detects once, workspace-wide (e.g. Tailwind still demands exactly one entry CSS), so per-app settings would still have to be spelled out block by block; nested configs are the cleaner tool for this.
+> `basePath: 'packages/xxx'` (ESLint ≥ 9.30) can scope a config object to a directory within a single root config, but it won't help with detection — `eslintConfig` detects once, workspace-wide (e.g. Tailwind still demands exactly one entry CSS), so per-app settings would still have to be spelled out block by block; nested configs are the cleaner tool for this.
 
 ### Type-aware rules (optional, disabled by default for performance)
 
@@ -657,7 +703,7 @@ paths:
 ## Issues
 
 - Package managers
-    - [ ] TODO verify the package end-to-end (workspace-root detection, Tailwind / `next.config.*` scans, `has*` capability probes, plugin resolution, `defineLintConfig` under a real lint run) with each manager:
+    - [ ] TODO verify the package end-to-end (workspace-root detection, Tailwind / `next.config.*` scans, `has*` capability probes, plugin resolution, `eslintConfig` under a real lint run) with each manager:
         - [x] Yarn Berry, node-modules linker — this repo, fully covered
         - [ ] Yarn Berry **PnP** — root-declared `tailwindcss` verified working (see "Detection" step 4); full config run (plugin loading, capability probes) unverified since the switch to `@manypkg/find-root`/`local-pkg`
         - [ ] Yarn 1 (classic) — root detection now delegates to `@manypkg/find-root` (workspace-manifest walk); unverified since the switch

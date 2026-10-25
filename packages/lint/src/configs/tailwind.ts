@@ -1,53 +1,23 @@
-import { readFileSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
 import type { Linter } from 'eslint';
 
-import type { TailwindOptions } from '../index.js';
-import { findWorkspaceRoot, GLOBAL_IGNORES, hasTailwind, packageDirOf, scanWorkspace, toolGate } from '../lib.js';
+import type { TailwindOptions } from '../config.js';
+import { tailwindGate } from '../gates.js';
 
-/**
- * All Tailwind v4 entry CSS candidates: every `*.css` across the workspace (see `scanWorkspace` -
- * the root plus every workspace package, `.gitignore`- and build-output-aware) containing the
- * Tailwind v4 marker `@import "tailwindcss"`.
- *
- */
-function findTailwindEntries(ignores: string[]): string[] {
-    return scanWorkspace('*.css', ignores).filter((file) => {
-        try {
-            return /@import\s+['"]tailwindcss['"]/.test(readFileSync(file, 'utf-8'));
-        } catch {
-            return false;
-        }
-    });
-}
-
-/**
- * Auto-find THE Tailwind v4 entry CSS ({@link findTailwindEntries} narrowed to exactly one).
- *
- * eslint-plugin-tailwindcss v4 loads the entry (`settings.tailwindcss.cssConfigPath`) and
- * HARD-CRASHES with ENOENT when it can't, so {@link tailwindConfig} only enables the plugin when
- * exactly one entry is found (`allowMultiple: false` in its gate spec); with zero or several the
- * consumer must configure `cssConfigPath` manually (MANDATORY for the plugin; several candidates
- * are a hard error) - see README "Detection".
- *
- */
-export function findTailwindEntry(ignores: string[]): string | null {
-    const entries = findTailwindEntries(ignores);
-    return entries.length === 1 ? entries[0] : null;
-}
+// the gate and the entry finder are shared with the Vite+ config
+export { findTailwindEntry, tailwindGate } from '../gates.js';
 
 /**
  * Tailwind recommended rules (warnings + `no-contradicting-classname` as error) as a standalone
  * block (simple to override wholesale).
  *
- * Auto-detection is driven by the entry CSS (see {@link findTailwindEntries}), not by the package
+ * Auto-detection is driven by the entry CSS (see `findTailwindEntry` in gates.js), not by the package
  * probe: explicit `cssConfigPath` wins, otherwise auto-find. Zero entries stays inert in auto mode
  * (nothing marks the repo as Tailwind) but fails loudly when Tailwind was FORCED on (`true` /
  * options object). SEVERAL entries fail loudly even in auto mode: they prove the repo uses
  * Tailwind, the right one cannot be guessed, and a silent skip would be hard to detect - pass
  * `cssConfigPath` to pick one. `tailwindcss` must be resolvable from the workspace root (where
  * the plugin's theme-loading workers resolve it); a leaf-only install is a hard error with
- * hoisting guidance (see `toolGate` in lib.js).
+ * hoisting guidance (see `tailwindGate` in gates.js).
  *
  */
 export async function tailwindConfig(option?: boolean | TailwindOptions, strict = false): Promise<Linter.Config[]> {
@@ -66,59 +36,4 @@ export async function tailwindConfig(option?: boolean | TailwindOptions, strict 
             settings: { tailwindcss: { cssConfigPath } },
         },
     ];
-}
-
-/**
- * The Tailwind activation decision shared by the ESLint block and the Vite+ config: `null` when off, otherwise the
- * entry CSS (in the consumer's own notation when given) and the absolute directory of the one package to scope the
- * rules to (`null` = the whole workspace).
- */
-export function tailwindGate(
-    option?: boolean | TailwindOptions,
-    strict = false,
-): { cssConfigPath: string; absoluteCssConfigPath: string; packageDir: string | null } | null {
-    /*
-     * Detection is evidence-based: the entry CSS marker, NOT the package probe (`needs` makes the
-     * evidence mandatory in the gate) - in a monorepo `tailwindcss` is often installed only in a
-     * leaf package and unresolvable from here, while an entry CSS with `@import "tailwindcss"` is
-     * unambiguous proof of a Tailwind project (`hasTailwind` stays exported for debugging).
-     */
-    const { enabled, options, files } = toolGate(option, strict, {
-        tool: 'tailwind',
-        has: hasTailwind,
-        packageName: 'tailwindcss',
-        needs: {
-            what: 'entry CSS',
-            detail:
-                'single Tailwind v4 entry CSS (a *.css containing `@import "tailwindcss"`, scanned across ' +
-                'the workspace root and every workspace package)',
-            hint: '`tailwind: { cssConfigPath }`',
-        },
-        // the plugin takes exactly ONE entry - several scan candidates are a hard error
-        allowMultiple: false,
-        // option paths may be relative; the resolution probe needs an absolute file context
-        absolutizeOptions: ({ cssConfigPath }) =>
-            cssConfigPath
-                ? [isAbsolute(cssConfigPath) ? cssConfigPath : resolve(findWorkspaceRoot(), cssConfigPath)]
-                : [],
-        scan: () => findTailwindEntries(GLOBAL_IGNORES),
-    });
-    if (!enabled) return null;
-
-    // an explicit path is passed through in the consumer's own notation (the absolutized copy only
-    // served the probes); an auto-found entry is the absolute evidence file
-    const cssConfigPath = options.cssConfigPath ?? files[0];
-
-    /*
-     * The entry CSS pins down the ONE package that uses Tailwind, so by default the rules are
-     * scoped to it (ESLint `basePath`, Vite+ override `files`) instead of flagging class-like
-     * strings across the whole workspace. `files[0]` is the absolutized evidence path even when
-     * `cssConfigPath` was supplied relative. Owning package == workspace root (single-package
-     * repo, or the entry is not inside a declared workspace package) makes scoping a no-op.
-     */
-    const { scoped = true } = options;
-    const owner = scoped ? packageDirOf(files[0]) : null;
-    const packageDir = owner && owner !== findWorkspaceRoot() ? owner : null;
-
-    return { cssConfigPath, absoluteCssConfigPath: files[0], packageDir };
 }

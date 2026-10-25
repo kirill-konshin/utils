@@ -5,7 +5,7 @@ import { test } from 'vite-plus/test';
 import {
     baseConfig,
     defaultIgnoreConfig,
-    defineLintConfig,
+    eslintConfig,
     importSortConfig,
     importXConfig,
     jestConfig,
@@ -30,15 +30,15 @@ import {
 } from './index.js';
 import { hasTailwindBlockIn, inTempDir, TAILWIND_ENTRY, tailwindBlockOf } from './testUtils.js';
 
-test('tool options flow through defineLintConfig to the blocks', async () => {
+test('tool options flow through eslintConfig to the blocks', async () => {
     await inTempDir({ 'app.css': TAILWIND_ENTRY }, async () => {
-        const on = await defineLintConfig();
+        const on = await eslintConfig();
         assert.ok(tailwindBlockOf(on).settings.tailwindcss.cssConfigPath.endsWith('app.css'));
 
-        const off = await defineLintConfig({ tailwind: false });
+        const off = await eslintConfig({ tailwind: false });
         assert.ok(!hasTailwindBlockIn(off));
 
-        const offViaEnabled = await defineLintConfig({ tailwind: { enabled: false } });
+        const offViaEnabled = await eslintConfig({ tailwind: { enabled: false } });
         assert.ok(!hasTailwindBlockIn(offViaEnabled));
     });
 });
@@ -47,11 +47,11 @@ test('typeAware is off by default and enabled via the flag', async () => {
     await inTempDir({}, async () => {
         const isTypeAware = (config: Linter.Config[]) =>
             config.some((block) => block?.name?.startsWith('Type-aware rules'));
-        assert.ok(!isTypeAware(await defineLintConfig()));
-        assert.ok(isTypeAware(await defineLintConfig({ typeAware: { enabled: true } })));
+        assert.ok(!isTypeAware(await eslintConfig()));
+        assert.ok(isTypeAware(await eslintConfig({ eslint: { typeAware: { enabled: true } } })));
 
         // its naming-convention warn must lose to the default-export exemption (last-wins ordering)
-        const names = (await defineLintConfig({ typeAware: true })).map((block) => block?.name);
+        const names = (await eslintConfig({ eslint: { typeAware: true } })).map((block) => block?.name);
         const typeAwareAt = names.findIndex((name) => name?.startsWith('Type-aware rules'));
         assert.ok(typeAwareAt >= 0 && typeAwareAt < names.indexOf('Default export overrides'));
     });
@@ -59,13 +59,13 @@ test('typeAware is off by default and enabled via the flag', async () => {
 
 test('detection: false turns tools off unless explicitly enabled', async () => {
     await inTempDir({ 'app.css': TAILWIND_ENTRY }, async () => {
-        const off = await defineLintConfig({ detection: false });
+        const off = await eslintConfig({ detection: false });
         assert.ok(!hasTailwindBlockIn(off));
         assert.ok(!off.some((block) => block?.plugins?.['@next/next']));
         assert.ok(off.some((block) => block?.plugins?.react)); // next off → react fallback
 
         // an explicitly enabled tool still auto-detects its settings (entry scan)
-        const on = await defineLintConfig({ detection: false, tailwind: true });
+        const on = await eslintConfig({ detection: false, tailwind: true });
         assert.ok(tailwindBlockOf(on).settings.tailwindcss.cssConfigPath.endsWith('app.css'));
     });
 });
@@ -73,27 +73,27 @@ test('detection: false turns tools off unless explicitly enabled', async () => {
 test('detection: strict skips scans and requires explicit settings', async () => {
     await inTempDir({ 'a.css': TAILWIND_ENTRY, 'b.css': TAILWIND_ENTRY }, async () => {
         // ambiguous entries would be a hard error in auto mode; strict + explicit path works because nothing is scanned
-        const explicit = await defineLintConfig({ detection: { strict: true }, tailwind: { cssConfigPath: 'x.css' } });
+        const explicit = await eslintConfig({ detection: { strict: true }, tailwind: { cssConfigPath: 'x.css' } });
         assert.equal(tailwindBlockOf(explicit).settings.tailwindcss.cssConfigPath, 'x.css');
 
         // hasTailwind is true in this monorepo → tailwind is on, but strict cannot scan for the entry
-        await assert.rejects(defineLintConfig({ detection: { strict: true } }), /strict detection/);
+        await assert.rejects(eslintConfig({ detection: { strict: true } }), /strict detection/);
 
         // strict-off: everything is explicit-only
-        const off = await defineLintConfig({ detection: { enabled: false, strict: true } });
+        const off = await eslintConfig({ detection: { enabled: false, strict: true } });
         assert.ok(!hasTailwindBlockIn(off));
         assert.ok(off.some((block) => block?.plugins?.react));
     });
 });
 
-test('options can be a function or an async function', async () => {
-    await inTempDir({ 'app.css': TAILWIND_ENTRY }, async () => {
-        const fromFn = await defineLintConfig(() => ({ tailwind: false }));
-        assert.ok(!hasTailwindBlockIn(fromFn));
-
-        const fromAsyncFn = await defineLintConfig(async () => ({ tailwind: { cssConfigPath: 'x.css' } }));
-        assert.equal(tailwindBlockOf(fromAsyncFn).settings.tailwindcss.cssConfigPath, 'x.css');
-    });
+test('lint.config.ts in the workspace root is the base, the overrides win', async () => {
+    await inTempDir(
+        { 'app.css': TAILWIND_ENTRY, 'lint.config.ts': "export default { tailwind: { cssConfigPath: 'x.css' } };\n" },
+        async () => {
+            assert.equal(tailwindBlockOf(await eslintConfig()).settings.tailwindcss.cssConfigPath, 'x.css');
+            assert.ok(!hasTailwindBlockIn(await eslintConfig({ tailwind: false })));
+        },
+    );
 });
 
 test('every block function returns a non-empty array of config objects', async () => {

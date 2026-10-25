@@ -12,15 +12,15 @@ import vitestPlugin from '@vitest/eslint-plugin';
 import type { Linter } from 'eslint';
 import jestPlugin from 'eslint-plugin-jest';
 
+import type { ToggleOptions } from '../config.js';
 import { tsExts } from '../exts.js';
-import type { ToggleOptions } from '../index.js';
-import { GLOBAL_IGNORES, hasJest, hasVitest, scanWorkspace, toolGate } from '../lib.js';
+import { jestGate, vitestGate } from '../gates.js';
 import { testColocation } from '../testColocation.js';
 
 export { jestPlugin, vitestPlugin };
 
 /*
- * Both runners use the evidence-based `toolGate` (see lib.js): a runner config file marks the repo
+ * Both runners use the evidence-based gates (`jestGate`, `vitestGate` in gates.js): a runner config file marks the repo
  * even when the runner is installed only in a leaf package (invisible to the `has*` probe), and
  * the runner package itself must then be resolvable - eslint-plugin-jest sniffs the installed
  * `jest` version (jest/no-deprecated-functions) - so leaf-only installs are bridged. Unlike the
@@ -33,13 +33,7 @@ export { jestPlugin, vitestPlugin };
  *
  */
 export function jestConfig(option?: boolean | ToggleOptions, strict = false): Linter.Config[] {
-    const { enabled } = toolGate(option, strict, {
-        tool: 'jest',
-        has: hasJest,
-        packageName: 'jest',
-        requirePackage: false,
-        scan: () => scanWorkspace('jest.config.*', GLOBAL_IGNORES),
-    });
+    const { enabled } = jestGate(option, strict);
     if (!enabled) return [];
     return [
         {
@@ -55,14 +49,7 @@ export function jestConfig(option?: boolean | ToggleOptions, strict = false): Li
  *
  */
 export function vitestConfig(option?: boolean | ToggleOptions, strict = false): Linter.Config[] {
-    const { enabled } = toolGate(option, strict, {
-        tool: 'vitest',
-        has: hasVitest,
-        packageName: 'vitest',
-        requirePackage: false,
-        // vitest is often configured inside vite.config.* - both count as evidence
-        scan: () => scanWorkspace('{vitest,vite}.config.*', GLOBAL_IGNORES),
-    });
+    const { enabled } = vitestGate(option, strict);
     if (!enabled) return [];
     return [
         {

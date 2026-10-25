@@ -102,12 +102,13 @@ test('vitest is on under detection with no probe - Vite+ bundles it', () => {
 
 test('typeAware is on by default - vp check is the type check - and typeAware: false turns it off', () => {
     assert.deepEqual(lintConfig({}).options, { typeAware: true, typeCheck: true });
-    assert.equal(lintConfig({ ...OFF, typeAware: false }).options, undefined);
-    assert.equal(lintConfig({ ...OFF, typeAware: false }).rules?.['typescript/prefer-nullish-coalescing'], undefined);
+    const off = lintConfig({ ...OFF, vitePlus: { typeAware: false } });
+    assert.equal(off.options, undefined);
+    assert.equal(off.rules?.['typescript/prefer-nullish-coalescing'], undefined);
 });
 
 test('typeAware keeps the bug-finding type-aware rules on and the noisy ones off', () => {
-    const { rules = {} } = lintConfig({ ...OFF, typeAware: true });
+    const { rules = {} } = lintConfig({ ...OFF, vitePlus: { typeAware: true } });
     for (const rule of ['no-misused-spread', 'no-base-to-string', 'unbound-method']) {
         assert.equal(rules[`typescript/${rule}` as keyof typeof rules], undefined, rule); // on via `correctness`
     }
@@ -144,38 +145,92 @@ test('next: detected app roots become settings.next.rootDir', async () => {
     });
 });
 
-test('vitePlusConfig: lists add up, maps merge by key, staged is replaced', () => {
-    const config = vitePlusConfig(
-        {
-            lint: {
-                plugins: ['vue'],
-                rules: { 'no-console': 'error', 'import/no-default-export': 'off' },
-                overrides: [{ files: ['x/**'], rules: { 'no-console': 'off' } }],
-                ignorePatterns: ['generated'],
-            },
-            fmt: { printWidth: 100, overrides: [{ files: ['**/*.md'], options: { proseWrap: 'always' } }] },
-            staged: { '*.ts': 'vp lint' },
-            test: { passWithNoTests: true },
-        },
-        OFF,
-    );
-    const base = lintConfig(OFF);
-
-    assert.ok(config.lint?.plugins?.includes('vue') && config.lint.plugins.includes('typescript'));
-    assert.equal(config.lint?.rules?.['no-console'], 'error');
-    assert.equal(config.lint?.rules?.['import/no-default-export'], 'off');
-    assert.ok(config.lint?.rules?.['unicorn/prefer-node-protocol'], 'base rules kept');
-    assert.equal(config.lint?.overrides?.length, (base.overrides?.length ?? 0) + 1);
-    assert.ok(config.lint?.ignorePatterns?.includes('generated') && config.lint.ignorePatterns.includes('**/.nx'));
-
-    assert.equal(config.fmt?.printWidth, 100);
-    assert.equal(config.fmt?.singleQuote, true);
-    assert.equal(config.fmt?.overrides?.length, (fmtConfig().overrides?.length ?? 0) + 1);
-
-    assert.deepEqual(config.staged, { '*.ts': 'vp lint' });
-    assert.deepEqual(config.test, { passWithNoTests: true });
+test('next: an explicit rootDir is passed through', async () => {
+    await inTempDir({ 'apps/web/next.config.ts': '' }, async () => {
+        const lint = lintConfig({ ...OFF, next: { rootDir: 'apps/web' } });
+        assert.deepEqual(lint.settings?.next, { rootDir: 'apps/web' });
+    });
 });
 
-test('vitePlusConfig without a staged block uses the default', () => {
-    assert.deepEqual(vitePlusConfig({}, OFF).staged, stagedConfig());
+test('vitePlusConfig: lint.config.ts in the workspace root is the base, the overrides win', async () => {
+    await inTempDir(
+        { 'lint.config.ts': 'export default { detection: false, nx: true, vitePlus: { typeAware: false } };\n' },
+        async () => {
+            const fromFile = await vitePlusConfig();
+            assert.equal(fromFile.lint?.options, undefined);
+            assert.ok(fromFile.lint?.jsPlugins?.some((plugin) => typeof plugin === 'object' && plugin.name === '@nx'));
+
+            const overridden = await vitePlusConfig({}, { nx: false, vitePlus: { typeAware: true } });
+            assert.deepEqual(overridden.lint?.options, { typeAware: true, typeCheck: true });
+            assert.ok(
+                !overridden.lint?.jsPlugins?.some((plugin) => typeof plugin === 'object' && plugin.name === '@nx'),
+            );
+        },
+    );
+});
+
+test('vitePlusConfig: the vitePlus blocks of lint.config.ts merge over the defaults, the config argument over them', async () => {
+    await inTempDir(
+        {
+            'lint.config.ts': [
+                'export default {',
+                '    detection: false,',
+                "    vitePlus: { lint: { ignorePatterns: ['drafts'], rules: { 'no-console': 'error' } }, test: { projects: ['packages/*'] } },",
+                '};',
+                '',
+            ].join('\n'),
+        },
+        async () => {
+            const config = await vitePlusConfig({
+                lint: { ignorePatterns: ['generated'], rules: { 'no-console': 'warn' } },
+            });
+            assert.ok(
+                config.lint?.ignorePatterns?.includes('drafts') && config.lint.ignorePatterns.includes('generated'),
+            );
+            assert.ok(config.lint?.ignorePatterns?.includes('**/.nx'), 'defaults kept');
+            assert.equal(config.lint?.rules?.['no-console'], 'warn');
+            assert.deepEqual(config.test, { projects: ['packages/*'] });
+            assert.deepEqual(config.staged, stagedConfig());
+            assert.ok(!('typeAware' in config));
+        },
+    );
+});
+
+test('vitePlusConfig: lists add up, maps merge by key, staged is replaced', async () => {
+    // no lint.config.ts: this monorepo's own would add its blocks
+    await inTempDir({}, async () => {
+        const config = await vitePlusConfig(
+            {
+                lint: {
+                    plugins: ['vue'],
+                    rules: { 'no-console': 'error', 'import/no-default-export': 'off' },
+                    overrides: [{ files: ['x/**'], rules: { 'no-console': 'off' } }],
+                    ignorePatterns: ['generated'],
+                },
+                fmt: { printWidth: 100, overrides: [{ files: ['**/*.md'], options: { proseWrap: 'always' } }] },
+                staged: { '*.ts': 'vp lint' },
+                test: { passWithNoTests: true },
+            },
+            OFF,
+        );
+        const base = lintConfig(OFF);
+
+        assert.ok(config.lint?.plugins?.includes('vue') && config.lint.plugins.includes('typescript'));
+        assert.equal(config.lint?.rules?.['no-console'], 'error');
+        assert.equal(config.lint?.rules?.['import/no-default-export'], 'off');
+        assert.ok(config.lint?.rules?.['unicorn/prefer-node-protocol'], 'base rules kept');
+        assert.equal(config.lint?.overrides?.length, (base.overrides?.length ?? 0) + 1);
+        assert.ok(config.lint?.ignorePatterns?.includes('generated') && config.lint.ignorePatterns.includes('**/.nx'));
+
+        assert.equal(config.fmt?.printWidth, 100);
+        assert.equal(config.fmt?.singleQuote, true);
+        assert.equal(config.fmt?.overrides?.length, (fmtConfig().overrides?.length ?? 0) + 1);
+
+        assert.deepEqual(config.staged, { '*.ts': 'vp lint' });
+        assert.deepEqual(config.test, { passWithNoTests: true });
+    });
+});
+
+test('vitePlusConfig without a staged block uses the default', async () => {
+    assert.deepEqual((await vitePlusConfig({}, OFF)).staged, stagedConfig());
 });

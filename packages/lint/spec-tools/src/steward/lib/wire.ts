@@ -181,7 +181,7 @@ export function wireCli(opts: Record<string, any>, root: { name: string; path: s
     const labels = {
         agents: 'AGENTS.md routes to spec-steward',
         rule: '.agents/rules/openspec.md (or .claude/rules) is linked by lint-prepare',
-        skill: '.agents/skills/spec-steward (or .claude/skills) is linked by lint-prepare',
+        skill: '.agents/skills/spec-steward (or .claude/skills) is installed by lint-prepare',
         hook: '.claude/settings.json runs the edit hook',
         opsx: `openspec/config apply/archive guidance points at the repository's spec gate (${GATE_POINTER})`,
     };

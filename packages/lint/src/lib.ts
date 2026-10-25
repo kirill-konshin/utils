@@ -7,7 +7,7 @@ import { globSync } from 'glob';
 import { isPackageExists } from 'local-pkg';
 import { PathScurry } from 'path-scurry';
 
-import type { ToggleOptions } from './index.js';
+import type { ToggleOptions } from './config.js';
 
 type NormalizedOptions<T extends ToggleOptions> = Omit<T, 'enabled'>;
 

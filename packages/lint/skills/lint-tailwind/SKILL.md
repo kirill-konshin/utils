@@ -31,7 +31,7 @@ The binding rules are in [rules/tailwind.md](../../rules/tailwind.md). This skil
 
 # ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
 
-- With Vite+ the same plugin runs as an Oxlint JS plugin with the same detection; pass `tailwind: { cssConfigPath }` as `vitePlusConfig` options instead of `eslint.config.mjs`
+- With Vite+ the same plugin runs as an Oxlint JS plugin with the same detection; both read `tailwind` from `lint.config.ts`
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
 - Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned across the root + every workspace package, `.gitignore`-aware), rules auto-enable with that entry
 - Rules auto-scope to the workspace package owning the entry CSS (block `basePath`); pass `tailwind: { scoped: false }` to lint the whole workspace
@@ -40,14 +40,14 @@ The binding rules are in [rules/tailwind.md](../../rules/tailwind.md). This skil
     - pass `cssConfigPath` to pick one (if others are not useful) OR
     - create multiple leaf `eslint.config.ts` per app (if ALL need to be linted)
 - When detection can't see `tailwindcss` (e.g. it lives only in leaf packages of a monorepo), force it with `tailwind: true` — then a missing entry CSS is a HARD ERROR instead of a silent skip
-- ONLY when auto-find finds nothing (or several entries) pass the MANDATORY entry explicitly in `eslint.config.mjs`:
+- ONLY when auto-find finds nothing (or several entries) pass the MANDATORY entry explicitly in `lint.config.ts`:
 
-```js
-import { defineLintConfig } from '@kirill.konshin/lint';
+```ts
+import { defineLintConfig } from '@kirill.konshin/lint/config';
 
 export default defineLintConfig({
     tailwind: {
-        cssConfigPath: './src/styles/tailwind.css', // MANDATORY, relative to the package root
+        cssConfigPath: './src/styles/tailwind.css', // MANDATORY, relative to the workspace root
     },
 });
 ```

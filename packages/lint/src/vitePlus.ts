@@ -4,30 +4,18 @@ import type { UserConfig } from 'vite-plus';
 import type { OxfmtConfig } from 'vite-plus/fmt';
 import type { OxlintConfig, OxlintOverride } from 'vite-plus/lint';
 
-import { tailwindGate } from './configs/tailwind.js';
+import { type LintConfig, resolveLintConfig } from './config.js';
 import { defaultExportFiles, filenameCaseIgnore } from './conventions.js';
 import { eslintExts, markupExtsRaw, prettierExtsRaw, tsExts, tsExtsRaw } from './exts.js';
-import type { DetectionOptions, TailwindOptions, ToggleOptions } from './index.js';
-import {
-    asOptions,
-    findNextRoots,
-    findWorkspaceRoot,
-    GLOBAL_IGNORES,
-    hasJest,
-    hasNext,
-    hasNx,
-    hasStorybook,
-    hasTurbo,
-    scanWorkspace,
-    toolGate,
-} from './lib.js';
+import { jestGate, nextGate, nxGate, storybookGate, tailwindGate, turboGate } from './gates.js';
+import { asOptions, findWorkspaceRoot, GLOBAL_IGNORES } from './lib.js';
 
 /*
  * Vite+ (`vite-plus`) config, the `@kirill.konshin/lint/vite-plus` entry: the same defaults as the ESLint, Prettier
  * and lint-staged configs, expressed as the `lint` (Oxlint), `fmt` (Oxfmt) and `staged` blocks of `vite.config.ts`.
  *
- * `vite-plus` is an optional peer, so this module imports only its types and returns plain objects; the consumer
- * wraps the result in `defineConfig` from `vite-plus` (typescript.md: never import an optional peer at run time).
+ * `vite-plus` is a required peer (`lint.config.ts` is typed with its config), yet this module imports only its types and
+ * returns plain objects; the consumer wraps the result in `defineConfig` from `vite-plus`.
  * It loads no ESLint plugin: the plugins Oxlint runs as JS plugins are referenced by resolved path, so they load from
  * this package's own install, whatever the consumer's hoisting.
  */
@@ -36,18 +24,6 @@ export { tsExts } from './exts.js';
 
 type StagedConfig = NonNullable<UserConfig['staged']>;
 type JsPlugin = NonNullable<OxlintConfig['jsPlugins']>[number];
-
-export type VitePlusOptions = {
-    detection?: boolean | DetectionOptions;
-    next?: boolean | ToggleOptions;
-    storybook?: boolean | ToggleOptions;
-    turbo?: boolean | ToggleOptions;
-    nx?: boolean | ToggleOptions;
-    jest?: boolean | ToggleOptions;
-    vitest?: boolean | ToggleOptions;
-    tailwind?: boolean | TailwindOptions;
-    typeAware?: boolean | ToggleOptions;
-};
 
 const TS_FILES = `**/*.${tsExts}`;
 const TEST_FILES = `**/*.{test,spec}.${tsExts}`;
@@ -88,7 +64,7 @@ function workspaceGlob(dir: string, glob: string): string {
  * (off anyway). Import sorting moves to Oxfmt (`sortImports`), unused-import removal to `no-unused-vars` with an
  * import autofix.
  */
-export function lintConfig(options: VitePlusOptions = {}): OxlintConfig {
+export function lintConfig(options: LintConfig = {}): OxlintConfig {
     const { enabled: defaultOn = true, strict = false } = asOptions(options.detection);
     // with detection off, tools not mentioned explicitly are OFF instead of auto-detected
     const flag = <T>(option: T | undefined): T | false | undefined =>
@@ -98,32 +74,22 @@ export function lintConfig(options: VitePlusOptions = {}): OxlintConfig {
      * Native plugins need no package: the gates only decide whether the tool is in use. JS plugins resolve from this
      * package, so no hoisting check either - except the tools whose plugin loads the tool itself.
      */
-    const next = toolGate(flag(options.next), strict, {
-        tool: 'next',
-        has: hasNext,
-        requirePackage: false,
-        scan: () => findNextRoots(GLOBAL_IGNORES).map((dir) => `${dir}/package.json`),
-    });
-    const storybook = toolGate(flag(options.storybook), strict, {
-        tool: 'storybook',
-        has: hasStorybook,
-        packageName: 'storybook',
-        scan: () => scanWorkspace('.storybook/main.*', GLOBAL_IGNORES, { dot: true }),
-    });
-    const turbo = toolGate(flag(options.turbo), false, { tool: 'turbo', has: hasTurbo, requirePackage: false });
-    const nx = toolGate(flag(options.nx), strict, { tool: 'nx', has: hasNx, packageName: 'eslint' });
-    const jest = toolGate(flag(options.jest), strict, {
-        tool: 'jest',
-        has: hasJest,
-        requirePackage: false,
-        scan: () => scanWorkspace('jest.config.*', GLOBAL_IGNORES),
-    });
+    const next = nextGate(flag(options.next), strict, { requirePackage: false });
+    const storybook = storybookGate(flag(options.storybook), strict);
+    const turbo = turboGate(flag(options.turbo));
+    const nx = nxGate(flag(options.nx), strict, { packageName: 'eslint' });
+    const jest = jestGate(flag(options.jest), strict);
     // Vite+ bundles Vitest: on unless turned off
     const vitest = asOptions(flag(options.vitest)).enabled ?? true;
     const tailwind = tailwindGate(flag(options.tailwind), strict);
     // on by default: `vp check` is the type check (TypeScript 7 engine via tsgolint); `vp pack` builds declarations
     // without one. Not a detected tool, so `detection: false` leaves it on
-    const { enabled: typeAware = true } = asOptions(options.typeAware);
+    const { enabled: typeAware = true } = asOptions(options.vitePlus?.typeAware);
+
+    // an explicit rootDir in the consumer's own notation, else the detected app roots
+    const nextRootDir = next.enabled
+        ? (next.options.rootDir ?? (next.files.length > 0 ? next.files.map(dirname) : undefined))
+        : undefined;
 
     const jsPlugins: JsPlugin[] = [{ name: 'local', specifier: pluginPath('@kirill.konshin/lint/oxlint-plugin') }];
     // `@nx/dependency-checks` is not supported: it lints `package.json` through `jsonc-eslint-parser`, and Oxlint reads
@@ -241,7 +207,7 @@ export function lintConfig(options: VitePlusOptions = {}): OxlintConfig {
         ignorePatterns: GLOBAL_IGNORES,
         settings: {
             react: { version: '19' },
-            ...(next.enabled && next.files.length > 0 ? { next: { rootDir: next.files.map(dirname) } } : {}),
+            ...(nextRootDir ? { next: { rootDir: nextRootDir } } : {}),
             // Settings are global in Oxlint; the plugin needs the entry CSS by absolute path (it resolves a relative
             // one against each linted package)
             ...(tailwind ? { tailwindcss: { cssConfigPath: tailwind.absoluteCssConfigPath } } : {}),
@@ -433,23 +399,15 @@ export function stagedConfig(): StagedConfig {
 }
 
 /**
- * The shared Vite+ config: {@link lintConfig}, {@link fmtConfig} and {@link stagedConfig} merged with the consumer's
- * own config. Lists add up (`plugins`, `jsPlugins`, `overrides`, `ignorePatterns`), maps merge key by key (`rules`,
- * `settings`, `env`, ...), and a consumer's `staged` replaces the default. Wrap the result in `defineConfig`:
- *
- * ```ts
- * import { vitePlusConfig } from '@kirill.konshin/lint/vite-plus';
- * import { defineConfig } from 'vite-plus';
- *
- * export default defineConfig(vitePlusConfig({ lint: { rules: { ... } } }));
- * ```
+ * `extra` merged over `base`: lists add up (`plugins`, `jsPlugins`, `overrides`, `ignorePatterns`), maps merge key by key
+ * (`rules`, `settings`, `env`, ...), an `extra` `staged` replaces the base one, other blocks are replaced.
  */
-export function vitePlusConfig(config: UserConfig = {}, options: VitePlusOptions = {}): UserConfig {
-    const { lint = {}, fmt = {}, staged, ...rest } = config;
-    const baseLint = lintConfig(options);
-    const baseFmt = fmtConfig();
+function mergeUserConfig(base: UserConfig, extra: UserConfig): UserConfig {
+    const { lint: baseLint = {}, fmt: baseFmt = {}, staged: baseStaged, ...baseRest } = base;
+    const { lint = {}, fmt = {}, staged, ...rest } = extra;
 
     return {
+        ...baseRest,
         ...rest,
         lint: {
             ...baseLint,
@@ -471,6 +429,27 @@ export function vitePlusConfig(config: UserConfig = {}, options: VitePlusOptions
             ignorePatterns: [...(baseFmt.ignorePatterns ?? []), ...(fmt.ignorePatterns ?? [])],
             overrides: [...(baseFmt.overrides ?? []), ...(fmt.overrides ?? [])],
         },
-        staged: staged ?? stagedConfig(),
+        ...(staged || baseStaged ? { staged: staged ?? baseStaged } : {}),
     };
+}
+
+/**
+ * The shared Vite+ config, from the workspace root `lint.config.ts`: {@link lintConfig}, {@link fmtConfig} and
+ * {@link stagedConfig}, then the project's own blocks (`vitePlus` key of `lint.config.ts`), then `config` (see
+ * `mergeUserConfig` for how blocks merge). `overrides` merge deep over `lint.config.ts`. Async: wrap the Promise in
+ * `defineConfig`, Vite+ awaits it:
+ *
+ * ```ts
+ * import { vitePlusConfig } from '@kirill.konshin/lint/vite-plus';
+ * import { defineConfig } from 'vite-plus';
+ *
+ * export default defineConfig(vitePlusConfig());
+ * ```
+ */
+export async function vitePlusConfig(config: UserConfig = {}, overrides: LintConfig = {}): Promise<UserConfig> {
+    const options = await resolveLintConfig(overrides);
+    const { typeAware: _typeAware, ...blocks } = options.vitePlus ?? {};
+    const defaults: UserConfig = { lint: lintConfig(options), fmt: fmtConfig(), staged: stagedConfig() };
+
+    return mergeUserConfig(mergeUserConfig(defaults, blocks), config);
 }

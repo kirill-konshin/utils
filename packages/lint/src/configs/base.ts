@@ -5,7 +5,7 @@ import js from '@eslint/js';
 import type { Linter } from 'eslint';
 import globals from 'globals';
 
-import type { DefaultIgnoreOptions } from '../index.js';
+import type { DefaultIgnoreOptions } from '../config.js';
 import { asOptions, GLOBAL_IGNORES } from '../lib.js';
 
 /**

@@ -35,7 +35,7 @@ Run them through the package manager (`yarn spec-tools gates`), the bin (`node_m
 
 ## Setting a repository up
 
-1. Pin `@kirill.konshin/lint`; `lint-prepare` links the `spec-steward`, `spec-tools` and `spec-verify` skills.
+1. Pin `@kirill.konshin/lint`; `lint-prepare` installs the `spec-steward`, `spec-tools` and `spec-verify` skills.
 2. Declare what binds beyond spec-steward's defaults once, in the root `package.json`: `"spec-steward": { "binds": ["scripts/checks/**", "**/*.Dockerfile", ".gitlab-ci.yml"] }`.
 3. List the gates in the repository's `AGENTS.md` checks: `openspec validate --strict --all`, `spec-tools gates`, and after a requirement changes `spec-tools changed` with `/spec-verify changed` and `spec-tools diff`.
 4. Ignore the generated files with one `.gitignore` line, `.spec-audit/`: every file the tools and the audits write is under it — YAML data, the Markdown and HTML reports, `claude.jsonl`, the job logs. In CI, publish `.spec-audit/` as each audit job's artifacts path.

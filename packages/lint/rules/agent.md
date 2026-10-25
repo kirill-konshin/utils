@@ -88,6 +88,7 @@ Do not use `.claude/commands` for anything. It's not portable (`.agent/commands`
 # `.agents/skills`
 
 - `.agents/skills` must be accompanied by symlinks in `.claude/skills`
+- A personal skill (`~/.claude/skills`) overrides a project skill with the same name: do not install the same skill at both levels
 - May define either
     - A workflow
     - A process

@@ -25,7 +25,7 @@ Do not use Yarn PnP ([rules/npm-yarn.md](../../rules/npm-yarn.md)). IF the proje
 Write the config by hand. `vp migrate` is only an optional first pass: it copies every expanded ESLint rule, absolute paths and broken regexes into `vite.config.ts`, so clean up after it as the `lint-migrate` skill describes.
 
 1. **Install** — add `vite-plus`, `@kirill.konshin/lint` (+ `eslint` only for Nx module-boundary rules); pin `vite`/`vitest` at the root (README "Yarn constraints").
-2. **Config** — root `vite.config.ts`: `defineConfig(vitePlusConfig({ ...project blocks }, { ...toggles }))`; move project rule overrides into `lint.rules` / `lint.overrides`, ignores into `ignorePatterns`. Keep `.editorconfig`.
+2. **Config** — `lint.config.ts` in the workspace root, always (README "`lint.config.ts`"; `"type": "module"` in the root `package.json`): tool toggles, `skills`, `rules`, and under `vitePlus` the `typeAware` setting and the project blocks — rule overrides in `lint.rules` / `lint.overrides`, ignores in `lint.ignorePatterns`, `test`, `fmt`. Root `vite.config.ts` is exactly `export default defineConfig(vitePlusConfig());`. Keep `.editorconfig`.
 3. **Hooks** — `lint-prepare init && vp config` in `prepare`/`postinstall` — in this order: `vp config` fills the Vite+ section `lint-prepare` writes into `AGENTS.md` (same choice as below), `.vite-hooks/pre-commit` with `vp staged`; scripts `lint: vp check --fix`, `lint:staged: vp staged`; workspace-wide scripts move from `yarn workspaces foreach` to `vp run -r` ([rules/npm-yarn.md](../../rules/npm-yarn.md)).
 4. **Tests/builds** — tests import from `vite-plus/test`; libraries `vp pack`, apps `vp build`.
 5. **CI** — `vp check` (no `--fix`), see the `lint-github` skill or the `lint-gitlab` skill.
@@ -34,8 +34,8 @@ Write the config by hand. `vp migrate` is only an optional first pass: it copies
 
 ### ESLint + Prettier
 
-1. **Install** — add `eslint`, `prettier`, `@kirill.konshin/lint`, `husky`, `lint-staged` (+ the PNPM `.npmrc` block if pnpm).
-2. **Config** — create/reconcile `.editorconfig`, `eslint.config.mjs` and `.prettierrc.mjs` (pass `defineLintConfig` options as needed — e.g. `defaultIgnore: { importMetaUrl: import.meta.url }`, `next: { rootDir }` — and keep project rule overrides).
+1. **Install** — add `eslint`, `prettier`, `vite-plus` (required peer: it types `lint.config.ts`), `@kirill.konshin/lint`, `husky`, `lint-staged` (+ the PNPM `.npmrc` block if pnpm).
+2. **Config** — create/reconcile `.editorconfig`, `eslint.config.mjs` (`eslintConfig()`) and `.prettierrc.mjs`; put settings into `lint.config.ts` in the workspace root, always present (e.g. `eslint: { defaultIgnore: { importMetaUrl: import.meta.url } }`, `next: { rootDir }`) and keep project rule overrides.
 3. **Lint-staged** — create/reconcile `.lintstagedrc.mjs`.
 4. **Husky** — `prepare/postinstall` (`prepare` by default, `postinstall` if Yarn 2+ is used AND root package.json is **private**) script; `.husky/pre-commit`, plus `eslint`/`prettier`/`lint`/`lint:staged` scripts. Drop a legacy `lint:all` if it duplicates `lint`.
 5. **IDEA** — apply the `lint-webstorm` skill if the repo has a JetBrains `.idea`.
@@ -67,7 +67,7 @@ Go one-by-one / reply with instructions / skip all / fix all. Do nothing until a
 
 Per issue: **skip** / **skip + add override** / **fix** / **instructions**. For an override, offer only the applicable mechanism(s) and **name which one you'll write, showing the exact line/snippet first**:
 
-- **Lint override** (mechanical findings) — `// oxlint-disable-next-line <rule>` (Vite+) or `// eslint-disable-next-line <rule>` at the site, or a rule entry in `lint.overrides` of `vite.config.ts` / the `eslint.config.*` override block.
+- **Lint override** (mechanical findings) — `// oxlint-disable-next-line <rule>` (Vite+) or `// eslint-disable-next-line <rule>` at the site, or a rule entry in `vitePlus.lint.overrides` of `lint.config.ts` / the `eslint.config.*` override block.
 - **AI override → AGENTS.md** (rule-audit findings) — a general rule appended to `AGENTS.md # Custom Rules` (run `lint-prepare init` to create the file if missing). Prefer a general statement over a per-file exception unless it's genuinely a one-off.
 - **both** — when the violation is covered by a lint rule _and_ an agent rule.
 

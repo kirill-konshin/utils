@@ -1,10 +1,9 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import type { Linter } from 'eslint';
 import * as jsoncParser from 'jsonc-eslint-parser';
 
-import type { ToggleOptions } from '../index.js';
-import { hasNx, toolGate } from '../lib.js';
+import type { ToggleOptions } from '../config.js';
+import { nxGate } from '../gates.js';
+import { hasNx } from '../lib.js';
 
 // lazy so consumers without Nx don't pay the load cost (it drags in a large part of nx itself) -
 // re-exported from index.js
@@ -22,12 +21,7 @@ export const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : nu
  *
  */
 export async function nxConfig(option?: boolean | ToggleOptions, strict = false): Promise<Linter.Config[]> {
-    const { enabled } = toolGate(option, strict, {
-        tool: 'nx',
-        has: hasNx,
-        // hasNx is the one non-strict `has*` (a workspace-root file check) - strict stays at cwd
-        strictHas: strict && existsSync(resolve(process.cwd(), 'nx.json')),
-    });
+    const { enabled } = nxGate(option, strict);
     if (!enabled) return [];
     const nx = (await import('@nx/eslint-plugin')).default;
     return [

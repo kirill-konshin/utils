@@ -38,34 +38,10 @@ const containerDefaultProps = SOME_GLOBAL_SETTING ? { ... } : {};
 
 # Context
 
-```tsx
-'use client';
-
-import { createContext, useContext, useMemo, useState, Dispatch, ReactNode, SetStateAction } from 'react';
-
-// Always type Context explicitly
-// Never export context itself
-const ExampleContext = createContext<{
-    enabled: boolean;
-    setEnabled: Dispatch<SetStateAction<boolean>>;
-} | null>(null);
-
-// Export provider
-export function ExampleContextProvider({ children }: { children: ReactNode }) {
-    // context state & functions
-    const [enabled, setEnabled] = useState(true);
-
-    // memoize context value
-    const value = useMemo(() => ({ enabled, setEnabled }), [enabled, setEnabled]);
-
-    return <ExampleContext.Provider value={value}>{children}</ExampleContext.Provider>;
-}
-
-// Export hook for consumers
-export const useExampleContext = () => {
-    return useContext(ExampleContext);
-};
-```
+- Type the context explicitly: `createContext<Value | null>(null)`
+- Do not export the context; export its provider and a `useXContext` hook
+- Memoize the provider value with `useMemo`
+- Composition patterns, React 19 `use()` and `<Context>` as provider: the `vercel-composition-patterns` skill
 
 # AbortController Pattern
 

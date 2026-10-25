@@ -1,14 +1,14 @@
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname } from 'node:path';
 import type { Linter } from 'eslint';
 import nextTs from 'eslint-config-next/typescript';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
-import { globSync } from 'glob';
 
+import type { NextOptions } from '../config.js';
 import { tsExts } from '../exts.js';
-import type { NextOptions } from '../index.js';
-import { findNextRoots, findWorkspaceRoot, GLOBAL_IGNORES, hasNext, toolGate } from '../lib.js';
+import { nextGate } from '../gates.js';
+import { findNextRoots, GLOBAL_IGNORES, hasNext } from '../lib.js';
 
 // lazy so consumers without Next don't pay the load cost - re-exported from index.js
 export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
@@ -57,38 +57,16 @@ export function reactBaseConfig(): Linter.Config[] {
 
 /**
  * Composite: {@link nextBaseConfig} when Next is enabled, the {@link reactBaseConfig} fallback
- * otherwise. Full evidence-based gate (see `toolGate` in lib.js), mirroring Tailwind: app-root
+ * otherwise. Full evidence-based gate (see `nextGate` in gates.js), mirroring Tailwind: app-root
  * evidence (see {@link findNextRoots} - `next.config.*`, a `package.json` depending on `next`, a
  * `src/app`/`src/pages` tree) marks a Next repo even when the `next` package is installed only in
  * a leaf app (invisible to `hasNext`) - and because `eslint-config-next` `require`s files INSIDE
  * the `next` package, `next` must be resolvable from the workspace root (hoisted); a leaf-only
- * install is a hard error with hoisting guidance (see `toolGate` in lib.js).
+ * install is a hard error with hoisting guidance (see `nextGate` in gates.js).
  *
  */
 export async function nextConfig(option?: boolean | NextOptions, strict = false): Promise<Linter.Config[]> {
-    const { enabled, options, files } = toolGate(option, strict, {
-        tool: 'next',
-        has: hasNext,
-        packageName: 'next',
-        /*
-         * rootDir entries may be relative or absolute paths OR globs (`apps/*` - the plugin
-         * expands them itself for its settings), so for the evidence probes each entry is
-         * expanded against the workspace root into real app dirs; a plain path that exists simply
-         * matches itself. An entry matching nothing falls back to the literal path as the probe
-         * anchor (harmless - resolution just walks up from there). The probes resolve from each
-         * app's package.json.
-         */
-        absolutizeOptions: ({ rootDir }) =>
-            (Array.isArray(rootDir) ? rootDir : [rootDir])
-                .filter((dir): dir is string => Boolean(dir))
-                .flatMap((dir) => {
-                    const pattern = isAbsolute(dir) ? dir : resolve(findWorkspaceRoot(), dir);
-                    // trailing slash = directories only; backslash normalization mirrors the plugin
-                    const dirs = globSync(`${pattern.replace(/\\/g, '/').replace(/\/+$/, '')}/`, { absolute: true });
-                    return (dirs.length > 0 ? dirs : [pattern]).map((appDir) => join(appDir, 'package.json'));
-                }),
-        scan: () => findNextRoots(GLOBAL_IGNORES).map((dir) => join(dir, 'package.json')),
-    });
+    const { enabled, options, files } = nextGate(option, strict);
     if (!enabled) return reactBaseConfig();
 
     // explicit rootDir is passed through in the consumer's own notation; auto-detected roots are

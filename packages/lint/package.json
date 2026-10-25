@@ -16,6 +16,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js",
+      "default": "./dist/config.js"
+    },
     "./lint-staged": {
       "types": "./dist/lintStaged.d.ts",
       "import": "./dist/lintStaged.js",
@@ -86,6 +91,7 @@
     "jsonc-eslint-parser": "^3.3.0",
     "local-pkg": "^1.2.1",
     "path-scurry": "^2.0.2",
+    "skills": "1.7.4",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
@@ -138,9 +144,6 @@
       "optional": true
     },
     "vite": {
-      "optional": true
-    },
-    "vite-plus": {
       "optional": true
     },
     "vitest": {
