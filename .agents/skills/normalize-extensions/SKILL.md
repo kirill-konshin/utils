@@ -33,7 +33,7 @@ Sanity check first: `eslintExtsRaw` and `prettierExtsRaw` must not intersect, an
 | `.idea/jsLinters/eslint.xml` (without Vite+; deleted with Vite+) | `files-pattern` = `**/*.{<eslintExtsRaw>}` — add the option if missing |
 | `packages/lint/skills/lint-webstorm/SKILL.md` (without Vite+) | the `prettier.xml` and `jsLinters/eslint.xml` templates — same values as the two rows above |
 | `packages/lint/README.md` (without Vite+) | "IDEA settings" section: Eslint line = `eslintExtsRaw`, Prettier line = full Prettier scope, same pattern shapes as the `.idea` files |
-| `vite.config.ts` (root) | hardcoded code-file globs (e.g. the Nx module-boundaries `files`) should import `tsExts` from `@kirill.konshin/lint/vite-plus` instead of inlining a list |
+| `lint.config.ts` (root) | hardcoded code-file globs (e.g. the Nx module-boundaries `files`) should import `tsExts` from `@kirill.konshin/lint/config` instead of inlining a list |
 
 In JS/TS files prefer importing `tsExts` / `eslintExts` / `prettierExts` from `@kirill.konshin/lint` (`tsExts` also from `/vite-plus`) over pasting literals. In non-importable formats (xml, editorconfig, md docs) paste the literal expansion.
 

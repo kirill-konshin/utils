@@ -19,6 +19,8 @@ npm-debug*
 out
 yarn-error*
 .yarnrc.local.yml
+# the skills CLI state, lint-prepare re-creates it on install
+skills-lock.json
 
 # https://yarnpkg.com/advanced/qa#which-files-should-be-gitignored
 .yarn/*

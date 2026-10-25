@@ -2,6 +2,7 @@
   "name": "@kirill.konshin/utils-monorepo",
   "description": "Utils Monorepo",
   "private": true,
+  "type": "module",
   "version": "0.0.0",
   "scripts": {
     "postinstall": "node --run postinstall:lint:build && node --run postinstall:lint && node --run postinstall:nx && node --run postinstall:hooks",
