@@ -170,6 +170,7 @@ export default defineConfig(vitePlusConfig());
 
 - Merging: lists add up (`plugins`, `jsPlugins`, `overrides`, `ignorePatterns`), maps merge by key (`rules`, `settings`, `env`), a `staged` block replaces the default
 - Building blocks are exported: `lintConfig(config)` (synchronous, takes a resolved config), `fmtConfig()`, `stagedConfig()`
+- Rolldown module-directive warnings (`'use server'`, `'use client'`) default off for builds and dependency optimization; set `build.rolldownOptions.checks.moduleLevelDirective` or `optimizeDeps.rolldownOptions.checks.moduleLevelDirective` to `true` to re-enable. This changes logging only, not directive handling.
 - Lint and format settings live in the **root** config only: Vite+ ignores nested `lint`/`fmt` blocks, use `lint.overrides` / `fmt.overrides` with workspace paths
 - `.gitignore` and `.prettierignore` are honoured by Oxfmt; the recommended `.prettierignore` entries are default `fmt.ignorePatterns`, add others there
 

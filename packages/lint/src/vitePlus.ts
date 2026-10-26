@@ -436,8 +436,8 @@ function mergeUserConfig(base: UserConfig, extra: UserConfig): UserConfig {
 /**
  * The shared Vite+ config, from the workspace root `lint.config.ts`: {@link lintConfig}, {@link fmtConfig} and
  * {@link stagedConfig}, then the project's own blocks (`vitePlus` key of `lint.config.ts`), then `config` (see
- * `mergeUserConfig` for how blocks merge). `overrides` merge deep over `lint.config.ts`. Async: wrap the Promise in
- * `defineConfig`, Vite+ awaits it:
+ * `mergeUserConfig` for how blocks merge). Rolldown's module-directive warning defaults off in builds and dependency
+ * optimization. `overrides` merge deep over `lint.config.ts`. Async: wrap the Promise in `defineConfig`, Vite+ awaits it:
  *
  * ```ts
  * import { vitePlusConfig } from '@kirill.konshin/lint/vite-plus';
@@ -451,5 +451,26 @@ export async function vitePlusConfig(config: UserConfig = {}, overrides: LintCon
     const { typeAware: _typeAware, ...blocks } = options.vitePlus ?? {};
     const defaults: UserConfig = { lint: lintConfig(options), fmt: fmtConfig(), staged: stagedConfig() };
 
-    return mergeUserConfig(mergeUserConfig(defaults, blocks), config);
+    const merged = mergeUserConfig(mergeUserConfig(defaults, blocks), config);
+    // Vite selects rolldownOptions over its deprecated rollupOptions alias; retain the selected options.
+    const buildOptions = merged.build?.rolldownOptions ?? merged.build?.rollupOptions;
+    const optimizeOptions = merged.optimizeDeps?.rolldownOptions ?? merged.optimizeDeps?.rollupOptions;
+
+    return {
+        ...merged,
+        build: {
+            ...merged.build,
+            rolldownOptions: {
+                ...buildOptions,
+                checks: { moduleLevelDirective: false, ...buildOptions?.checks },
+            },
+        },
+        optimizeDeps: {
+            ...merged.optimizeDeps,
+            rolldownOptions: {
+                ...optimizeOptions,
+                checks: { moduleLevelDirective: false, ...optimizeOptions?.checks },
+            },
+        },
+    };
 }

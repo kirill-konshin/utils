@@ -234,3 +234,61 @@ test('vitePlusConfig: lists add up, maps merge by key, staged is replaced', asyn
 test('vitePlusConfig without a staged block uses the default', async () => {
     assert.deepEqual((await vitePlusConfig({}, OFF)).staged, stagedConfig());
 });
+
+test('vitePlusConfig: module-directive warnings default off without replacing project build or optimizer options', async () => {
+    await inTempDir({}, async () => {
+        const config = await vitePlusConfig(
+            {
+                build: { target: 'es2022', rolldownOptions: { checks: { circularDependency: true } } },
+                optimizeDeps: { exclude: ['server-only'], rolldownOptions: { external: ['external'] } },
+            },
+            OFF,
+        );
+        assert.equal(config.build?.target, 'es2022');
+        assert.deepEqual(config.build?.rolldownOptions?.checks, {
+            moduleLevelDirective: false,
+            circularDependency: true,
+        });
+        assert.deepEqual(config.optimizeDeps?.exclude, ['server-only']);
+        assert.deepEqual(config.optimizeDeps?.rolldownOptions?.external, ['external']);
+        assert.deepEqual(config.optimizeDeps?.rolldownOptions?.checks, { moduleLevelDirective: false });
+    });
+});
+
+test('vitePlusConfig: lint.config.ts and config arguments can re-enable module-directive warnings', async () => {
+    await inTempDir(
+        {
+            'lint.config.ts': `export default {
+                detection: false,
+                vitePlus: {
+                    build: { rolldownOptions: { checks: { moduleLevelDirective: true } } },
+                    optimizeDeps: { rolldownOptions: { checks: { moduleLevelDirective: true } } },
+                },
+            };`,
+        },
+        async () => {
+            const fromFile = await vitePlusConfig();
+            assert.equal(fromFile.build?.rolldownOptions?.checks?.moduleLevelDirective, true);
+            assert.equal(fromFile.optimizeDeps?.rolldownOptions?.checks?.moduleLevelDirective, true);
+
+            const overridden = await vitePlusConfig({
+                build: { rolldownOptions: { checks: { moduleLevelDirective: false } } },
+                optimizeDeps: { rolldownOptions: { checks: { moduleLevelDirective: false } } },
+            });
+            assert.equal(overridden.build?.rolldownOptions?.checks?.moduleLevelDirective, false);
+            assert.equal(overridden.optimizeDeps?.rolldownOptions?.checks?.moduleLevelDirective, false);
+        },
+    );
+});
+
+test('vitePlusConfig: legacy rollupOptions retain their settings and explicit directive checks', async () => {
+    await inTempDir({}, async () => {
+        const options = { external: ['external'], checks: { moduleLevelDirective: true } };
+        const config = await vitePlusConfig(
+            { build: { rollupOptions: options }, optimizeDeps: { rollupOptions: options } },
+            OFF,
+        );
+        assert.deepEqual(config.build?.rolldownOptions, options);
+        assert.deepEqual(config.optimizeDeps?.rolldownOptions, options);
+    });
+});
