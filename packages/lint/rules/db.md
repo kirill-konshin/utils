@@ -28,3 +28,4 @@ Migration and import procedures, Neon: the `lint-db` skill.
 # Neon
 
 - Only if the user asks for Neon, or the project already uses it: follow the `lint-db` skill
+- Fold Neon Auth into Iron Session (the `lint-db` skill); this overrides the session wrapper, callback route and middleware of the `neon-auth` skill

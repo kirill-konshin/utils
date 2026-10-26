@@ -44,6 +44,8 @@ export default defineConfig({
 
 Scripts: `"start": "vp pack --watch"`, `"build:main": "vp pack"`.
 
+This is the `vite.config.ts` of the Electron app's own workspace package. When the app is the workspace root, the root `vite.config.ts` stays `defineConfig(vitePlusConfig())`: put the `pack` block under the `vitePlus` key of `lint.config.ts` (`vitePlus: { pack: { … } }`).
+
 # Packaging a Next.js Standalone Server
 
 In a hoisted workspace (see [rules/npm-yarn.md](../../rules/npm-yarn.md#hoisting)) Next.js traces the server's dependencies into `.next/standalone/node_modules`, beside the app folder; package both, without Electron:
@@ -69,7 +71,7 @@ variables:
 build:
     image: <current GitLab macOS image> # a macOS runner builds and signs mac targets
     tags:
-        - saas-macos-medium-m1
+        - <macOS runner tag>
     script:
         - yarn build
         - rm -rf electron/dist/mac # some cleanup to make artifacts leaner

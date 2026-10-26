@@ -101,21 +101,124 @@ export type LintConfig = {
 
 export const LINT_CONFIG_FILE = 'lint.config.ts';
 
-/** The base every resolved config starts from. */
+/** `{ name: true }` for each name. */
+const only = (...names: string[]): Record<string, boolean> => Object.fromEntries(names.map((name) => [name, true]));
+
+/**
+ * The base every resolved config starts from. Every project gets every skill below; `lint.config.ts` turns off what it
+ * does not need (`'expo/skills': false`).
+ *
+ * Remote sources follow the Core Pack https://skills.sh/p/DxVN7q53wGdAcZQt (synced by hand, see the repository's
+ * `curated-skills-update` skill), plus the official skills of the libraries the rules cover. Each source lists its
+ * skills: the repositories also hold their maintainers' internal skills. `ref` pins a full commit SHA.
+ */
 export const DEFAULT_LINT_CONFIG: LintConfig = {
     skills: {
         // this package's own skills
         '@kirill.konshin/lint': true,
+
+        // Core Pack
         'vercel-labs/agent-skills': {
             ref: '063bee94c3f4df8453406c830b0a7df0f2860278',
-            skills: {
-                'vercel-react-best-practices': true,
-                'vercel-composition-patterns': true,
-                'vercel-react-native-skills': true,
-                'vercel-react-view-transitions': true,
-                'web-design-guidelines': true,
-            },
+            skills: only(
+                'vercel-react-best-practices',
+                'vercel-composition-patterns',
+                'vercel-react-native-skills',
+                'vercel-react-view-transitions',
+                'web-design-guidelines',
+            ),
         },
+        'vercel/ai': { ref: '682e2dd71456f14f9da33a1b983d1998c3a1184c', skills: only('ai-sdk') },
+        // Hero UI is the default UI kit for Tailwind sites (rules/tailwind.md); shadcn for projects that already use it
+        'shadcn-ui/ui': { ref: '481d523374745e77d0cf9c53a4115ab5dd7c8481', skills: only('shadcn') },
+        'heroui-inc/heroui': {
+            ref: '31a6261590798d3c46f9cd0adf507653b3bc29ad',
+            skills: only('heroui-react', 'heroui-native'),
+        },
+        // not `material-ui-tailwind`: MUI and Tailwind are never mixed (rules/mui.md)
+        'mui/material-ui': {
+            ref: 'f63c84ad6f3f8bd1d6f822bc6ed4ec738ec124b7',
+            skills: only('material-ui-nextjs', 'material-ui-styling', 'material-ui-theming'),
+        },
+        'neondatabase/agent-skills': {
+            ref: 'ccca3334a7542d3133134cc6926f2fafc6edeb1f',
+            skills: only('neon', 'neon-postgres', 'neon-postgres-branches', 'neon-auth'),
+        },
+
+        // official skills of the libraries the rules cover
+        'vercel/next.js': {
+            ref: 'cbf49db30a655ac17c92c2951885c4256db14b9e',
+            skills: only(
+                'next-bundle-optimizer',
+                'next-cache-components-adoption',
+                'next-cache-components-optimizer',
+                'next-dev-loop',
+                'next-partial-prefetching-adoption',
+                'next-partial-prefetching-optimizer',
+            ),
+        },
+        // shipped in `@reduxjs/toolkit` too, but nested deeper than `skills experimental_sync` looks
+        'reduxjs/redux-toolkit': {
+            ref: '0fd611cc79d44990ac9a040dec4d5cb446233440',
+            skills: only(
+                'build-modern-redux-apps/modern-redux',
+                'build-modern-redux-apps/redux-dataflow',
+                'evolve-and-diagnose-redux-apps/debug-redux-toolkit-apps',
+                'evolve-and-diagnose-redux-apps/migrate-to-modern-redux',
+                'manage-server-data/adopt-rtk-query',
+                'manage-server-data/generate-rtk-query-from-openapi',
+                'model-redux-state/build-slices-and-selectors',
+                'model-redux-state/design-state-ownership',
+                'orchestrate-side-effects/handle-side-effects',
+            ),
+        },
+        'vercel/turborepo': { ref: '8003ff0fe919160f68367cd08465b179410e0692', skills: only('turborepo') },
+        'nrwl/nx-ai-agents-config': {
+            ref: '525ce266e22ec54e006d630d3b560658e8c3001c',
+            skills: only(
+                'link-workspace-packages',
+                'monitor-ci',
+                'nx-cloud-api',
+                'nx-cloud-cache-investigator',
+                'nx-cloud-ci-failure-review',
+                'nx-generate',
+                'nx-import',
+                'nx-plugins',
+                'nx-run-tasks',
+                'nx-workspace',
+            ),
+        },
+        'expo/skills': {
+            ref: 'd5caf7fdf8b4854351f05841a7e315ac87ad7d24',
+            skills: only(
+                'eas-app-stores',
+                'eas-hosting',
+                'eas-observe',
+                'eas-simulator',
+                'eas-update',
+                'eas-update-insights',
+                'eas-workflows',
+                'expo-animation',
+                'expo-app-clip',
+                'expo-brownfield',
+                'expo-data-fetching',
+                'expo-design-system',
+                'expo-dev-client',
+                'expo-dom',
+                'expo-examples',
+                'expo-migrate-module',
+                'expo-module',
+                'expo-native-ui',
+                'expo-overview',
+                'expo-project-structure',
+                'expo-router',
+                'expo-ui',
+                'expo-upgrade',
+                'expo-web-to-native',
+            ),
+        },
+        // shipped in `@playwright/cli` too, found by `skills experimental_sync` only when it is a direct dependency
+        'microsoft/playwright-cli': { ref: 'b1a5903c5b633b8c9f843ad7b629c2a78437040c', skills: only('playwright-cli') },
     },
 };
 

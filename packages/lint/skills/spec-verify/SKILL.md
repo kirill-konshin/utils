@@ -1,6 +1,6 @@
 ---
 name: spec-verify
-description: Audit whether the code satisfies the intent of the OpenSpec specifications; its verdict gates CI. Checks what no tool can - cross-capability contradiction, code that does not satisfy a requirement's intent, whether a bound test asserts its scenario, and gaps nobody recorded. It audits code conformance only; corpus quality is the spec-steward skill's audit. The judging rules are in the spec-tools skill's references/rules/ (common.md, spec-verify.md). Readers only judge; each writes .spec-audit/parts/findings/part-<n>-<reader>.yaml and `spec-tools report` renders .spec-audit/spec-verify.md. Interactively, run `spec-tools audit`, then summarize the report and ask the operator what to do. After changing a capability, `/spec-verify changed` judges what changed.
+description: Audit whether the code satisfies the intent of the OpenSpec specifications; its verdict gates CI. Finds what no tool can - cross-capability contradictions, code that misses a requirement's intent, bound tests that do not assert their scenario, gaps nobody recorded. Use for a code-conformance audit (`spec-tools audit`) or after changing a capability (`/spec-verify changed`). Not for corpus quality (the `spec-steward` skill).
 model: claude-haiku-5-5
 effort: high
 ---

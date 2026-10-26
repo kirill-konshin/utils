@@ -1,6 +1,6 @@
 ---
 name: spec-tools
-description: The machinery around both audits — set up and run the `spec-tools` CLI of `@kirill.konshin/lint` in an OpenSpec repository — the change gates and workflow-evidence gate beside spec-steward's corpus gate, the requirement-level specification diff, the `spec-verify` code-conformance audit (run class, scope, workers, merge, verdict), and the glue a CI pipeline runs around a headless AI review (verdict gate, merge-request comment, HTML reports). Use when wiring these into a repository or its pipeline, when a `spec-tools` command fails or its output needs reading, or when deciding which run class an audit is.
+description: Set up and run the `spec-tools` CLI of `@kirill.konshin/lint` in an OpenSpec repository - change gates, workflow-evidence gate, specification diff, runs of the `spec-verify` audit, and the CI glue around a headless AI review. Use when wiring spec-tools into a repository or its pipeline, when a `spec-tools` command fails or its output needs reading, or when choosing the run class of an audit.
 ---
 
 # spec-tools

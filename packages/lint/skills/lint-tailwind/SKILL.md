@@ -35,10 +35,10 @@ The binding rules are in [rules/tailwind.md](../../rules/tailwind.md). This skil
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
 - Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned across the root + every workspace package, `.gitignore`-aware), rules auto-enable with that entry
 - Rules auto-scope to the workspace package owning the entry CSS (block `basePath`); pass `tailwind: { scoped: false }` to lint the whole workspace
-- `tailwindcss` must be resolvable from the workspace root — if lint fails with "not resolvable from the workspace root", hoist it (see the `lint-npm-yarn` skill, "Hoisting") or add it to root `devDependencies`; run eslint with `LINT_DEBUG=1` to trace detection
+- `tailwindcss` must be resolvable from the workspace root — if lint fails with "not resolvable from the workspace root", hoist it (see the `lint-npm-yarn` skill, "Hoisting") or add it to root `devDependencies`; trace detection with `LINT_DEBUG=1 vp lint` (or `LINT_DEBUG=1 eslint .`)
 - Several entry CSS candidates are ALWAYS a HARD ERROR (a silent skip is hard to notice)
-    - pass `cssConfigPath` to pick one (if others are not useful) OR
-    - create multiple leaf `eslint.config.ts` per app (if ALL need to be linted)
+    - pass `cssConfigPath` in `lint.config.ts` to pick one (Vite+: the only fix, it ignores nested `lint` blocks) OR
+    - ESLint only: create a leaf `eslint.config.mjs` per app with its own `cssConfigPath` (if ALL need to be linted)
 - When detection can't see `tailwindcss` (e.g. it lives only in leaf packages of a monorepo), force it with `tailwind: true` — then a missing entry CSS is a HARD ERROR instead of a silent skip
 - ONLY when auto-find finds nothing (or several entries) pass the MANDATORY entry explicitly in `lint.config.ts`:
 

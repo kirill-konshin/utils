@@ -62,6 +62,9 @@ release. Add a tool name to select part of the graph. For example, run
 
 <!--VITE PLUS END-->
 
+<!-- BEGIN:nextjs-agent-rules -->
+<!-- END:nextjs-agent-rules -->
+
 ---
 
 # Custom Rules
@@ -96,7 +99,7 @@ Use the matching skill for these tasks:
 - Writing commit messages or working out what a change will release — [releases](.agents/skills/releases/SKILL.md)
 - Creating a package, adding a dependency between packages or fixing a module boundaries lint error — [module-boundaries](.agents/skills/module-boundaries/SKILL.md)
 - Upgrading `@kirill.konshin/lint` or moving a consumer repo to Vite+ — [lint-migrate](.agents/skills/lint-migrate/SKILL.md)
-- Periodic update of the curated skills (default `skills` map in `packages/lint/src/config.ts`) or the `skills` CLI — [curated-skills-update](.agents/skills/curated-skills-update/SKILL.md)
+- Syncing the Core Pack, or updating the default skills (`DEFAULT_LINT_CONFIG.skills` in `packages/lint/src/config.ts`) or the `skills` CLI — [curated-skills-update](.agents/skills/curated-skills-update/SKILL.md)
 
 # Agent
 

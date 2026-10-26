@@ -72,6 +72,14 @@ describe('the scenario ratchet', () => {
         expect(ratchet(dir)).toEqual([]);
 
         fs.rmSync(path.join(dir, 'vite.config.ts'));
+        write(
+            dir,
+            'lint.config.ts',
+            `export default {\n    // ${cite('scenario-a-first-refund')}\n    vitePlus: { lint: {} },\n};\n`,
+        );
+        expect(ratchet(dir)).toEqual([]);
+
+        fs.rmSync(path.join(dir, 'lint.config.ts'));
         write(dir, 'yarn.config.cjs', `// ${cite('scenario-a-first-refund')}\nmodule.exports = {};\n`);
         expect(ratchet(dir)).toEqual([]);
 

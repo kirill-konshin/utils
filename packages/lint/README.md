@@ -142,14 +142,14 @@ export default defineLintConfig({
 
     // skills lint-prepare installs, keyed by source, merged over the defaults (see "AI Agent Rules")
     skills: {
+        'expo/skills': false, // a default source, turned off
         'vercel-labs/agent-skills': { skills: { 'vercel-react-native-skills': false } }, // a default source, one skill left out
-        'heroui-inc/heroui': { skills: { 'heroui-react': true } }, // only this skill
-        'shadcn/ui': true, // every skill of the source
+        'mattpocock/skills': { skills: { tdd: true } }, // an extra source, only this skill
         '@kirill.konshin/lint': { skills: { 'lint-electron': false } }, // this package's own skills
     },
 
     // package rules by name: false leaves a rule out
-    rules: { electron: false },
+    rules: { redux: false },
 });
 ```
 
@@ -243,7 +243,35 @@ vp staged
 
 Library packages build with `vp pack` from a `pack` block (tsdown) in their own `vite.config.ts`, and test with `vp test`; tests import from `vite-plus/test`.
 
-## ESLint + Prettier (without Vite+)
+## Editor Config `.editorconfig`
+
+Oxfmt reads it too; `fmtConfig()` sets the Prettier behaviors that differ from it.
+
+```editorconfig
+root = true
+
+[*]
+indent_style = space
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = false
+max_line_length = 120
+
+[*.md]
+max_line_length = 99999
+
+[*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}]
+indent_size = 4
+
+[*.{css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+```
+
+## ESLint + Prettier (without Vite+, legacy, not recommended)
 
 ```bash
 $ yarn add -D eslint prettier vite-plus @kirill.konshin/lint @yarnpkg/types husky lint-staged
@@ -373,35 +401,7 @@ export default {
 
 Import from `/prettier`, not the package root: the root loads every ESLint plugin, which would slow down each Prettier run.
 
-### Editor Config `.editorconfig`
-
-Oxfmt reads it too; `fmtConfig()` sets the Prettier behaviors that differ from it.
-
-```editorconfig
-root = true
-
-[*]
-indent_style = space
-end_of_line = lf
-charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = false
-max_line_length = 120
-
-[*.md]
-max_line_length = 99999
-
-[*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}]
-indent_size = 4
-
-[*.{css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml}]
-indent_size = 2
-
-[Makefile]
-indent_style = tab
-```
-
-`package.json`:
+### `package.json` (legacy for ESLint / Husky / Lint Staged)
 
 ```jsonc
 {
@@ -419,7 +419,7 @@ indent_style = tab
 - Eslint: `**/*.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue}`
 - Prettier: `{**/*,*}.{js,jsx,ts,tsx,cjs,cts,mjs,mts,md,mdx,htm,html,vue,css,scss,sass,less,yml,yaml,json,json5,graphql,graphqls,xml}`
 
-### Lint Staged
+### Lint Staged (legacy, see VitePlus)
 
 `.lintstagedrc.mjs`
 
@@ -482,10 +482,11 @@ The generated `AGENTS.md` has a `# Custom Rules` section at the bottom — add p
 In the project root, `lint-prepare`:
 
 - Creates real `rules/` and `skills/` directories in `.agents/` (canonical, cross-tool — Codex reads it) and `.claude/` (Claude Code).
-- Links every `rules/*.md` file into both, except the ones the `rules` map of [`lint.config.ts`](#lintconfigts) turns off (`rules: { electron: false }`). Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package). A rule of yours with the same name in `.agents/` wins, the package one is not installed.
+- Links every `rules/*.md` file into both, except the ones the `rules` map of [`lint.config.ts`](#lintconfigts) turns off (`rules: { redux: false }`). Links point straight at the installed package's real location (`node_modules/@kirill.konshin/lint`, or the workspace package). A rule of yours with the same name in `.agents/` wins, the package one is not installed.
 - Installs the skills of the `skills` map of `lint.config.ts`, merged over the defaults, with the [`skills` CLI](https://github.com/vercel-labs/skills), into `.agents/skills/` and from there into `.claude/skills/`. The map is keyed by source, each value uses the toggle notation; `skills: { name: true | false }` picks skills of a source — with no `true` entry every skill except the `false` ones:
     - npm packages (`@scope/name`, or a name without `/`) are dependencies that ship skills: `skills experimental_sync -y -a codex claude-code` links every `skills/<name>/` folder of your dependencies; the map only leaves some out (`--exclude`). Default: this package's own skills (`'@kirill.konshin/lint': true`) — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules.
-    - Git sources (`owner/repo`) are installed with `skills add`, at `ref` when set (pin a full 40-character commit SHA). Default: `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-react-native-skills`, `vercel-react-view-transitions` and `web-design-guidelines` from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), pinned. A source whose skills `skills-lock.json` already has at the same ref is not fetched again. `lint.config.ts` owns the remote skills of `skills-lock.json`: a remote skill it no longer lists is removed (`skills remove`).
+    - Git sources (`owner/repo`) are installed with `skills add`, at `ref` when set (pin a full 40-character commit SHA). A source whose skills `skills-lock.json` already has at the same ref is not fetched again. `lint.config.ts` owns the remote skills of `skills-lock.json`: a remote skill it no longer lists is removed (`skills remove`).
+    - Defaults — every project gets them, turn off what it does not need: the [Core Pack](https://skills.sh/p/DxVN7q53wGdAcZQt) (`vercel-labs/agent-skills` incl. `web-design-guidelines`, `vercel/ai`, `shadcn-ui/ui`, `heroui-inc/heroui`, `mui/material-ui` without `material-ui-tailwind`, `neondatabase/agent-skills`) and the official skills of the libraries the rules cover (`vercel/next.js`, `reduxjs/redux-toolkit`, `vercel/turborepo`, `nrwl/nx-ai-agents-config`, `expo/skills`, `microsoft/playwright-cli`). Each source lists its skills and pins a commit: `DEFAULT_LINT_CONFIG` in `src/config.ts`.
     - A skill folder of yours with the same name in `.agents/skills/` wins.
     - A failed CLI run is a warning, the install goes on: run `lint-prepare` again.
     - On CI (`CI` set) nothing remote is fetched (`--no-remote`, no `skills add`): no network needed.
@@ -499,12 +500,12 @@ In the project root, `lint-prepare`:
 
 ### OpenSpec
 
-For a repository specified with [OpenSpec](https://github.com/Fission-AI/OpenSpec) the package ships one bin, `spec-tools` — a single self-contained file, `skills/spec-tools/scripts/cli.js` — three skills and a command:
+For a repository specified with [OpenSpec](https://github.com/Fission-AI/OpenSpec) the package ships one bin, `spec-tools` — a single self-contained file, `skills/spec-tools/scripts/cli.js` — four skills:
 
 - `spec-tools steward` and the `spec-steward` skill — the corpus gate (citations, binding, the scenario ratchet), the edit hook, corpus-quality audits and review rounds.
 - `spec-tools` and its skill — the change gates, the workflow-evidence gate, the requirement-level specification diff, the code-conformance audit, and the glue a CI pipeline runs around a headless AI review (verdict gate, merge-request comment, HTML reports).
 - `spec-verify` — the skill every audit worker loads.
-- `/spec-author` — the command that writes or edits a specification in place, the default direct-edit path.
+- `spec-author` — the skill that writes or edits a specification in place, the default direct-edit path (`/spec-author`).
 
 Which to reach for:
 

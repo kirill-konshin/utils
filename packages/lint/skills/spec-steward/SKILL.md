@@ -1,6 +1,6 @@
 ---
 name: spec-steward
-description: Guard, audit and repair an OpenSpec specification corpus — whether these are the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing specs for corpus quality (the whole corpus, a change, or one capability), producing or processing a spec review file (the YAML review `.spec-audit/spec-review.yaml`, where the owner answers each item's `decision` with ✅ / ❌ / a comment), aligning rules shared by several repositories, wiring the spec guard (edit hook, AGENTS.md routing, OPSX config) into a repository, or when the repository's spec gate, `spec-tools steward check` or the edit hook reports a finding. Deterministic scripts do the mechanical work; the skill supplies the procedure. It does not audit code conformance; the `spec-verify` skill does. Writing a rule is the `/spec-author` command.
+description: Guard, audit and repair an OpenSpec specification corpus - are these the right rules, in the right place, with the right evidence; it proposes spec changes and never fails a build. Use when auditing spec corpus quality, processing a spec review file (`.spec-audit/spec-review.yaml`), aligning rules shared by several repositories, wiring the spec guard into a repository, or when `spec-tools steward check` or the edit hook reports a finding. Not for code conformance (the `spec-verify` skill) or for writing a rule (the `spec-author` skill).
 ---
 
 # Spec steward

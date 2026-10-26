@@ -86,12 +86,13 @@ const GENERATED_MARKER = '<!-- @kirill.konshin/lint:generated -->';
 
 /**
  * Marked sections of AGENTS.md that other tools own. Tools write their own agent instructions - nobody copies them by
- * hand: this file only provides each anchor, an empty marker pair, on every generation. Sequencing does the rest: the
- * tool runs right after `lint-prepare` in the same install script and fills its section - Vite+ on `vp config` (it
- * never creates a section, and its creating commands rewrite dependencies).
+ * hand: this file only provides each anchor, a marker pair, on every generation, and keeps what the tool wrote between
+ * them. Vite+ fills its section on `vp config`, run right after `lint-prepare` in the same install script (it never
+ * creates a section, and its creating commands rewrite dependencies); Next.js on `next dev`, when it detects an agent.
  */
 const TOOL_SECTIONS: { tool: string; start: string; end: string }[] = [
     { tool: 'Vite+', start: '<!--VITE PLUS START-->', end: '<!--VITE PLUS END-->' },
+    { tool: 'Next.js', start: '<!-- BEGIN:nextjs-agent-rules -->', end: '<!-- END:nextjs-agent-rules -->' },
 ];
 
 const lstat = (file: string): fs.Stats | undefined => fs.lstatSync(file, { throwIfNoEntry: false });
@@ -374,13 +375,25 @@ export function packageEntries(rules: Rule[]): Map<string, string> {
 }
 
 /**
- * Names of the skills the `skills` CLI installed, from its `skills-lock.json` in cwd; empty when there is none.
+ * The directory the `skills` CLI installs a skill into: its name sanitized as the CLI does it (`sanitizeName`), so
+ * `model-redux-state/design-state-ownership` lives in `model-redux-state-design-state-ownership`.
+ */
+export const skillDirName = (name: string): string =>
+    name
+        .toLowerCase()
+        .replace(/[^a-z0-9._]+/g, '-')
+        .replace(/^[.-]+|[.-]+$/g, '')
+        .slice(0, 255) || 'unnamed-skill';
+
+/**
+ * Directory names of the skills the `skills` CLI installed, from its `skills-lock.json` in cwd; empty when there is
+ * none.
  */
 export function readSyncedSkills(cwd: string): Set<string> {
     try {
         const lock: unknown = JSON.parse(fs.readFileSync(path.join(cwd, SKILLS_LOCK), 'utf-8'));
         const skills = (lock as { skills?: unknown })?.skills;
-        return new Set(skills && typeof skills === 'object' ? Object.keys(skills) : []);
+        return new Set(skills && typeof skills === 'object' ? Object.keys(skills).map(skillDirName) : []);
     } catch {
         return new Set();
     }
@@ -699,7 +712,7 @@ export function symlinkClaudeMd(cwd: string): void {
  * there) and honours each rule's `paths`, while an `@` import would load every rule into every session, scoped or not.
  * Codex, which expands no `@`, reads this index.
  */
-export function generateAgentsFile(rules: Rule[], customSection: string | null): string {
+export function generateAgentsFile(rules: Rule[], customSection: string | null, previous = ''): string {
     const entries = rules.map((rule) => {
         // the canonical entry (a package link or the user's own file), not the package install path
         const rulePath = `${CANONICAL_AGENT_DIR}/rules/${rule.file}`;
@@ -709,7 +722,12 @@ export function generateAgentsFile(rules: Rule[], customSection: string | null):
         return `- **${toTitle(rule.name)}**${description}${scope}: [${rulePath}](${rulePath})`;
     });
 
-    const sections = TOOL_SECTIONS.map(({ start, end }) => `${start}\n${end}`);
+    // what a tool wrote between its markers last time stays: lint-prepare never empties it
+    const sections = TOOL_SECTIONS.map(({ start, end }) => {
+        const from = previous.indexOf(start);
+        const to = from === -1 ? -1 : previous.indexOf(end, from);
+        return to === -1 ? `${start}\n${end}` : previous.slice(from, to + end.length);
+    });
     const generated = `${HEADER}\n\n# Rules\n\n${entries.join('\n')}\n\n${sections.join('\n\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
 
     return customSection ? `${generated}\n\n${customSection}\n` : `${generated}\n`;
@@ -788,7 +806,8 @@ export async function main(): Promise<void> {
         syncRemoteSkills(cwd, plan.remote);
         recordSyncedSkills(cwd);
 
-        const content = generateAgentsFile(installedRules(rules, userEntries), customSection);
+        const previous = exists ? fs.readFileSync(targetPath, 'utf-8') : '';
+        const content = generateAgentsFile(installedRules(rules, userEntries), customSection, previous);
         fs.writeFileSync(targetPath, content, 'utf-8');
         console.log(`${exists ? 'Updated' : 'Created'} ${AGENTS_FILE}`);
 

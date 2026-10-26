@@ -1,6 +1,6 @@
 ---
 name: lint-gitlab
-description: Reference GitLab CI pipeline - install / lint / test / build jobs, Yarn and Nx caches, Nx Cloud tokens, a shared cache volume. Use when writing, reviewing or debugging `.gitlab-ci.yml`.
+description: Reference GitLab CI pipeline - install / lint / test (coverage) / e2e / build jobs, Yarn, Nx and Vite+ task caches, Nx Cloud tokens, a shared cache volume. Use when writing, reviewing or debugging `.gitlab-ci.yml`.
 ---
 
 # With Nx Cloud (`nxCloudId` in `nx.json`)
@@ -56,6 +56,7 @@ cache:
           - '**/.tscache'
           - '**/.tsbuildinfo'
           - '**/.next/cache'
+          - node_modules/.vite/task-cache # Vite+ tasks (`vp run`): experimental, measure first (npm-yarn.md "Install on CI")
       policy: pull-push
 
 stages:
@@ -110,7 +111,21 @@ lint:
 
 test:
     stage: test
-    image: mcr.microsoft.com/playwright:v1.50.0-noble # keep in sync with installed Playwright version
+    script:
+        - yarn vp test run --coverage # Vite+; without Vite+: yarn test --coverage; the cobertura reporter writes the report below
+    coverage: '/All files[^|]*\|[^|]*\s+([\d.]+)/' # line coverage % of the text reporter, shown in merge requests
+    artifacts:
+        when: always
+        paths:
+            - coverage
+        reports:
+            coverage_report:
+                coverage_format: cobertura
+                path: coverage/cobertura-coverage.xml
+
+e2e:
+    stage: test
+    image: mcr.microsoft.com/playwright:v1.64.1-noble # keep in sync with the installed Playwright version
     artifacts:
         when: always
         paths:

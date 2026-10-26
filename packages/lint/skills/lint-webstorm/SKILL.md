@@ -44,7 +44,7 @@ Compare the project's `.idea` files with the templates below and [rules/webstorm
 
 # Vite+: Oxc plugin
 
-When the project uses `vite-plus`: the [Oxc plugin](https://plugins.jetbrains.com/plugin/27061-oxc) runs `vp lint --lsp` / `vp fmt --lsp` (AUTOMATIC mode finds `vite-plus`), so the `vite.config.ts` blocks apply. Prettier is disabled and `.idea/jsLinters/eslint.xml` deleted. The plugin stores booleans as attributes while the Vite+ docs write `<option>` - keep both; the IDE rewrites the file in its own form on save. Ask the user to confirm Settings → Tools → Oxc after reopening.
+When the project uses `vite-plus`: the [Oxc plugin](https://plugins.jetbrains.com/plugin/27061-oxc) runs `vp lint --lsp` / `vp fmt --lsp` (AUTOMATIC mode finds `vite-plus`), so the Vite+ config applies (`vite.config.ts`, with the blocks from the `vitePlus` key of `lint.config.ts`). Prettier is disabled and `.idea/jsLinters/eslint.xml` deleted. The plugin stores booleans as attributes while the Vite+ docs write `<option>` - keep both; the IDE rewrites the file in its own form on save. Ask the user to confirm Settings → Tools → Oxc after reopening.
 
 `.idea/externalDependencies.xml` (required plugin; un-ignore it if `.idea` is gitignored: `!.idea/externalDependencies.xml`):
 

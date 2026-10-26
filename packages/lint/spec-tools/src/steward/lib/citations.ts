@@ -36,9 +36,9 @@ const TEST_FILE =
     /(?:^|\/)(?:__tests__|e2e)\/|\.(?:test|spec|test-d)\.[cm]?[jt]sx?$|(?:^|\/)test_[^/]+\.py$|_test\.(?:py|go)$/;
 /**
  * Lint configurations: a citation anywhere in one binds (a lint rule is the cheapest evidence). Vite+ keeps its lint
- * rules in `vite.config.*`.
+ * rules in `vite.config.*`, or, with `@kirill.konshin/lint`, in `lint.config.ts`.
  */
-const LINT_CONFIG = /(?:^|\/)(?:(?:eslint|vite)\.config\.[cm]?[jt]s|yarn\.config\.cjs)$/;
+const LINT_CONFIG = /(?:^|\/)(?:(?:eslint|vite|lint)\.config\.[cm]?[jt]s|yarn\.config\.cjs)$/;
 
 export const isTestFile = (file: string) => TEST_FILE.test(file) && !isDoc(file);
 

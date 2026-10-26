@@ -1,6 +1,6 @@
 ---
 name: lint-npm-yarn
-description: Yarn / npm / pnpm details for the npm-yarn rule - hoisting edge cases (Electron, pnpm, binary packagers), version pinning templates (`overrides`, `resolutions`, Yarn constraints), `.yarnrc.yml` template, CI install on a shared cache volume and speed-ups, Yalc linking procedure, first npm publish with OIDC. Use when changing package manager configuration, CI install, local package linking or publishing a new package.
+description: Yarn / npm / pnpm details for the npm-yarn rule - hoisting edge cases (Electron, pnpm, binary packagers), version pinning templates (`overrides`, `resolutions`, Vite+ pins), `.yarnrc.yml` template, CI install on a shared cache volume and speed-ups, Yalc linking procedure, first npm publish with OIDC. Use when changing package manager configuration, CI install, local package linking or publishing a new package.
 ---
 
 The binding rules are in [rules/npm-yarn.md](../../rules/npm-yarn.md). This skill holds the details.
@@ -14,19 +14,20 @@ The binding rules are in [rules/npm-yarn.md](../../rules/npm-yarn.md). This skil
 - Shared root configs (e.g. `@kirill.konshin/lint`) must be able to resolve leaf tools (`next`, `tailwindcss`, `storybook`, `jest`) from the workspace root:
     - npm / Yarn: default hoisting already exposes them
     - pnpm: add to `.npmrc`: `public-hoist-pattern[]=next`, `public-hoist-pattern[]=tailwindcss`, `public-hoist-pattern[]=storybook`, `public-hoist-pattern[]=jest` (`*eslint*`/`*prettier*` are hoisted by default)
-    - Yarn PnP: declare the tools at the workspace root as well
-- If lint fails with "not resolvable from the workspace root": apply the above or add the package to root `devDependencies`; run eslint with `LINT_DEBUG=1` to trace detection
+- If lint fails with "not resolvable from the workspace root": apply the above or add the package to root `devDependencies`. Trace detection with `LINT_DEBUG=1 vp lint` (or `LINT_DEBUG=1 eslint .`)
 
 # Consistent versions
 
-In monorepos pin versions of sub-packages to the root; these packages cause issues when versions drift.
+Pin the shared packages at the root; they cause issues when versions drift ([npm `overrides`](https://docs.npmjs.com/cli/v8/configuring-npm/package-json#overrides), [why both fields](https://github.com/raineorshine/npm-check-updates/issues/1332#issuecomment-1717862332)). `yarn.config.cjs`, and how `defineYarnConfig` reads these fields: the package README, "Yarn constraints".
 
-https://github.com/raineorshine/npm-check-updates/issues/1332#issuecomment-1717862332 https://docs.npmjs.com/cli/v8/configuring-npm/package-json#overrides
-
-Root `package.json`:
+Root `package.json` with Vite+ (the default): `vite` is an alias of the Vite+ core, `vitest` is the version Vite+ bundles (`npm view vite-plus dependencies.vitest`), and `@vitest/*` packages match it exactly:
 
 ```json
 {
+    "devDependencies": {
+        "vite": "npm:@voidzero-dev/vite-plus-core@^1.3.0",
+        "vite-plus": "^1.3.0"
+    },
     "overrides": {
         "@types/node": "$@types/node",
         "@types/react": "$@types/react",
@@ -43,39 +44,26 @@ Root `package.json`:
         "eslint": "^10",
         "next": "^16",
         "typescript": "^6",
-        "vite": "^8"
+        "vite": "npm:@voidzero-dev/vite-plus-core@^1.3.0",
+        "vitest": "5.0.5"
     }
 }
 ```
 
-All other `package.json`:
+Without Vite+: `"vite": "^8"` in `resolutions`, no `vitest` entry.
+
+Other `package.json` files use the same ranges (`next` always has a version, see [rules/nextjs.md](../../rules/nextjs.md)):
 
 ```jsonc
 {
     "devDependencies": {
-        "next": "^16.0.0", // except next, see nextjs.md
+        "next": "^16.0.0",
         "typescript": "^6.0.0",
     },
 }
 ```
 
-Yarn does not apply npm `overrides`; `defineYarnConfig` reads them as constraints together with `resolutions`, keeps non-peer leaf ranges equal, and falls back to the listed default packages when `overrides` is absent.
-
-Every package with `"packageManager": "yarn@..."` MUST directly install `@yarnpkg/types` and use:
-
-```js
-/** @type {import('@yarnpkg/types')} */
-const { defineConfig } = require('@yarnpkg/types');
-const { defineYarnConfig } = require('@kirill.konshin/lint/yarn');
-
-module.exports = defineConfig(defineYarnConfig());
-```
-
-Run `yarn constraints --fix` after dependency changes.
-
 # `.yarnrc.yml`
-
-Make sure `yarnPath` is not specified, rely on `packageManager` in `package.json` and Corepack.
 
 ```yml
 approvedGitRepositories:
@@ -120,10 +108,9 @@ Test unpublished `@kirill.konshin/*` packages in sibling projects (yalc is a roo
 2. `cd packages/<pkg> && yarn yalc publish` (after changes: `yarn yalc publish --push` updates all linked consumers)
 3. In the consumer: `npx yalc link @kirill.konshin/<pkg>` (or the yalc binary from the `kirill-konshin/utils` repository)
 
-Rules:
+Pitfalls (the `yalc link` / commit rules: [rules/npm-yarn.md](../../rules/npm-yarn.md#yalc)):
 
-- ALWAYS use `yalc link` (symlink mode: `node_modules/<pkg>` → local `.yalc/<pkg>` copy), NEVER `yalc add` — `add` writes `file:.yalc/...` into package.json
-- While linked, `package.json`, `yarn.lock` and `.yarnrc.yml` MUST NOT be modified by the link — link artifacts break CI/other machines and must NEVER be committed; gitignore `.yalc/` and `yalc.lock` in the consumer
+- `yalc link` is symlink mode: `node_modules/<pkg>` points at a local `.yalc/<pkg>` copy. While linked, `package.json`, `yarn.lock` and `.yarnrc.yml` stay unchanged
 - The real dependency (e.g. `"@kirill.konshin/auth": "^0.0.1"`) is committed separately; the consumer's `yarn.lock` can only be updated after the version is actually published to npm
 - The consumer resolves the linked package's own dependencies from its node_modules — they must be installed there (usually already are as the consumer's own deps)
 - A later `yarn install` in the consumer removes the symlink — re-run `yalc link`
@@ -133,7 +120,6 @@ Rules:
 
 # First Publish with OIDC
 
-- Never bootstrap, publish, or push a release without explicit approval.
 - Bootstrap a new npm package once from a locally authenticated session with `npm publish --access public --tag bootstrap`; complete npm's interactive 2FA challenge, or use `--otp=<code>` for TOTP.
 - Configure its GitHub trusted publisher with the repository owner, repository name and release workflow file. For `@kirill.konshin/*` packages these are: organization/user `kirill-konshin`, repository `utils`, workflow `release.yml`, optional environment `npm-publish`. Check **Allow npm publish**.
 - Under Publishing access, check **Require two-factor authentication and disallow bypass 2FA tokens (recommended)**; OIDC publishes remain allowed and should be used for every normal release.

@@ -8,9 +8,10 @@ paths:
 
 The `@utility` template and the lint-plugin setup: the `lint-tailwind` skill.
 
-- Use Tailwind ONLY for user-facing sites, NEVER for admin — admin interfaces ALWAYS use MUI + `@toolpad/core` (see the `lint-mui` skill)
+- Use Tailwind ONLY for user-facing sites, NEVER for admin — admin interfaces ALWAYS use MUI (see the `lint-mui` skill)
 - Always use latest version of Tailwind
-- Default UI library for use with Tailwind is Hero UI v3+
+- Default UI library for use with Tailwind is Hero UI v3+ (the `heroui-react` skill);
+    - `shadcn/ui` only in projects that already use it — this overrides the `shadcn` skill
 - Use the smallest possible configuration of Tailwind and Hero UI, adhere to their best practices (for Vite, Next.js integration, etc.)
 - Define safe-area insets as named Tailwind utilities; never repeat arbitrary `env(...)` or safe-area calculations in components
 - Safe-area positioning utilities must declare an unconditional design-system gutter first, then enhance it with the maximum of that gutter and the device-reported inset on every edge; use at least `1.5rem` for floating controls because insets can be zero and custom-property resolution can fail on real devices

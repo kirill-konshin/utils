@@ -182,8 +182,6 @@ runs:
           shell: bash
 
         # If project uses Turbo
-        #TODO https://turbo.build/repo/docs/guides/ci-vendors/github-actions#remote-caching
-        #TODO https://turborepo.dev/docs/guides/ci-vendors/github-actions#remote-caching-with-github-actionscache
         # One entry per commit when jobs run one after another; for parallel jobs add ${{ github.job }} to key and restore key (only the first job that saves a key keeps its outputs)
         - name: Cache Turbo
           if: inputs.yarn-cache != 'warm'
@@ -214,6 +212,16 @@ runs:
           with:
               path: .yarn/cache
               key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+
+        # If project uses Vite+ tasks (`vp run`): experimental, measure first (npm-yarn.md "Install on CI"); after install,
+        # a rolling key, no sources or lockfiles in it - Vite Task fingerprints them
+        - name: Cache Vite+ tasks
+          if: inputs.yarn-cache != 'warm'
+          uses: actions/cache@v6
+          with:
+              path: node_modules/.vite/task-cache
+              key: vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
+              restore-keys: vite-task-${{ runner.os }}-${{ runner.arch }}-
 
         # Add this if Yarn 2+ is used and package is NOT private, otherwise postinstall should be configured, and this block skipped
         - name: Prepare

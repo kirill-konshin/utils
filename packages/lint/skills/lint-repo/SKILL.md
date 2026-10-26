@@ -1,6 +1,6 @@
 ---
 name: lint-repo
-description: Set up/update this repo's lint/format/pre-commit tooling (@kirill.konshin/lint) - Vite+ (Oxlint, Oxfmt, vp staged/hooks) by default, ESLint + Prettier + lint-staged + Husky when Vite+ is not used, and/or audit the codebase against the packaged agent rules. Rules are discovered from .agents/rules/*.md (created by `lint-prepare init`), falling back to node_modules/@kirill.konshin/lint/rules/*.md; project overrides in AGENTS.md Custom Rules / CLAUDE.md win on conflict. Use when asked to set up, configure, or upgrade lint/format/pre-commit tooling, OR to check, audit, verify, or lint the codebase against agent rules/conventions.
+description: Set up or update the lint, format and pre-commit tooling of a repository with `@kirill.konshin/lint` (Vite+ by default; ESLint + Prettier + lint-staged + Husky without Vite+), and audit the code against the packaged agent rules. Use when asked to set up, configure or upgrade lint / format / pre-commit tooling, or to check, audit or lint the code against the agent rules.
 ---
 
 # Lint Repo
@@ -45,7 +45,7 @@ Check the README's "Issues" section before debugging a lint crash.
 
 ## B. Audit code against rules
 
-Rules: `.agents/rules/*.md` → else `node_modules/@kirill.konshin/lint/rules/*.md`; plus overrides in `AGENTS.md # Custom Rules` / `CLAUDE.md` (override wins on conflict). Treat rule files as normative — read them directly.
+Rules: `.agents/rules/*.md` (created by `lint-prepare init`) → else `node_modules/@kirill.konshin/lint/rules/*.md`, except the rules the `rules` map of `lint.config.ts` turns off; plus overrides in `AGENTS.md # Custom Rules` / `CLAUDE.md` (override wins on conflict). Treat rule files as normative — read them directly.
 
 ### 1. Mechanical pass first
 

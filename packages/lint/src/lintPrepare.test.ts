@@ -25,10 +25,12 @@ import {
     readPackageSkills,
     readRules,
     readSkills,
+    readSyncedSkills,
     readUserEntries,
     recordSyncedSkills,
     type RunCommand,
     runSkillsSync,
+    skillDirName,
     syncAgentDirs,
     syncRemoteSkills,
 } from './lintPrepare.js';
@@ -115,6 +117,9 @@ test('generateAgentsFile: one plain entry per rule with its description, scope a
         '<!--VITE PLUS START-->',
         '<!--VITE PLUS END-->',
         '',
+        '<!-- BEGIN:nextjs-agent-rules -->',
+        '<!-- END:nextjs-agent-rules -->',
+        '',
         '---',
     ].join('\n');
 
@@ -127,6 +132,31 @@ test('generateAgentsFile: an empty anchor for each tool section above the custom
     assert.ok(content.includes('<!--VITE PLUS START-->\n<!--VITE PLUS END-->'), content);
     assert.ok(content.indexOf('<!--VITE PLUS START-->') < content.indexOf('# Custom Rules'), content);
     assert.ok(content.trimEnd().endsWith('# Mine'), content);
+});
+
+test('generateAgentsFile: keeps what a tool wrote between its markers, Next.js included', () => {
+    const previous = generateAgentsFile([], null)
+        .replace('<!--VITE PLUS START-->\n', '<!--VITE PLUS START-->\nvite text\n')
+        .replace('<!-- BEGIN:nextjs-agent-rules -->\n', '<!-- BEGIN:nextjs-agent-rules -->\nnext text\n');
+    const content = generateAgentsFile([], null, previous);
+
+    assert.ok(content.includes('<!--VITE PLUS START-->\nvite text\n<!--VITE PLUS END-->'), content);
+    assert.ok(
+        content.includes('<!-- BEGIN:nextjs-agent-rules -->\nnext text\n<!-- END:nextjs-agent-rules -->'),
+        content,
+    );
+});
+
+test('skillDirName: the directory the skills CLI installs a skill into', () => {
+    assert.equal(skillDirName('model-redux-state/design-state-ownership'), 'model-redux-state-design-state-ownership');
+    assert.equal(skillDirName('vercel-react-best-practices'), 'vercel-react-best-practices');
+});
+
+test('readSyncedSkills: lock names map to their directories', async () => {
+    const lock = { version: 1, skills: { 'a/b': { source: 'x/y', sourceType: 'github' } } };
+    await inTempDir({ 'skills-lock.json': JSON.stringify(lock) }, async (cwd) => {
+        assert.deepEqual([...readSyncedSkills(cwd)], ['a-b']);
+    });
 });
 
 test('syncAgentDirs: real agent dirs, a rule file linked straight to the package, from a symlinked cwd too', async () => {
