@@ -5445,8 +5445,6 @@ __metadata:
       optional: true
     vite:
       optional: true
-    vite-plus:
-      optional: true
     vitest:
       optional: true
   bin:
