@@ -73,11 +73,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "publishConfig": {
     "access": "public"
   },
   "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "tanstack-intent"
+  ]
 }
