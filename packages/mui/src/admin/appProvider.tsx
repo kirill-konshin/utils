@@ -2,9 +2,10 @@
 
 import React, { type ComponentProps, type FC, memo, useMemo } from 'react';
 
-import { type Authentication, type Session } from '@toolpad/core/AppProvider';
-import { NextAppProvider } from '@toolpad/core/nextjs';
 import { useRouter } from 'next/navigation';
+
+import { type Authentication, type Session } from '../toolpad/appProvider';
+import { NextAppProvider } from '../toolpad/nextjs';
 
 export type AdminAppProviderProps = ComponentProps<typeof NextAppProvider> & {
     /** Server action that destroys the session, wired into Toolpad `authentication.signOut` */

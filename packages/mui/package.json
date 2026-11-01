@@ -17,20 +17,27 @@
     "storybook:start": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
+  "dependencies": {
+    "@toolpad/core": "0.16.0"
+  },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@kirill.konshin/auth": "*",
     "@kirill.konshin/utils-private": "*",
+    "@mui/icons-material": "^9.3.1",
     "@mui/material": "^9.3.1",
-    "@toolpad/core": "^0.16.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^30.0.1",
     "next": "^16.3.0",
-    "react": "^19.2.8"
+    "react": "^19.2.8",
+    "react-dom": "19.2.8"
   },
   "peerDependencies": {
     "@kirill.konshin/auth": "*",
+    "@mui/icons-material": "^9",
     "@mui/material": "^9",
-    "@toolpad/core": "^0.16",
     "next": "^16",
     "react": "^19"
   },
@@ -38,10 +45,10 @@
     "@kirill.konshin/auth": {
       "optional": true
     },
-    "@mui/material": {
+    "@mui/icons-material": {
       "optional": true
     },
-    "@toolpad/core": {
+    "@mui/material": {
       "optional": true
     },
     "next": {
@@ -61,6 +68,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./toolpad": {
+      "types": "./dist/toolpad/index.d.ts",
+      "import": "./dist/toolpad/index.js",
+      "default": "./dist/toolpad/index.js"
     },
     "./admin": {
       "types": "./dist/admin/index.d.ts",
@@ -82,6 +94,10 @@
     ]
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
+  ],
+  "keywords": [
+    "tanstack-intent"
   ]
 }

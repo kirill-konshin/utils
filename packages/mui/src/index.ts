@@ -4,3 +4,4 @@ export * from './formLabelLegend';
 export * from './genericControl';
 export * from './readOnly';
 export * from './admin';
+export * from './toolpad';

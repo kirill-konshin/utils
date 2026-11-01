@@ -1,14 +1,11 @@
 'use client';
 
-import React, { type ComponentProps, type FC, memo, useCallback } from 'react';
+import React, { type FC, memo, useCallback } from 'react';
 
 import { type PasswordAuth } from '@kirill.konshin/auth';
 import type { STATE_PARAM as StateParam } from '@kirill.konshin/auth/client';
-import { formLabelClasses } from '@mui/material/FormLabel';
-import { SignInPage } from '@toolpad/core/SignInPage';
-import { unstable_rethrow } from 'next/navigation';
 
-type SignInPageProps = ComponentProps<typeof SignInPage>;
+import { SignInPage, type SignInPageProps } from '../toolpad/signInPage';
 
 export type AdminSignInPageProps = Omit<SignInPageProps, 'signIn'> & {
     /** `auth.loginFormAction` from `@kirill.konshin/auth`, re-exported from a `'use server'` file */
@@ -33,21 +30,10 @@ const DEFAULT_PROVIDERS: SignInPageProps['providers'] = [{ id: 'credentials', na
 
 const NOT_CONFIGURED_SUBTITLE = 'Set ADMIN_PASSWORD and a SESSION_SECRET of at least 32 characters, then restart.';
 
-/** Whether Next.js handles `error` itself, like the redirect it rejects a redirecting Server Action call with. */
-const isNextNavigation = (error: unknown): boolean => {
-    try {
-        unstable_rethrow(error);
-        return false;
-    } catch {
-        return true;
-    }
-};
-
 /**
- * Toolpad `SignInPage` preconfigured for the password-only login of `@kirill.konshin/auth`: single
- * credentials provider, no email/rememberMe fields, errors surfaced through the form. On success
- * `loginAction` redirects (handled by Next.js) and the form stays busy until the next page replaces it,
- * on failure its message is shown.
+ * `SignInPage` (the improved one of `../toolpad`) preconfigured for the password-only login of `@kirill.konshin/auth`:
+ * single credentials provider, no email/rememberMe fields, errors surfaced through the form. On success `loginAction`
+ * redirects (`SignInPage` keeps the form busy until the next page replaces it), on failure its message is shown.
  */
 export const AdminSignInPage: FC<AdminSignInPageProps> = memo(function AdminSignInPage({
     loginAction,
@@ -66,15 +52,8 @@ export const AdminSignInPage: FC<AdminSignInPageProps> = memo(function AdminSign
             // thread the return URL through the form only — never store it in the session,
             // multiple tabs logging in concurrently would clash
             if (state) formData.set(STATE_PARAM, state);
-            try {
-                const error = await loginAction(null, formData);
-                return error ? { error } : {};
-            } catch (error) {
-                // Next.js rejects the call with its redirect error while it navigates; Toolpad's submit
-                // handler has no catch, so stay pending instead of leaving an unhandled rejection
-                if (isNextNavigation(error)) return new Promise<never>(() => {});
-                throw error;
-            }
+            const error = await loginAction(null, formData);
+            return error ? { error } : {};
         },
         [loginAction, state],
     );
@@ -100,16 +79,7 @@ export const AdminSignInPage: FC<AdminSignInPageProps> = memo(function AdminSign
             }}
             slotProps={{
                 ...slotProps,
-                // FIXME https://github.com/mui/toolpad/issues/4572 — still relevant in 0.16:
-                // browser validation popups fight the server-side errors (noValidate is settable
-                // declaratively through the form slot) and the password label renders misaligned;
-                // re-check on Toolpad upgrades
-                form: { noValidate: true, ...slotProps?.form },
-                passwordField: {
-                    autoFocus: true,
-                    sx: { [`& .${formLabelClasses.root}`]: { top: '-2px' } },
-                    ...slotProps?.passwordField,
-                },
+                passwordField: { autoFocus: true, ...slotProps?.passwordField },
                 submitButton: { variant: 'contained', ...slotProps?.submitButton },
             }}
             {...props}
