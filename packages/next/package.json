@@ -68,6 +68,10 @@
     ]
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
+  ],
+  "keywords": [
+    "tanstack-intent"
   ]
 }
