@@ -70,6 +70,7 @@ export function builerConfig(options: {
     }
 
     const config: Configuration = {
+        ...options.config,
         files: [
             '**/*',
             '!electron-builder.js',
@@ -81,13 +82,18 @@ export function builerConfig(options: {
         ],
         directories: {
             buildResources: 'assets',
+            ...options.config.directories,
         },
         mac: {
+            ...options.config.mac,
             category: options.config.mac?.category ?? 'public.app-category.utils',
+            // Full-bleed `.icns` from `@kirill.konshin/app-images`, macOS 26 cuts it into the squircle; needs no Xcode.
+            // Opt in to its Icon Composer bundle with `icon.icon` (Xcode 26 `actool`)
+            icon: options.config.mac?.icon === undefined ? 'icon.icns' : options.config.mac.icon,
             target: getTarget(),
         },
         //TODO Windows target
-        dmg: {
+        dmg: options.config.dmg ?? {
             contents: [
                 {
                     x: 130,
@@ -122,6 +128,7 @@ export function builerConfig(options: {
                 } as GithubOptions),
         ].filter(Boolean) as never,
         extraMetadata: {
+            ...options.config.extraMetadata,
             version: getVersion(),
         },
     };
