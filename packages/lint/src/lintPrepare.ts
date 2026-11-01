@@ -68,7 +68,8 @@ const SKILLS_LOCK = 'skills-lock.json';
 // `codex` installs into `.agents/skills`, `claude-code` links `.claude/skills` to it; without `-a` the CLI also
 // creates the directories of every other agent it detects on the machine
 const SKILLS_AGENTS = ['-a', 'codex', 'claude-code'];
-const SKILLS_SYNC_ARGS = ['experimental_sync', '-y', ...SKILLS_AGENTS];
+// `-r`: the dependencies of every workspace package too, not only of the root (a monorepo declares them per package)
+const SKILLS_SYNC_ARGS = ['experimental_sync', '-y', '-r', ...SKILLS_AGENTS];
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 const HEADER = `# AI Agent Rules
 
@@ -455,9 +456,10 @@ function runSkillsCli(cwd: string, args: string[], run: RunCommand): boolean {
 }
 
 /**
- * Install the skills dependencies ship (this package's own `skills/` folder among them) with the `skills` CLI, into
- * `.agents/skills`, linked into `.claude/skills`. `exclude`: `package` or `package#skill` patterns to leave out. On CI
- * nothing remote is touched (`--no-remote`). Returns whether the sync succeeded.
+ * Install the skills that the dependencies of the root and of every workspace package ship (this package's own
+ * `skills/` folder among them) with the `skills` CLI, into `.agents/skills`, linked into `.claude/skills`. `exclude`:
+ * `package` or `package#skill` patterns to leave out. On CI nothing remote is touched (`--no-remote`). Returns whether
+ * the sync succeeded.
  */
 export function runSkillsSync(cwd: string, run: RunCommand = spawnSync, exclude: string[] = []): boolean {
     const args = [...SKILLS_SYNC_ARGS];

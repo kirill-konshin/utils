@@ -22,6 +22,7 @@ Use the `lint-nextjs` skill when working with a Next.js project.
 - ALWAYS create `next.config.ts` with `defineNextConfig` from `@kirill.konshin/next/config` (the `/config` subpath, NEVER the barrel — Next transpiles `next.config.ts` to CJS and `require`s it outside any bundler); what it sets: the `lint-nextjs` skill
 - Use `@kirill.konshin/icons` for FontAwesome / Gravity UI icons — the barrel is safe with `optimizePackageImports` (`defineNextConfig` sets it); this overrides `bundle-barrel-imports` of the `vercel-react-best-practices` skill
 - Page and component file placement: the `lint-nextjs` skill
+- App icons, favicons, manifest icons and iOS launch screens: use `@kirill.konshin/app-images`, its `app-images` skill installs with it; NEVER write icon lists by hand
 
 # Admin Pages & Login
 

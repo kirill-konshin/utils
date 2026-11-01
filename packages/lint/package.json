@@ -1,6 +1,9 @@
 {
   "name": "@kirill.konshin/lint",
   "description": "Vite+ (Oxlint + Oxfmt), ESLint + Prettier + lint-staged configs and AI agent rules/skills for monorepos",
+  "keywords": [
+    "tanstack-intent"
+  ],
   "version": "0.0.0",
   "type": "module",
   "skipGenerate": true,

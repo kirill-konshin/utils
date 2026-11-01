@@ -46,6 +46,10 @@ Scripts: `"start": "vp pack --watch"`, `"build:main": "vp pack"`.
 
 This is the `vite.config.ts` of the Electron app's own workspace package. When the app is the workspace root, the root `vite.config.ts` stays `defineConfig(vitePlusConfig())`: put the `pack` block under the `vitePlus` key of `lint.config.ts` (`vitePlus: { pack: { … } }`).
 
+# Icons
+
+App icons (macOS `.icns`, no Xcode needed; opt-in Icon Composer `.icon`), Windows and Linux icons, splash and DMG background: use `@kirill.konshin/app-images`, its `app-images` skill installs with it.
+
 # Packaging a Next.js Standalone Server
 
 In a hoisted workspace (see [rules/npm-yarn.md](../../rules/npm-yarn.md#hoisting)) Next.js traces the server's dependencies into `.next/standalone/node_modules`, beside the app folder; package both, without Electron:

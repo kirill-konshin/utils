@@ -340,7 +340,7 @@ test('runSkillsSync: the skills CLI syncs into .agents and .claude only, telemet
     const [command, args, { cwd, env }] = run.mock.lastCall!;
     assert.equal(command, process.execPath);
     assert.ok(args[0].endsWith(join('skills', 'bin', 'cli.mjs')), args[0]);
-    assert.deepEqual(args.slice(1), ['experimental_sync', '-y', '-a', 'codex', 'claude-code']);
+    assert.deepEqual(args.slice(1), ['experimental_sync', '-y', '-r', '-a', 'codex', 'claude-code']);
     assert.equal(cwd, '/project');
     assert.equal(env?.DISABLE_TELEMETRY, '1');
 
