@@ -2465,6 +2465,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.29.7 || ^8.0.5":
+  version: 8.0.10
+  resolution: "@babel/runtime@npm:8.0.10"
+  checksum: 10c0/c1a66577491f2beed448df8847051307d83ed3c1c22332bb338499d44542f2702227b2b546bbcfde8b1690e6f32de7ae4e8bee7d8b2e330d045caf6a766bfcf8
+  languageName: node
+  linkType: hard
+
 "@babel/template@npm:^7.28.6, @babel/template@npm:^7.29.7":
   version: 7.29.7
   resolution: "@babel/template@npm:7.29.7"
@@ -5473,22 +5480,27 @@ __metadata:
     "@emotion/styled": "npm:^11.14.1"
     "@kirill.konshin/auth": "npm:*"
     "@kirill.konshin/utils-private": "npm:*"
+    "@mui/icons-material": "npm:^9.3.1"
     "@mui/material": "npm:^9.3.1"
-    "@toolpad/core": "npm:^0.16.0"
+    "@testing-library/dom": "npm:^10.4.1"
+    "@testing-library/react": "npm:^16.3.2"
+    "@toolpad/core": "npm:0.16.0"
+    jsdom: "npm:^30.0.1"
     next: "npm:^16.3.0"
     react: "npm:^19.2.8"
+    react-dom: "npm:19.2.8"
   peerDependencies:
     "@kirill.konshin/auth": "*"
+    "@mui/icons-material": ^9
     "@mui/material": ^9
-    "@toolpad/core": ^0.16
     next: ^16
     react: ^19
   peerDependenciesMeta:
     "@kirill.konshin/auth":
       optional: true
-    "@mui/material":
+    "@mui/icons-material":
       optional: true
-    "@toolpad/core":
+    "@mui/material":
       optional: true
     next:
       optional: true
@@ -5729,6 +5741,22 @@ __metadata:
   version: 9.3.1
   resolution: "@mui/core-downloads-tracker@npm:9.3.1"
   checksum: 10c0/ca04394edbcfb62ad88174477f69bd6e472a61446ad70fa1574091a6a3e9dcdac46d4a7f4551c8189990974a861c82cf8983b023fbd6f1d1172ab192d1c79a79
+  languageName: node
+  linkType: hard
+
+"@mui/icons-material@npm:^9.3.1":
+  version: 9.5.0
+  resolution: "@mui/icons-material@npm:9.5.0"
+  dependencies:
+    "@babel/runtime": "npm:^7.29.7 || ^8.0.5"
+  peerDependencies:
+    "@mui/material": ^9.5.0
+    "@types/react": ^17.0.0 || ^18.0.0 || ^19.0.0
+    react: ^17.0.0 || ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/63dc16b6de0686f22f7e9b08fdd453cbeeb2439658c190b4458ffcfc616597fe4dbf1bc19183358db2083b23063155ef73caa3e4811d75ccfac2c1c711266449
   languageName: node
   linkType: hard
 
@@ -8068,7 +8096,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@toolpad/core@npm:^0.16.0":
+"@toolpad/core@npm:0.16.0":
   version: 0.16.0
   resolution: "@toolpad/core@npm:0.16.0"
   dependencies:
