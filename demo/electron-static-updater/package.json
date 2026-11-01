@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@demo/web-static": "*",
+    "@kirill.konshin/app-images": "*",
     "dotenv-cli": "^11.0.0",
     "electron": "43.4.0",
     "electron-builder": "26.15.7"

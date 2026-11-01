@@ -1,9 +1,15 @@
 import path from 'node:path';
-import { generateImages } from '@kirill.konshin/utils/electron-builder';
+import { generateElectronImages, generateWebImages } from '@kirill.konshin/app-images';
 
-await generateImages({
-    iconPsdPath: path.resolve(process.cwd(), 'assets-src/icon.psd'),
-    dmgBackgroundPsdPath: path.resolve(process.cwd(), 'assets-src/dmg.psd'),
-    electronAssetsPath: path.resolve(process.cwd(), 'assets'),
-    webPublicPath: path.resolve(process.cwd(), '../web-static/public'),
+const source = path.resolve(import.meta.dirname, 'assets-src/icon.psd');
+
+await generateElectronImages({
+    source,
+    outDir: path.resolve(import.meta.dirname, 'assets'),
+    dmgBackground: path.resolve(import.meta.dirname, 'assets-src/dmg.psd'),
+});
+
+await generateWebImages({
+    source,
+    outDir: path.resolve(import.meta.dirname, '../web-static/public'),
 });

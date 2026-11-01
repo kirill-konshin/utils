@@ -1,12 +1,5 @@
 import { electronBuilder } from '@kirill.konshin/utils';
 
-// await generateImages({
-//     iconPsdPath: 'icon.psd',
-//     dmgBackgroundPsdPath: 'dmg.psd',
-//     electronAssetsPath: 'assets',
-//     webPublicPath: 'web',
-// });
-
 export default electronBuilder.builerConfig({
     config: {
         productName: 'Electron Static Updater',

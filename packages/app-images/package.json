@@ -1,0 +1,64 @@
+{
+  "name": "@kirill.konshin/app-images",
+  "description": "App icons, favicons, PWA manifest icons, iOS launch screens and Electron images from one source image, with Next.js metadata helpers",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "----- BUILD -----": "",
+    "clean": "rm -rf dist .tscache tsconfig.tsbuildinfo",
+    "build": "vp pack",
+    "start": "yarn build --watch",
+    "wait": "wait-on ./dist/index.js",
+    "----- TEST -----": "",
+    "test": "vp test run --coverage",
+    "test:watch": "vp test watch --coverage",
+    "----- STORYBOOK -----": "",
+    "storybook:start": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
+  },
+  "dependencies": {
+    "psd": "^3.4.0",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@kirill.konshin/utils-private": "*",
+    "next": "^16.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Kirill Konshin <kirill@konshin.org> (https://konshin.org)",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/next/index.d.ts",
+      "import": "./dist/next/index.js",
+      "default": "./dist/next/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-konshin/utils.git",
+    "directory": "packages/app-images"
+  },
+  "nx": {
+    "tags": [
+      "platform:node"
+    ]
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "keywords": [
+    "tanstack-intent"
+  ]
+}

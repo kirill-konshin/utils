@@ -1,3 +1,4 @@
+export * from './app-images';
 export * from './auth';
 export * from './bootstrap';
 export * from './browser';

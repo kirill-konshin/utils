@@ -11,6 +11,7 @@
     "wait": "wait-on ./dist/index.js"
   },
   "dependencies": {
+    "@kirill.konshin/app-images": "*",
     "@kirill.konshin/auth": "*",
     "@kirill.konshin/bootstrap": "*",
     "@kirill.konshin/browser": "*",
@@ -115,6 +116,11 @@
       "types": "./dist/auth/index.d.ts",
       "import": "./dist/auth/index.js",
       "default": "./dist/auth/index.js"
+    },
+    "./app-images": {
+      "types": "./dist/app-images/index.d.ts",
+      "import": "./dist/app-images/index.js",
+      "default": "./dist/app-images/index.js"
     }
   },
   "main": "./dist/index.js",

@@ -14,6 +14,7 @@
     "wait-localhost": "wait-on http://localhost:3000"
   },
   "dependencies": {
+    "@kirill.konshin/app-images": "*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

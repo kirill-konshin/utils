@@ -21,6 +21,7 @@
     "@kirill.konshin/utils": "*"
   },
   "devDependencies": {
+    "@kirill.konshin/app-images": "*",
     "electron": "43.4.0",
     "electron-builder": "26.15.7"
   },
