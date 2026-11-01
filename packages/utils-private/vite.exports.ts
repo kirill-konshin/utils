@@ -80,6 +80,15 @@ export async function fixExports() {
      */
     pkg.files = ['dist'];
 
+    /*
+     * Agent skills ship in the package (`skills/<name>/SKILL.md`), consumers install them from node_modules: the
+     * `skills` CLI (`experimental_sync`), pnpm, TanStack Intent (finds packages by its keyword)
+     */
+    if (fs.existsSync(path.join(process.cwd(), 'skills'))) {
+        pkg.files.push('skills');
+        pkg.keywords = [...new Set([...(pkg.keywords ?? []), 'tanstack-intent'])];
+    }
+
     // Author & License
 
     // TODO Move to root build + set private=true for demos + set react version
