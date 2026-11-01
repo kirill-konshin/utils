@@ -1,7 +1,15 @@
 ---
 name: lint-electron
-description: Skill for Electron-based apps - dev runner that restarts Electron (vp pack --watch), packaging a Next.js standalone server with electron-builder in a hoisted monorepo, CI builds. Use when setting up, running or packaging an Electron app.
+description: Skill for Electron-based apps - packages to use (`@kirill.konshin/electron`, `@kirill.konshin/electron-builder`, `next-electron-rsc`), dev runner that restarts Electron (vp pack --watch), packaging a Next.js standalone server with electron-builder in a hoisted monorepo, CI builds. Use when setting up, running or packaging an Electron app.
 ---
+
+# Packages
+
+Use these packages before you write the same code:
+
+- `@kirill.konshin/electron` — main-process helpers: `createWindow` (a window that loads the dev server, a static export or a remote URL; it remembers its bounds, adds the default menu, can check for updates) and `checkForUpdates` (`electron-updater` with dialogs, for a menu item)
+- `@kirill.konshin/electron-builder` — `builerConfig()` for `electron-builder.ts`: DMG and zip targets (DMG only without signing), S3 and GitHub Releases publishing by CI ref, `assets` as build resources, `mac.icon` from `@kirill.konshin/app-images`; it keeps the app config you pass
+- `next-electron-rsc` — runs a Next.js app with React Server Components and Server Actions in Electron, with no open port in production; install `next` as a dependency, not a devDependency: electron-builder copies only dependencies into the app
 
 # Dev Runner
 

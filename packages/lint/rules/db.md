@@ -14,7 +14,7 @@ Migration and import procedures, Neon: the `lint-db` skill.
 
 - Use Drizzle as ORM if user asks to add ORM
 - Keep schemas, repositories, tenancy, and authorization app-owned; keep reusable driver plumbing in `@kirill.konshin/db`.
-- Import `@kirill.konshin/db` through focused driver, migration, URL, and type subpaths so unrelated drivers are not loaded.
+- Import `@kirill.konshin/db` through focused driver, migration, URL, and type subpaths so unrelated drivers are not loaded; which subpath for which work: the `db` skill of `@kirill.konshin/db`
 - Keep database access server-only and separate the database/repository layer from API, UI, and state-management layers.
 - Preserve canonical external identifiers as strings; never coerce opaque IDs or URNs to numbers.
 - Model related state once per owner and entity when that avoids duplicate rows, and enforce invariants with keys, constraints, and indexes.

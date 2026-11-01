@@ -14,7 +14,7 @@ The binding rules are in [rules/db.md](../../rules/db.md). This skill holds the 
 
 # Neon
 
-Only when the user asks for Neon, or the project already uses it. Drivers, connection strings, branches and migrations: the `neon-postgres` skill and the `neon-postgres-branches` skill; the driver plumbing lives in `@kirill.konshin/db`.
+Only when the user asks for Neon, or the project already uses it. Connection strings, branches and migrations: the `neon-postgres` skill and the `neon-postgres-branches` skill. Drivers, URLs and migration runs: `@kirill.konshin/db` and its `db` skill, it installs with the package.
 
 Neon Auth: set it up per the `neon-auth` skill, then fold it into Iron Session ([rules/auth.md](../../rules/auth.md)):
 

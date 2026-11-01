@@ -1,6 +1,6 @@
 ---
 name: lint-nextjs
-description: Our Next.js App Router conventions on top of the vendor Next.js skills - typed `LayoutProps` / `PageProps`, auth-guarded layouts, `params` / `searchParams` in server and client pages, page and component file placement, what `defineNextConfig` sets in `next.config.ts`. Use when writing or reviewing Next.js pages, layouts, route handlers or `next.config.ts`.
+description: Our Next.js App Router conventions on top of the vendor Next.js skills - typed `LayoutProps` / `PageProps`, auth-guarded layouts, `params` / `searchParams` in server and client pages, page and component file placement, where `next.config.ts` details are. Use when writing or reviewing Next.js pages, layouts, route handlers or `next.config.ts`.
 ---
 
 The binding rules are in [rules/nextjs.md](../../rules/nextjs.md). Next.js API knowledge: the docs that `next` bundles (`node_modules/next/dist/docs/`), the `next-*` skills and the `vercel-react-best-practices` skill; MUI setup: the `material-ui-nextjs` skill.
@@ -87,10 +87,4 @@ export default function Page({ params }: PageProps<'/blog/[slug]'>) {
 
 # `next.config.ts`
 
-`defineNextConfig` from `@kirill.konshin/next/config` (the `/config` subpath: Next transpiles `next.config.ts` to CJS and `require`s it outside any bundler) sets `cacheComponents`, `typedRoutes`, `experimental.typedEnv`, `reactStrictMode: false` and an exhaustive `experimental.optimizePackageImports` (`@mui/*`, `@toolpad/core`, `@fortawesome/*`, `@gravity-ui/*`, `lodash`, `@heroui/react`, `react-bootstrap`, `@kirill.konshin/icons`, …). Extra entries cost nothing; a missing one costs dev startup time and bundle size.
-
-```ts
-import { defineNextConfig } from '@kirill.konshin/next/config';
-
-export default defineNextConfig((defaults) => ({ ...defaults, transpilePackages: ['my-lib'] }));
-```
+`defineNextConfig` of `@kirill.konshin/next/config`: what it sets and how to extend it is in the `next` skill, it installs with the package. The same skill lists the package's utilities (`AppLink`, `SoftLink`, `NoSSR`, …).
