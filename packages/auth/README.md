@@ -1,32 +1,20 @@
 # @kirill.konshin/auth
 
-Reusable [iron-session](https://github.com/vvo/iron-session) authentication for Next.js App Router. Consolidates the session module, layout/page guards, login flow, Route Handler guards and `proxy.ts` guard into one factory.
+Authentication for Next.js App Router with one auth instance per app and a session strategy:
 
-iron-session v8 has no official Next helpers (they were removed with the Pages Router) and no trustworthy third-party ones exist — this package is that layer.
+- `ironStrategy` — a sealed [iron-session](https://github.com/vvo/iron-session) cookie the app writes itself (password login, its own OAuth tokens)
+- `neonStrategy` — [Neon Auth](https://neon.com/docs/auth/overview)'s own session, turned into the app's by a `resolve` callback, optionally cached
+
+Either way it consolidates the session module, layout/page guards, login flow, Route Handler guards and `proxy.ts` guard into one factory.
 
 ```bash
-yarn add @kirill.konshin/auth iron-session server-only
+yarn add @kirill.konshin/auth server-only iron-session # iron
+yarn add @kirill.konshin/auth server-only @neondatabase/auth # Neon
 ```
 
 # Rules
 
-- ALWAYS use this package for authentication in Next.js apps, NEVER hand-roll `iron-session` wrappers
-- ONE auth instance per app in `src/auth.ts`: `createPasswordAuth` (password-protected admin) or `createAuth` (token/OAuth)
-- Pass Next's `Route` as the routes generic (`createPasswordAuth<Route>` / `createAuth<Session, Route>`) so `urls` and the return-URL helpers are type-checked (`typedRoutes` is set by `defineNextConfig`)
-- Auth module MUST start with `import 'server-only'` and MUST NOT be module-level `'use server'` (that would expose session getters as callable server actions) — export `loginAction`/`logoutAction` from the SAME module as thin wrappers with function-level `'use server'`, no separate `actions.ts`; ENFORCED BY AGENT: no ESLint rule checks this, add on creation, flag on review
-- Client Components MUST NOT import the auth module — Server Components pass `loginAction`/`logoutAction` down as props
-- Cookie name MUST be unique per app (`<app>_session`), NEVER generic `session`
-- Cookie secret `SESSION_SECRET` (≥32 chars) and login password `ADMIN_PASSWORD` are SEPARATE env vars, never reuse one for the other
-- NEVER compare passwords with `===`, use `verifyPassword` / `timingSafeEqualStrings` (timing-safe)
-- Guard pages/layouts with `redirectNonAuthenticated()` (redirects to login), Server Actions and Route Handlers with `throwNonAuthenticated()` or `authenticatedRouteHandler()` (401), the whole `/api` surface with `proxyGuard()` in `proxy.ts`, login page with `redirectIfAuthenticated()`
-- Call page/layout guards inside a `<Suspense>` boundary of that page or layout: the session check is request-time (`connection()`), so under `cacheComponents` it blocks prerendering and instant navigation outside one
-- Login page is ONE Server Component file with `<form action={loginAction}>` — errors return via the `?error=` search param; a Client Component (`useActionState` + `loginFormAction`) ONLY for pending/inline-error UI
-- Reuse `auth.urls.*` (resolved, defaults applied) instead of repeating route literals, e.g. `redirect(auth.urls.afterLogin)`
-- Declare API visibility as `urls.public` / `urls.protected` globs and keep them exhaustive — `proxyGuard()` throws on overlap and warns (treating as public) on unknown paths; `allow` is only for request-level tweaks
-- Session lifetime via `ttl` (seconds) ONLY, NEVER set `cookieOptions.maxAge` (iron-session derives it)
-- Logout via `auth.logout()` (destroy + redirect)
-- Preserve the return URL through the `state` search param / hidden form field on login redirects; ALWAYS extract it with `auth.getState()` (accepts `await searchParams`, `URLSearchParams`, `FormData`, `NextRequest`, raw string; allows internal paths only, never the login page, falls back to `urls.afterLogin` so the result is always usable), NEVER hand-parse `state`
-- NEVER store the return URL in the session — concurrent tabs share the cookie and would clash; it is threaded exclusively via search params, form fields and the `x-pathname` request header
+The `auth` skill ([skills/auth/SKILL.md](skills/auth/SKILL.md)) holds the rules for agents and reviewers; it installs with the package.
 
 # Environment Variables
 
@@ -34,6 +22,8 @@ yarn add @kirill.konshin/auth iron-session server-only
 | ---------------- | --------------------------------------- | ----------------------------------------- |
 | `SESSION_SECRET` | Cookie sealing secret, min 32 chars     | yes (or `secret` config)                  |
 | `ADMIN_PASSWORD` | Login password for `createPasswordAuth` | password auth only (or `password` config) |
+
+Neon Auth reads its own variables (`NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`) where the app calls `createNeonAuth`; `SESSION_SECRET` is then not needed.
 
 # Canonical Patterns
 
@@ -76,24 +66,56 @@ export const logoutAction: typeof auth.logout = async (...args) => {
 
 Client Components can NEVER import this module (`server-only`, and function-level actions are not client-importable) — Server Components (pages/layouts) pass `loginAction`/`logoutAction` down as props.
 
-Token/OAuth session (custom shape + own `isValid`; the default checks the lib-owned `AUTHENTICATED` marker that `login()` sets — nothing to configure for password auth):
+Token/OAuth session on iron (custom shape + own `isValid`; the default checks the lib-owned `AUTHENTICATED` marker that `login()` sets — nothing to configure for password auth):
 
 ```ts
 import 'server-only';
 
 import { createAuth } from '@kirill.konshin/auth';
+import { ironStrategy } from '@kirill.konshin/auth/iron';
 import type { Route } from 'next';
 
 export type Session = { accessToken?: string; refreshToken?: string; expiresAt?: number };
 
-export const auth = createAuth<Session, Route>({
+export const sessionStrategy = ironStrategy<Session>({
     cookieName: 'myapp_session',
-    urls: { login: '/login', afterLogin: '/app' },
     isValid: (session) => Boolean(session.accessToken && (!session.expiresAt || session.expiresAt > Date.now())),
+});
+
+export const auth = createAuth<Session, Route>({
+    strategy: sessionStrategy,
+    urls: { login: '/login', afterLogin: '/app' },
 });
 ```
 
-App-specific logic (e.g. OAuth token refresh) composes on top: `auth.setSession(await refreshToken(...))`, `auth.destroySession()` on refresh failure; add the same `logoutAction` wrapper as above (`loginFormAction` is password auth only).
+App-specific logic (e.g. OAuth token refresh) composes on top: `sessionStrategy.setSession(await refreshToken(...))`, `auth.destroySession()` on refresh failure; add the same `logoutAction` wrapper as above (`loginFormAction` is password auth only).
+
+Neon Auth session (Neon signs in and out; `resolve` maps its user to the app's, `null` refuses):
+
+```ts
+import 'server-only';
+
+import { createAuth } from '@kirill.konshin/auth';
+import { neonStrategy } from '@kirill.konshin/auth/neon';
+import type { Route } from 'next';
+
+import { neonAuth } from '@/lib/neonAuth'; // createNeonAuth({ baseUrl, cookies: { secret, sessionDataTtl } })
+
+export type Session = { userId: string; workspaceId: string };
+
+export const auth = createAuth<Session, Route>({
+    strategy: neonStrategy<Session>({
+        neonAuth,
+        resolve: async ({ user }) => findAppUser(user.id), // linked once by the sign-in callback
+        authCacheTtl: 60, // seconds; 0 (default) looks up on every request
+    }),
+    urls: { login: '/login', afterLogin: '/app' },
+});
+```
+
+Neon's own `cookies.sessionDataTtl` (default 300 s) already caches Neon's session in a signed cookie; `authCacheTtl` caches `resolve` on top of it in Next's data cache (`unstable_cache`, as `'use cache'` is not compiled inside a published package), per Neon session; `auth.logout()` drops that entry, and so does `strategy.forgetSession()`, which the sign-in callback calls after linking a new identity.
+
+Code outside Next that receives the browser's requests, such as an agent runtime, cannot import this module (it and Neon's Next adapter import bare `next/*`). It forwards the request's `cookie` header to a Route Handler that answers with `await auth.getSession()` or `401`.
 
 ## Protected layout — `app/(auth)/layout.tsx` or `app/app/layout.tsx`
 
@@ -187,23 +209,27 @@ Every forwarded request is stamped with the `x-pathname` header (`PATHNAME_HEADE
 
 # Migration From Hand-Rolled Modules
 
-| Old pattern                                                  | Replacement                                               |
-| ------------------------------------------------------------ | --------------------------------------------------------- |
-| `getIronSession(await cookies(), sessionOptions)` wrapper    | `auth.getSession()`                                       |
-| `isLoggedIn()` / `isAdminAuthenticated()` / `getToken()`     | `auth.isAuthenticated()`                                  |
-| `ensureAuth()` / `requireAdminSession()` (throwing)          | `auth.throwNonAuthenticated()`                            |
-| `authError()` returning a `401 Response`                     | `auth.authenticatedRouteHandler(handler)`                 |
-| Layout `if (!token) redirect('/login?state=...')`            | `auth.redirectNonAuthenticated()`                         |
-| Login page `if (loggedIn) redirect(...)`                     | `auth.redirectIfAuthenticated(state)`                     |
-| Hand-written `proxy.ts` / `middleware.ts` session check      | `auth.proxyGuard({ allow })`                              |
-| `session.destroy(); redirect('/login')`                      | `auth.logout()`                                           |
-| `password === candidate`                                     | `auth.verifyPassword(candidate)`                          |
-| `ttl` / `cookieOptions.maxAge` juggling                      | `ttl` config in seconds, nothing else                     |
-| `'use server'` on the session module / separate `actions.ts` | function-level `'use server'` wrappers in the auth module |
-| `SESSION_PASSWORD` / `PASSWORD` env vars                     | `SESSION_SECRET` + `ADMIN_PASSWORD`                       |
-| `loginState(state)` / `typeof state === 'string'` fiddling   | `auth.getState(...)`                                      |
-| Hand-rolled `x-pathname` proxy + `headers()` in layout       | built into `proxyGuard` + `redirectNonAuthenticated()`    |
-| `defaultSession` constant (unused everywhere)                | delete                                                    |
+| Old pattern                                                  | Replacement                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `getIronSession(await cookies(), sessionOptions)` wrapper    | `auth.getSession()`                                          |
+| `createAuth({ cookieName, secret, isValid, ... })` (0.x)     | `createAuth({ strategy: ironStrategy({ ... }) })`            |
+| `auth.setSession(data)` / `auth.getSessionOptions()` (0.x)   | `strategy.setSession(data)` / `strategy.getSessionOptions()` |
+| `auth.isValid(await auth.getSession())` (0.x)                | `await auth.getSession()` (already validated, or `null`)     |
+| Neon Auth session folded into an iron cookie                 | `neonStrategy({ neonAuth, resolve })`                        |
+| `isLoggedIn()` / `isAdminAuthenticated()` / `getToken()`     | `auth.isAuthenticated()`                                     |
+| `ensureAuth()` / `requireAdminSession()` (throwing)          | `auth.throwNonAuthenticated()`                               |
+| `authError()` returning a `401 Response`                     | `auth.authenticatedRouteHandler(handler)`                    |
+| Layout `if (!token) redirect('/login?state=...')`            | `auth.redirectNonAuthenticated()`                            |
+| Login page `if (loggedIn) redirect(...)`                     | `auth.redirectIfAuthenticated(state)`                        |
+| Hand-written `proxy.ts` / `middleware.ts` session check      | `auth.proxyGuard({ allow })`                                 |
+| `session.destroy(); redirect('/login')`                      | `auth.logout()`                                              |
+| `password === candidate`                                     | `auth.verifyPassword(candidate)`                             |
+| `ttl` / `cookieOptions.maxAge` juggling                      | `ttl` config in seconds, nothing else                        |
+| `'use server'` on the session module / separate `actions.ts` | function-level `'use server'` wrappers in the auth module    |
+| `SESSION_PASSWORD` / `PASSWORD` env vars                     | `SESSION_SECRET` + `ADMIN_PASSWORD`                          |
+| `loginState(state)` / `typeof state === 'string'` fiddling   | `auth.getState(...)`                                         |
+| Hand-rolled `x-pathname` proxy + `headers()` in layout       | built into `proxyGuard` + `redirectNonAuthenticated()`       |
+| `defaultSession` constant (unused everywhere)                | delete                                                       |
 
 Checklist after migration: unique `cookieName`, secret only in `SESSION_SECRET`, no direct `getIronSession` imports left in the app, all four surfaces guarded (layout, login, route handlers, proxy).
 

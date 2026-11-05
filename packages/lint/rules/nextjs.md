@@ -16,7 +16,7 @@ Use the `lint-nextjs` skill when working with a Next.js project.
 - Prefer Route Handlers for redirects
 - Never use Pages Router
 - Always use App Router
-- Use `iron-session` for authentication via `@kirill.konshin/auth`, see [auth.md](auth.md)
+- Use `@kirill.konshin/auth` for authentication (iron-session or Neon Auth strategy), see [auth.md](auth.md)
 - Server-only modules MUST start with `import 'server-only'`: see [typescript.md](typescript.md)
 - `package.json` MUST ALWAYS have version of Next.js, NEVER `*`, otherwise Vercel will fall into legacy mode instead of serverless
 - ALWAYS create `next.config.ts` with `defineNextConfig` from `@kirill.konshin/next/config` (the `/config` subpath, NEVER the barrel — Next transpiles `next.config.ts` to CJS and `require`s it outside any bundler); what it sets: the `next` skill of `@kirill.konshin/next`

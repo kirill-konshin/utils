@@ -25,30 +25,7 @@ export default function Layout({ children, analytics }: LayoutProps<'/dashboard'
 
 ## Check auth in layouts pattern
 
-Put the auth guard in the layout of a route group, `app/(auth)/layout.tsx`: the group adds no path segment and protects every route below it.
-
-Layouts do not protect Route Handlers: check auth in each handler too.
-
-Use `@kirill.konshin/auth` (see [rules/auth.md](../../rules/auth.md)); the guard runs inside `<Suspense>`:
-
-```tsx
-import { type ReactNode, Suspense } from 'react';
-
-import { auth } from '@/auth';
-
-export default function Layout({ children }: LayoutProps<'/dashboard'>) {
-    return (
-        <Suspense>
-            <Protected>{children}</Protected>
-        </Suspense>
-    );
-}
-
-async function Protected({ children }: { children: ReactNode }) {
-    await auth.redirectNonAuthenticated(); // redirects to urls.login
-    return <>{children}</>;
-}
-```
+Put the auth guard in the layout of a route group, `app/(auth)/layout.tsx`: the group adds no path segment and protects every route below it. Layouts do not protect Route Handlers: check auth in each handler too. The guard and its `<Suspense>` boundary: the `auth` skill of `@kirill.konshin/auth`.
 
 # Pages
 

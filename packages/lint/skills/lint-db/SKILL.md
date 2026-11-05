@@ -1,6 +1,6 @@
 ---
 name: lint-db
-description: Database procedures for the db rule - LocalStorage / IndexedDB to server migrations, transactional importers, one-off data transfers, steps after a schema change, Neon Auth folded into Iron Session. Use when migrating or importing data, changing a schema, or adding Neon Auth.
+description: Database procedures for the db rule - LocalStorage / IndexedDB to server migrations, transactional importers, one-off data transfers, steps after a schema change. Use when migrating or importing data, or changing a schema.
 ---
 
 The binding rules are in [rules/db.md](../../rules/db.md). This skill holds the procedures.
@@ -16,8 +16,4 @@ The binding rules are in [rules/db.md](../../rules/db.md). This skill holds the 
 
 Only when the user asks for Neon, or the project already uses it. Connection strings, branches and migrations: the `neon-postgres` skill and the `neon-postgres-branches` skill. Drivers, URLs and migration runs: `@kirill.konshin/db` and its `db` skill, it installs with the package.
 
-Neon Auth: set it up per the `neon-auth` skill, then fold it into Iron Session ([rules/auth.md](../../rules/auth.md)):
-
-1. Link the Neon identity to the app user on the server.
-2. Store the app context in the sealed Iron Session.
-3. Clear the transient Neon session.
+Neon Auth: the `auth` skill of `@kirill.konshin/auth` (`neonStrategy`), it installs with the package.

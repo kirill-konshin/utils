@@ -1,6 +1,6 @@
 {
   "name": "@kirill.konshin/auth",
-  "description": "Reusable iron-session authentication for Next.js App Router: session module, layout/page guards, route handler guards, proxy guard, password login",
+  "description": "Next.js App Router authentication with iron-session or Neon Auth session strategies: session module, layout/page guards, route handler guards, proxy guard, password login",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -46,6 +46,16 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./neon": {
+      "types": "./dist/neon/index.d.ts",
+      "import": "./dist/neon/index.js",
+      "default": "./dist/neon/index.js"
+    },
+    "./iron": {
+      "types": "./dist/iron/index.d.ts",
+      "import": "./dist/iron/index.js",
+      "default": "./dist/iron/index.js"
+    },
     "./client": {
       "types": "./dist/client/index.d.ts",
       "import": "./dist/client/index.js",
@@ -66,6 +76,10 @@
     ]
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
+  ],
+  "keywords": [
+    "tanstack-intent"
   ]
 }

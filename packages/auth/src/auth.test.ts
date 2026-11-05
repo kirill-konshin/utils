@@ -1,8 +1,10 @@
 import type * as NextServer from 'next/server';
 import { beforeEach, describe, expect, test, vi } from 'vite-plus/test';
 
-import { createAuth, createPasswordAuth, MIN_SECRET_LENGTH, timingSafeEqualStrings } from './auth';
+import { type AuthUrls, createAuth, MIN_SECRET_LENGTH, timingSafeEqualStrings } from './auth';
 import { AUTHENTICATED, ERROR_PARAM, PATHNAME_HEADER, STATE_PARAM } from './client';
+import { type IronStrategyConfig, ironStrategy } from './iron/iron';
+import { createPasswordAuth } from './iron/password';
 
 const SECRET = 'x'.repeat(MIN_SECRET_LENGTH);
 const PASSWORD = 'correct horse battery staple';
@@ -38,13 +40,25 @@ vi.mock('next/navigation', () => ({
 
 type TestSession = { userId?: string };
 
-const makeAuth = (overrides: Partial<Parameters<typeof createAuth<TestSession>>[0]> = {}) =>
-    createAuth<TestSession>({
+type MakeAuthOptions = Partial<IronStrategyConfig<TestSession>> & {
+    urls?: AuthUrls;
+    onUnauthorized?: () => never;
+};
+
+const makeIron = (overrides: Partial<IronStrategyConfig<TestSession>> = {}) =>
+    ironStrategy<TestSession>({
         cookieName: COOKIE_NAME,
         secret: SECRET,
         isValid: (session) => Boolean(session.userId),
         ...overrides,
     });
+
+const makeAuth = ({ urls, onUnauthorized, ...strategy }: MakeAuthOptions = {}) =>
+    createAuth<TestSession>({ strategy: makeIron(strategy), urls, onUnauthorized });
+
+/** Signs in through the iron strategy, as the app's own sign-in would */
+const signIn = (auth: ReturnType<typeof makeAuth>, session: TestSession = { userId: '42' }) =>
+    (auth.strategy as ReturnType<typeof makeIron>).setSession(session);
 
 const makePasswordAuth = (overrides: Partial<Parameters<typeof createPasswordAuth>[0]> = {}) =>
     createPasswordAuth({ cookieName: COOKIE_NAME, secret: SECRET, password: PASSWORD, ...overrides });
@@ -82,7 +96,7 @@ describe('createAuth', () => {
         vi.stubEnv('SESSION_SECRET', SECRET);
         const auth = makeAuth({ secret: undefined });
         expect(auth.isConfigured()).toBe(true);
-        await expect(auth.getSession()).resolves.toBeDefined();
+        await expect(auth.getSession()).resolves.toBeNull(); // readable, just not signed in
     });
 
     test('isConfigured does not throw', () => {
@@ -91,30 +105,30 @@ describe('createAuth', () => {
     });
 
     test('secure cookie defaults and ttl', () => {
-        const options = makeAuth().getSessionOptions();
+        const options = makeIron().getSessionOptions();
         expect(options.cookieName).toBe(COOKIE_NAME);
         expect(options.ttl).toBe(60 * 60 * 24 * 7);
         expect(options.cookieOptions).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', secure: false });
     });
 
     test('cookieOptions and ttl overrides', () => {
-        const options = makeAuth({ ttl: 60, cookieOptions: { sameSite: 'strict' } }).getSessionOptions();
+        const options = makeIron({ ttl: 60, cookieOptions: { sameSite: 'strict' } }).getSessionOptions();
         expect(options.ttl).toBe(60);
         expect(options.cookieOptions?.sameSite).toBe('strict');
     });
 
     test('setSession round-trips data through the sealed cookie', async () => {
         const auth = makeAuth();
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         expect(cookieJar.get(COOKIE_NAME)).toMatch(/^Fe26\./); // sealed iron format, not plaintext
         expect(cookieJar.get(COOKIE_NAME)).not.toContain('userId');
-        expect((await auth.getSession()).userId).toBe('42');
+        expect((await auth.getSession())?.userId).toBe('42');
     });
 
     test('isAuthenticated reflects isValid', async () => {
         const auth = makeAuth();
         expect(await auth.isAuthenticated()).toBe(false);
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         expect(await auth.isAuthenticated()).toBe(true);
     });
 
@@ -134,7 +148,7 @@ describe('createAuth', () => {
 
     test('throwNonAuthenticated returns session when authenticated', async () => {
         const auth = makeAuth();
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         expect((await auth.throwNonAuthenticated()).userId).toBe('42');
     });
 
@@ -187,22 +201,21 @@ describe('createAuth', () => {
     });
 
     test('default isValid checks the lib-owned AUTHENTICATED marker', async () => {
-        const auth = createAuth({ cookieName: COOKIE_NAME, secret: SECRET }); // no isValid, T = PasswordSession
+        const strategy = ironStrategy({ cookieName: COOKIE_NAME, secret: SECRET }); // no isValid, T = PasswordSession
+        const auth = createAuth({ strategy });
         expect(await auth.isAuthenticated()).toBe(false);
 
-        await auth.setSession({ [AUTHENTICATED]: true });
+        await strategy.setSession({ [AUTHENTICATED]: true });
         expect(await auth.isAuthenticated()).toBe(true);
 
-        await auth.setSession({ [AUTHENTICATED]: false });
+        await strategy.setSession({ [AUTHENTICATED]: false });
         expect(await auth.isAuthenticated()).toBe(false);
     });
 
     test('accepts a typed routes union as the R generic', async () => {
         type Routes = '/login' | '/app' | '/app/deep';
         const auth = createAuth<TestSession, Routes>({
-            cookieName: COOKIE_NAME,
-            secret: SECRET,
-            isValid: (session) => Boolean(session.userId),
+            strategy: makeIron(),
             urls: { login: '/login', afterLogin: '/app' },
         });
         const state: Routes | undefined = auth.getState('/app/deep'); // typed, no cast needed
@@ -251,21 +264,21 @@ describe('createAuth', () => {
     test('redirectIfAuthenticated redirects only when authenticated', async () => {
         const auth = makeAuth({ urls: { afterLogin: '/app' } });
         await expect(auth.redirectIfAuthenticated()).resolves.toBeUndefined();
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         await expect(auth.redirectIfAuthenticated()).rejects.toThrow('REDIRECT:/app');
         await expect(auth.redirectIfAuthenticated('/deep')).rejects.toThrow('REDIRECT:/deep');
     });
 
     test('destroySession clears the session', async () => {
         const auth = makeAuth();
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         await auth.destroySession();
         expect(await auth.isAuthenticated()).toBe(false);
     });
 
     test('logout destroys and redirects', async () => {
         const auth = makeAuth({ urls: { login: '/login', afterLogout: '/bye' } });
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         await expect(auth.logout()).rejects.toThrow('REDIRECT:/bye');
         expect(await auth.isAuthenticated()).toBe(false);
         await expect(auth.logout('/custom')).rejects.toThrow('REDIRECT:/custom');
@@ -273,7 +286,7 @@ describe('createAuth', () => {
 
     test('logout ignores a FormData argument (direct <form action> usage)', async () => {
         const auth = makeAuth({ urls: { login: '/login', afterLogout: '/bye' } });
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         await expect(auth.logout(makeFormData({ anything: 'x' }))).rejects.toThrow('REDIRECT:/bye');
         expect(await auth.isAuthenticated()).toBe(false);
     });
@@ -306,7 +319,7 @@ describe('createAuth', () => {
 
     test('authenticatedRouteHandler passes request and context through when authenticated', async () => {
         const auth = makeAuth();
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         const guarded = auth.authenticatedRouteHandler(async (request, context) =>
             Response.json({ url: request.url, params: await context.params }),
         );
@@ -339,7 +352,7 @@ describe('proxyGuard', () => {
 
     test('passes with a valid session cookie', async () => {
         const auth = makeAuth();
-        await auth.setSession({ userId: '42' });
+        await signIn(auth);
         const response = await auth.proxyGuard()(makeRequest(`${COOKIE_NAME}=${cookieJar.get(COOKIE_NAME)}`));
         expect(response.status).toBe(200);
     });
@@ -359,7 +372,7 @@ describe('proxyGuard', () => {
             const guard = auth.proxyGuard();
             expect((await guard(makeRequest(undefined, 'http://localhost/api/admin/cache'))).status).toBe(401);
 
-            await auth.setSession({ userId: '42' });
+            await signIn(auth);
             const cookie = `${COOKIE_NAME}=${cookieJar.get(COOKIE_NAME)}`;
             expect((await guard(makeRequest(cookie, 'http://localhost/api/admin/cache'))).status).toBe(200);
         });
@@ -454,12 +467,12 @@ describe('createPasswordAuth', () => {
     test('login starts a fresh session, stale fields from older session shapes are dropped', async () => {
         const auth = makePasswordAuth();
         // simulate a cookie written by a previous app version with a different shape (e.g. isAdmin)
-        await auth.setSession({ isAdmin: true } as never);
+        await auth.strategy.setSession({ isAdmin: true } as never);
         expect(await auth.isAuthenticated()).toBe(false); // unseals fine, just not logged in
 
         expect(await auth.login(PASSWORD)).toBe(true);
         const session = await auth.getSession();
-        expect(session[AUTHENTICATED]).toBe(true);
+        expect(session?.[AUTHENTICATED]).toBe(true);
         expect(session).not.toHaveProperty('isAdmin');
     });
 
@@ -526,7 +539,7 @@ describe('createPasswordAuth', () => {
 
         // state is never persisted in the session (concurrent tabs would clash)
         const session = await auth.getSession();
-        expect(session[AUTHENTICATED]).toBe(true);
+        expect(session?.[AUTHENTICATED]).toBe(true);
         expect(session).not.toHaveProperty(STATE_PARAM);
     });
 
