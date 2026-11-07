@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { connection, type NextRequest, NextResponse } from 'next/server';
+import { connection, NextRequest, NextResponse } from 'next/server';
 import picomatch from 'picomatch';
 
 import { PATHNAME_HEADER, STATE_PARAM } from './client';
@@ -21,6 +21,13 @@ export type AuthUrls<R extends string = string> = {
 };
 
 /**
+ * What a strategy's `proxyRequest` decides for a request in `proxy.ts`: a response to send as is (e.g. a redirect that
+ * completes a sign-in), or whether the request carries a session, with the pass-through response to send when
+ * `proxyGuard` lets it through (e.g. one that refreshes the session's cookies)
+ */
+export type ProxyStep = { send: NextResponse } | { isAuthenticated: boolean; next?: NextResponse };
+
+/**
  * Where sessions live and how they are read: `ironStrategy` (`@kirill.konshin/auth/iron`, a sealed cookie the app
  * writes) or `neonStrategy` (`@kirill.konshin/auth/neon`, Neon Auth's own session). Every method answers for the
  * current request; `getSession` returns only an authenticated session, `null` otherwise
@@ -34,6 +41,12 @@ export type SessionStrategy<T extends object> = {
     getSession: () => Promise<T | null>;
     /** The same for `proxy.ts`, which hands over the request */
     getRequestSession: (request: NextRequest) => Promise<T | null>;
+    /**
+     * Runs first for every request `proxyGuard` sees, when the strategy keeps its session fresh there (Neon refreshes
+     * its cookies, which Server Components cannot write); without it the guard asks `getRequestSession`. The request
+     * already carries the `x-pathname` header
+     */
+    proxyRequest?: (request: NextRequest) => Promise<ProxyStep>;
     /** Ends the current session */
     destroySession: () => Promise<void>;
 };
@@ -275,7 +288,12 @@ export function createAuth<T extends object, R extends string = string>(config: 
                 // stamp the pathname so redirectNonAuthenticated can recover it in layouts
                 const requestHeaders = new Headers(request.headers);
                 requestHeaders.set(PATHNAME_HEADER, pathname);
-                const next = () => NextResponse.next({ request: { headers: requestHeaders } });
+
+                const step = await strategy.proxyRequest?.(new NextRequest(request.url, { headers: requestHeaders }));
+                if (step && 'send' in step) return step.send;
+                const next = () => step?.next ?? NextResponse.next({ request: { headers: requestHeaders } });
+                const isAuthenticated = async () =>
+                    step ? step.isAuthenticated : Boolean(await strategy.getRequestSession(request));
 
                 if (allow?.(request)) return next();
 
@@ -302,7 +320,7 @@ export function createAuth<T extends object, R extends string = string>(config: 
                 if (!strategy.isConfigured()) {
                     return NextResponse.json({ error: 'Authentication is not configured' }, { status: 503 });
                 }
-                if (await strategy.getRequestSession(request)) return next();
+                if (await isAuthenticated()) return next();
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             };
         },

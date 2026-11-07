@@ -1,4 +1,5 @@
 import type * as NextServer from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, test, vi } from 'vite-plus/test';
 
 import { createAuth } from '../auth';
@@ -33,10 +34,28 @@ const NEON_SESSION: NeonSession = {
 };
 const APP_SESSION: AppSession = { userId: 'user-1', workspaceId: 'workspace-1' };
 
-const makeNeonAuth = (data: NeonSession | null = NEON_SESSION, error?: unknown) =>
+/**
+ * Neon's middleware as its result looks to the strategy: with a session it passes the request through, refreshing the
+ * session cookie; without one it redirects to the login URL it was given; returning from OAuth it redirects onward
+ */
+type MiddlewareAnswer = 'session' | 'none' | 'oauth';
+
+const middlewareAnswering =
+    (answer: MiddlewareAnswer) =>
+    (config?: { loginUrl?: string }) =>
+    async (request: NextRequest): Promise<NextResponse> => {
+        if (answer === 'oauth') return NextResponse.redirect(new URL('/app?signed-in', request.url));
+        if (answer === 'none') return NextResponse.redirect(new URL(config?.loginUrl ?? '/login', request.url));
+        const response = NextResponse.next({ request: { headers: request.headers } });
+        response.headers.append('set-cookie', 'neon-session-data=fresh; Path=/');
+        return response;
+    };
+
+const makeNeonAuth = (data: NeonSession | null = NEON_SESSION, error?: unknown, answer?: MiddlewareAnswer) =>
     ({
         getSession: vi.fn(async () => ({ data, error })),
         signOut: vi.fn(async () => ({})),
+        middleware: vi.fn(middlewareAnswering(answer ?? (data ? 'session' : 'none'))),
     }) satisfies NeonAuthInstance;
 
 beforeEach(() => {
@@ -137,5 +156,38 @@ describe('createAuth with neonStrategy', () => {
         const auth = createAuth<AppSession>({ strategy: neonStrategy({ neonAuth, resolve: async () => APP_SESSION }) });
         await expect(auth.logout()).rejects.toThrow('REDIRECT:/login');
         expect(neonAuth.signOut).toHaveBeenCalledOnce();
+    });
+});
+
+describe('proxyGuard with neonStrategy', () => {
+    const makeGuard = (answer: MiddlewareAnswer) =>
+        createAuth<AppSession>({
+            strategy: neonStrategy({
+                neonAuth: makeNeonAuth(null, undefined, answer),
+                resolve: async () => APP_SESSION,
+            }),
+            urls: { public: ['/login', '/app/**'], protected: ['/api/data/**'] },
+        }).proxyGuard();
+    const request = (path: string) => new NextRequest(`http://localhost${path}`);
+
+    test("lets a signed-in request through with Neon's refreshed cookie, on every page including the login page", async () => {
+        for (const path of ['/login', '/app/trips', '/api/data/1']) {
+            const response = await makeGuard('session')(request(path));
+            expect(response.headers.get('location')).toBeNull();
+            expect(response.headers.get('set-cookie')).toContain('neon-session-data=fresh');
+            expect(response.headers.get('x-middleware-request-x-pathname')).toBe(path);
+        }
+    });
+
+    test("without a session, protected paths answer 401 and public pages pass, never to Neon's login redirect", async () => {
+        expect((await makeGuard('none')(request('/api/data/1'))).status).toBe(401);
+        const page = await makeGuard('none')(request('/app/trips'));
+        expect(page.headers.get('location')).toBeNull();
+        expect(page.headers.get('x-middleware-request-x-pathname')).toBe('/app/trips');
+    });
+
+    test('a redirect that completes an OAuth sign-in is sent as it is', async () => {
+        const response = await makeGuard('oauth')(request('/auth/complete'));
+        expect(response.headers.get('location')).toBe('http://localhost/app?signed-in');
     });
 });

@@ -1,6 +1,7 @@
 import { revalidateTag, unstable_cache } from 'next/cache';
+import type { NextRequest, NextResponse } from 'next/server';
 
-import type { SessionStrategy } from '../auth';
+import type { ProxyStep, SessionStrategy } from '../auth';
 
 /** What the strategy reads of Neon Auth's session: the `data` of `createNeonAuth(...).getSession()` */
 export type NeonSession = {
@@ -15,6 +16,7 @@ export type NeonSession = {
 export type NeonAuthInstance = {
     getSession: () => Promise<{ data: NeonSession | null; error?: unknown }>;
     signOut: () => Promise<{ error?: unknown }>;
+    middleware: (config?: { loginUrl?: string }) => (request: NextRequest) => Promise<NextResponse>;
 };
 
 export type NeonStrategyConfig<T extends object> = {
@@ -45,6 +47,13 @@ export type NeonStrategy<T extends object> = SessionStrategy<T> & {
 
 const sessionTag = (cacheKey: string, sessionId: string): string => `auth:${cacheKey}:${sessionId}`;
 
+/**
+ * Where Neon's middleware is told to send a request without a session. Nothing is served there: a redirect to it only
+ * tells `proxyRequest` that there is no session, so `proxyGuard` decides with the app's own urls and return URL. Not
+ * the real login page either, where Neon would skip refreshing the session that page reads
+ */
+const NO_SESSION_PATH = '/__auth/no-session';
+
 /** Neon Auth's own session, turned into the app's by `resolve`; sign-in and sign-out go through Neon */
 export function neonStrategy<T extends object>(config: NeonStrategyConfig<T>): NeonStrategy<T> {
     const { neonAuth, resolve, authCacheTtl = 0, cacheKey = 'neon' } = config;
@@ -68,6 +77,17 @@ export function neonStrategy<T extends object>(config: NeonStrategyConfig<T>): N
         })();
     };
 
+    // Refreshes Neon's session cookie (from its own cache, upstream only when stale) and completes an OAuth sign-in
+    const neonProxy = neonAuth.middleware({ loginUrl: NO_SESSION_PATH });
+
+    const proxyRequest = async (request: NextRequest): Promise<ProxyStep> => {
+        const response = await neonProxy(request);
+        const location = response.headers.get('location');
+        if (!location) return { isAuthenticated: true, next: response };
+        if (new URL(location, request.url).pathname === NO_SESSION_PATH) return { isAuthenticated: false };
+        return { send: response };
+    };
+
     const forget = (neonSession: NeonSession | null): void => {
         if (neonSession) revalidateTag(sessionTag(cacheKey, neonSession.session.id), { expire: 0 });
     };
@@ -76,8 +96,9 @@ export function neonStrategy<T extends object>(config: NeonStrategyConfig<T>): N
         name: 'neon',
         isConfigured: () => true,
         getSession,
-        // Neon's Next adapter reads the request through `next/headers`, which `proxy.ts` provides as well
         getRequestSession: getSession,
+        // Server Components cannot write cookies, so Neon's session is refreshed in `proxy.ts`, before they read it
+        proxyRequest,
         forgetSession: async () => {
             if (authCacheTtl > 0) forget(await readNeonSession());
         },

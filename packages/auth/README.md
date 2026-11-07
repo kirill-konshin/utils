@@ -115,6 +115,8 @@ export const auth = createAuth<Session, Route>({
 
 Neon's own `cookies.sessionDataTtl` (default 300 s) already caches Neon's session in a signed cookie; `authCacheTtl` caches `resolve` on top of it in Next's data cache (`unstable_cache`, as `'use cache'` is not compiled inside a published package), per Neon session; `auth.logout()` drops that entry, and so does `strategy.forgetSession()`, which the sign-in callback calls after linking a new identity.
 
+With Neon, `proxy.ts` (`auth.proxyGuard()`) MUST cover every page that reads the session, the login page and the sign-in callback included: the guard runs Neon's middleware there, which refreshes Neon's session cookie (a Server Component cannot write it, and Neon's `getSession()` would throw trying) and completes an OAuth sign-in. Do not call `neonAuth.middleware()` yourself.
+
 Code outside Next that receives the browser's requests, such as an agent runtime, cannot import this module (it and Neon's Next adapter import bare `next/*`). It forwards the request's `cookie` header to a Route Handler that answers with `await auth.getSession()` or `401`.
 
 ## Protected layout — `app/(auth)/layout.tsx` or `app/app/layout.tsx`

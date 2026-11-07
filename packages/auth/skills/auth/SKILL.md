@@ -27,6 +27,7 @@ Code samples and the migration table: the package [README](../../README.md).
 # Neon strategy
 
 - Set Neon Auth up per the `neon-auth` skill: `createNeonAuth` in the app (`src/lib/neonAuth.ts`), its handler at `app/api/auth/[...path]/route.ts`; pass that instance as `neonStrategy({ neonAuth })`
+- `proxy.ts` runs `auth.proxyGuard()` over EVERY page that reads the session, the login page and the sign-in callback included: it runs Neon's middleware, which refreshes Neon's cookie (Server Components cannot write it) and completes OAuth sign-in; NEVER call `neonAuth.middleware()` in the app
 - Neon's own `cookies.sessionDataTtl` (default 300 s) already caches its session in a signed cookie; `authCacheTtl` (seconds, default `0` = off) additionally caches `resolve` per Neon session in Next's data cache, so `resolve` returns JSON-serializable data
 - Link the Neon identity to the app's user once, in the sign-in callback route (allow-lists, first workspace), then call `strategy.forgetSession()` so an earlier `null` is not reused; `resolve` then only looks it up
 - Sign-out through `auth.logout()`, which signs out of Neon and drops the cached session
