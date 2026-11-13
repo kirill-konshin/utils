@@ -385,6 +385,32 @@ test('planSkills: npm sources become sync exclusions, enabled git sources become
     ]);
 });
 
+test('planSkills: a skill gated by a package name is on only when the workspace depends on that package', () => {
+    const skills = {
+        'mixed/repo': { skills: { always: true, gated: 'vercel' } },
+        'gated/repo': { skills: { cli: 'vercel' } },
+        'forced/repo': { skills: { cli: true } },
+        'gated-pkg': { skills: { a: 'vercel' } },
+    };
+    const packageSkills = (packageName: string) => (packageName === 'gated-pkg' ? ['a', 'b'] : []);
+
+    const withVercel = planSkills(skills, packageSkills, (packageName) => packageName === 'vercel');
+    assert.deepEqual(withVercel.syncExclude, ['gated-pkg#b']);
+    assert.deepEqual(withVercel.remote, [
+        { source: 'mixed/repo', ref: undefined, skills: ['always', 'gated'], exclude: [] },
+        { source: 'gated/repo', ref: undefined, skills: ['cli'], exclude: [] },
+        { source: 'forced/repo', ref: undefined, skills: ['cli'], exclude: [] },
+    ]);
+
+    // every listed skill off: the source is left out, never installed whole
+    const without = planSkills(skills, packageSkills);
+    assert.deepEqual(without.syncExclude, ['gated-pkg#a', 'gated-pkg#b']);
+    assert.deepEqual(without.remote, [
+        { source: 'mixed/repo', ref: undefined, skills: ['always'], exclude: ['gated'] },
+        { source: 'forced/repo', ref: undefined, skills: ['cli'], exclude: [] },
+    ]);
+});
+
 test('readPackageSkills: the skills an installed package ships', async () => {
     await inTempDir(
         {

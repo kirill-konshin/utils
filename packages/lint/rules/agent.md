@@ -123,3 +123,12 @@ Do not use `.claude/commands` for anything. It's not portable (`.agent/commands`
 - If project uses Spec Driven Development framework like OpenSpec, these files should be free from product specifications / external behavior, and only focused on general coding instructions
 - Preferred instructions/rules syntax how to structure plain human language: `EARS` for requirements and `BDD` (Given/When/Then) for scenarios
 - Rules & instructions in these files can't be cited from tests or code, so their proof is tooling, never a citation
+
+# Machine resources
+
+- Before a build, codegen, branch switch, mass edit or anything else that rewrites many files, ask the user to turn on the IDE's power save mode (JetBrains: File → Power Save Mode) and wait for the answer: the IDE indexes every changed file, and indexing that already runs keeps going after power save turns on
+- While tests or builds run, watch CPU (`top -o cpu` on macOS, `top` or `htop` elsewhere); when the machine saturates, stop the run and report
+- Verification runs on the user's own machine: run the narrowest check that covers the change, the full suite once at the end of a change
+- Cap parallelism (Vitest `--maxWorkers=2`, Turbo `--concurrency=2`, Nx `--parallel=2`) and run heavy commands at background priority (`taskpolicy -b` on macOS, `nice` elsewhere)
+- Full builds, packaging, signing and deploys only when the user asks, once per request; never in a retry loop; deploy only after a build that exited 0
+- On a network error or when the user reports slowness, stop and report instead of retrying

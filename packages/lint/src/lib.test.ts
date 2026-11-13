@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { test } from 'vite-plus/test';
 
 import type { ToggleOptions } from './index.js';
-import { asOptions, findWorkspaceRoot, toolGate } from './lib.js';
+import { asOptions, findWorkspaceRoot, toolGate, workspaceDependsOn } from './lib.js';
 import { inTempDir } from './testUtils.js';
 
 type CssOptions = ToggleOptions & { cssConfigPath?: string };
@@ -26,6 +26,24 @@ test('asOptions: an options object implies enabled: true unless it says otherwis
         enabled: false,
         cssConfigPath: 'a.css',
     });
+});
+
+test('workspaceDependsOn: dependencies and devDependencies of the root and workspace packages, not peers', async () => {
+    await inTempDir(
+        {
+            'package.json': '{"private":true,"workspaces":["packages/*"],"devDependencies":{"turbo":"1"}}',
+            'yarn.lock': '',
+            'packages/a/package.json': '{"name":"a","devDependencies":{"vercel":"50"}}',
+            'packages/b/package.json': '{"name":"b","peerDependencies":{"react":"19"}}',
+        },
+        async (dir) => {
+            assert.ok(workspaceDependsOn('vercel', dir));
+            assert.ok(workspaceDependsOn('turbo', dir));
+            assert.ok(!workspaceDependsOn('react', dir));
+            assert.ok(!workspaceDependsOn('next', dir));
+        },
+    );
+    await inTempDir({}, async (dir) => assert.ok(!workspaceDependsOn('vercel', dir)));
 });
 
 test('findWorkspaceRoot: trusts package-manager env when it contains cwd', async () => {

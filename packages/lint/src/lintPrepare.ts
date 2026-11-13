@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
 import { LINT_CONFIG_FILE, type LintConfig, resolveLintConfig, type SkillsConfig } from './config.js';
-import { asOptions, findWorkspaceRoot } from './lib.js';
+import { asOptions, findWorkspaceRoot, workspaceDependsOn } from './lib.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -496,31 +496,40 @@ export function readPackageSkills(cwd: string, packageName: string): string[] {
 }
 
 /**
- * Turn the `skills` map into CLI work. npm sources become `experimental_sync` exclusions: a disabled package, the
- * `false` skills, or - when a package lists `true` skills - every other skill it ships. Enabled git sources become
- * `skills add` work.
+ * Turn the `skills` map into CLI work. A skill gated by a package name is on when `hasDependency` says the workspace
+ * declares that package. npm sources become `experimental_sync` exclusions: a disabled package, the `false` skills,
+ * or - when a package lists `true` or gated skills - every other skill it ships. Enabled git sources become
+ * `skills add` work; a source whose listed skills are all off is left out.
  */
 export function planSkills(
     skills: SkillsConfig,
     packageSkills: (packageName: string) => string[] = () => [],
+    hasDependency: (packageName: string) => boolean = () => false,
 ): SkillsPlan {
     const plan: SkillsPlan = { syncExclude: [], remote: [] };
 
     for (const [source, option] of Object.entries(skills)) {
-        const { enabled = true, ref, skills: names = {} } = asOptions(option);
-        const listed = Object.keys(names).filter((name) => names[name]);
-        const excluded = Object.keys(names).filter((name) => !names[name]);
+        const { enabled = true, ref, skills: entries = {} } = asOptions(option);
+        const names = Object.entries(entries).map(([name, on]) => ({
+            name,
+            on: typeof on === 'string' ? hasDependency(on) : on,
+        }));
+        const listed = names.filter(({ on }) => on).map(({ name }) => name);
+        const excluded = names.filter(({ on }) => !on).map(({ name }) => name);
+        // `true` or gated entries: only the listed skills, none when every one is off
+        const picky = Object.values(entries).some((on) => on !== false);
 
         if (isNpmSkillSource(source)) {
             if (!enabled) plan.syncExclude.push(source);
             else {
-                const left = listed.length ? packageSkills(source).filter((name) => !listed.includes(name)) : excluded;
+                const left = picky ? packageSkills(source).filter((name) => !listed.includes(name)) : excluded;
                 plan.syncExclude.push(...left.map((name) => `${source}#${name}`));
             }
             continue;
         }
 
-        if (enabled) plan.remote.push({ source, ref, skills: listed.length ? listed : '*', exclude: excluded });
+        if (enabled && (!picky || listed.length))
+            plan.remote.push({ source, ref, skills: picky ? listed : '*', exclude: excluded });
     }
 
     return plan;
@@ -802,7 +811,13 @@ export async function main(): Promise<void> {
 
         // after syncAgentDirs(): it removes the skill links older versions placed, the CLI then places its own; the sync
         // first, it drops the skills a package `skills` field no longer asks for
-        const plan = planSkills(config.skills ?? {}, (packageName) => readPackageSkills(cwd, packageName));
+        // with detection off, gated skills stay off unless `lint.config.ts` turns them on
+        const { enabled: detect = true } = asOptions(config.detection);
+        const plan = planSkills(
+            config.skills ?? {},
+            (packageName) => readPackageSkills(cwd, packageName),
+            detect ? (packageName) => workspaceDependsOn(packageName, root) : undefined,
+        );
         if (runSkillsSync(cwd, spawnSync, plan.syncExclude))
             console.log(`Synced skills with the skills CLI, see ${SKILLS_LOCK}`);
         syncRemoteSkills(cwd, plan.remote);

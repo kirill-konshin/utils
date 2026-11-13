@@ -66,13 +66,15 @@ export type VitePlusOptions = VitePlusUserConfig & {
 };
 
 /**
- * One skill source. `skills` names skills of the source: `true` installs one, `false` leaves one out. With no `true`
- * entry, every skill of the source is installed except the `false` ones.
+ * One skill source. `skills` names skills of the source: `true` installs one, `false` leaves one out, a package name
+ * installs one when the root or a workspace package declares that package in `dependencies` or `devDependencies`
+ * (none with `detection: false`). With no `true` or package entry, every skill of the source is installed except the
+ * `false` ones; with one, only the skills that are on, none when every one is off.
  */
 export type SkillSourceOptions = ToggleOptions & {
     /** Git ref of a remote source. */
     ref?: string;
-    skills?: Record<string, boolean>;
+    skills?: Record<string, boolean | string>;
 };
 
 /**
@@ -105,8 +107,9 @@ export const LINT_CONFIG_FILE = 'lint.config.ts';
 const only = (...names: string[]): Record<string, boolean> => Object.fromEntries(names.map((name) => [name, true]));
 
 /**
- * The base every resolved config starts from. Every project gets every skill below; `lint.config.ts` turns off what it
- * does not need (`'expo/skills': false`).
+ * The base every resolved config starts from. Every project gets every skill below, except the skills a package name
+ * gates (`'vercel-cli': 'vercel'`), which only the projects depending on that package get; `lint.config.ts` turns off
+ * what it does not need (`'expo/skills': false`) and turns a gated skill on or off with `true` / `false`.
  *
  * Remote sources follow the Core Pack https://skills.sh/p/DxVN7q53wGdAcZQt (synced by hand, see the repository's
  * `curated-skills-update` skill), plus the official skills of the libraries the rules cover. Each source lists its
@@ -120,13 +123,17 @@ export const DEFAULT_LINT_CONFIG: LintConfig = {
         // Core Pack
         'vercel-labs/agent-skills': {
             ref: '063bee94c3f4df8453406c830b0a7df0f2860278',
-            skills: only(
-                'vercel-react-best-practices',
-                'vercel-composition-patterns',
-                'vercel-react-native-skills',
-                'vercel-react-view-transitions',
-                'web-design-guidelines',
-            ),
+            skills: {
+                ...only(
+                    'vercel-react-best-practices',
+                    'vercel-composition-patterns',
+                    'vercel-react-native-skills',
+                    'vercel-react-view-transitions',
+                    'web-design-guidelines',
+                ),
+                // projects that deploy with the Vercel CLI, which they install as a dependency
+                'deploy-to-vercel': 'vercel',
+            },
         },
         'vercel/ai': { ref: '682e2dd71456f14f9da33a1b983d1998c3a1184c', skills: only('ai-sdk') },
         // Hero UI is the default UI kit for Tailwind sites (rules/tailwind.md); shadcn for projects that already use it
@@ -173,6 +180,8 @@ export const DEFAULT_LINT_CONFIG: LintConfig = {
             ),
         },
         'vercel/turborepo': { ref: '8003ff0fe919160f68367cd08465b179410e0692', skills: only('turborepo') },
+        // the Vercel CLI's own skill, for projects that install the CLI (`vercel`) as a dependency
+        'vercel/vercel': { ref: '84878e532142f0ac584953695658b324eb9e5b80', skills: { 'vercel-cli': 'vercel' } },
         'nrwl/nx-ai-agents-config': {
             ref: '525ce266e22ec54e006d630d3b560658e8c3001c',
             skills: only(

@@ -133,6 +133,23 @@ function findWorkspacePackages(): string[] {
 }
 
 /**
+ * Does the root or a workspace package of `root` declare `packageName` in `dependencies` or `devDependencies`?
+ * Peer/optional declarations are ignored, as in {@link dependsOnNext}. Reads the manifests the workspace globs name
+ * (`@manypkg/get-packages`), no scan; false without a `package.json`.
+ */
+export function workspaceDependsOn(packageName: string, root: string = findWorkspaceRoot()): boolean {
+    try {
+        const { rootPackage, packages } = getPackagesSync(root);
+        return [rootPackage, ...packages].some((pkg) => {
+            const { dependencies, devDependencies } = pkg?.packageJson ?? {};
+            return Boolean(dependencies?.[packageName] ?? devDependencies?.[packageName]);
+        });
+    } catch {
+        return false;
+    }
+}
+
+/**
  * The workspace package owning `file` (e.g. the Tailwind entry CSS) - matched against the real
  * workspace package dirs (see {@link findWorkspacePackages}), NOT by walking to the nearest
  * package.json: a directory that is not a declared workspace member belongs to the root. Returns
