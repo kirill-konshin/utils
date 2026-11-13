@@ -1,6 +1,6 @@
 ---
 name: lint-vercel
-description: Vercel project setup - the Vercel CLI as a dev dependency, the committed repository link (`.vercel/repo.json`) so every clone is linked without `vercel link`, what stays out of git in `.vercel/`, the Yarn install command for `"type": "module"` projects. Use when adding Vercel to a project, running `vercel link`, editing `vercel.json`, editing the `.vercel` lines of `.gitignore`, or when a Vercel install fails with Yarn / Corepack.
+description: Vercel project setup - the Vercel CLI as a dev dependency, the committed repository link (`.vercel/repo.json`) so every clone is linked without `vercel link`, what stays out of git in `.vercel/`, the Yarn install command for projects whose root package is ESM. Use when adding Vercel to a project, running `vercel link`, editing `vercel.json`, editing the `.vercel` lines of `.gitignore`, or when a Vercel install fails with Yarn / Corepack.
 ---
 
 Platform operations (deploy, env vars, domains, logs): the `vercel-cli` skill.
