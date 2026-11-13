@@ -11,4 +11,4 @@ paths:
 - The Vercel CLI is a `devDependency`
 - `.vercel/repo.json` (from `vercel link --repo`) is committed; the rest of `.vercel/` stays ignored: `.vercel/*` with `!.vercel/repo.json` in `.gitignore`, never a bare `.vercel` line
 - After `vercel link`, remove the `.vercel` line it appends to `.gitignore`
-- Setup and checks: the `lint-vercel` skill
+- Setup, checks and env vars for local development (`vercel env pull`, database integration connected to Development): the `lint-vercel` skill
