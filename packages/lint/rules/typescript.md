@@ -92,6 +92,8 @@ paths:
 - `exports` conditions must be FLAT and `types`-first (`{types, import, default}`) — a nested or `import`-only map matches NO condition outside `import`, so CJS resolvers get `ERR_PACKAGE_PATH_NOT_EXPORTED` (the entry is invisible, not merely interop-incompatible); `default` is the catch-all, not a CJS build, and Node >= 22.12 loads the ESM behind it through `require()`
     - Next.js transpiles `next.config.ts` to CommonJS and `require()`s it, so config-only helpers MUST be reachable this way — keep them in their own subpath that imports nothing at runtime
 - Every subpath export needs its OWN bundler entry — a pure re-export barrel that is merely reachable from the main entry gets inlined, and its `dist/<mod>/index.js` is never written
+- Emit declarations with the tsdown `dts` option of `vp pack` — NEVER add `unplugin-dts` or `vite-plugin-dts`; if a package cannot use `isolatedDeclarations`, tsdown uses the TypeScript compiler (`dts.generator`)
+    - Use `unplugin-dts` only if a package must build with `vite build` library mode and cannot move to `vp pack`
 - NEVER import an OPTIONAL peerDependency at runtime, not even for a single constant — inline it (annotate with `typeof` of a type-only import as a drift guard); a barrel re-exporting such a module makes the WHOLE entry unresolvable when the peer is absent
 
 # Type Annotation Patterns
