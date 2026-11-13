@@ -24,7 +24,7 @@ Do not use Yarn PnP ([rules/npm-yarn.md](../../rules/npm-yarn.md)). IF the proje
 
 Write the config by hand. `vp migrate` is only an optional first pass: it copies every expanded ESLint rule, absolute paths and broken regexes into `vite.config.ts`, so clean up after it as the `lint-migrate` skill describes.
 
-1. **Install** — add `vite-plus`, `@kirill.konshin/lint` (+ `eslint` only for Nx module-boundary rules); pin `vite`/`vitest` at the root (README "Yarn constraints").
+1. **Install** — add `vite-plus`, `@kirill.konshin/lint` (+ `eslint` for Nx module-boundary rules and for Tailwind, a known gap: the `lint-tailwind` skill); pin `vite`/`vitest` at the root (README "Yarn constraints").
 2. **Config** — `lint.config.ts` in the workspace root, always (README "`lint.config.ts`"; `"type": "module"` in the root `package.json`): tool toggles, `skills`, `rules`, and under `vitePlus` the `typeAware` setting and the project blocks — rule overrides in `lint.rules` / `lint.overrides`, ignores in `lint.ignorePatterns`, `test`, `fmt`. Root `vite.config.ts` is exactly `export default defineConfig(vitePlusConfig());`. Keep `.editorconfig`.
 3. **Hooks** — `lint-prepare init && vp config` in `prepare`/`postinstall` — in this order: `vp config` fills the Vite+ section `lint-prepare` writes into `AGENTS.md` (same choice as below), `.vite-hooks/pre-commit` with `vp staged`; scripts `lint: vp check --fix`, `lint:staged: vp staged`; workspace-wide scripts move from `yarn workspaces foreach` to `vp run -r` ([rules/npm-yarn.md](../../rules/npm-yarn.md)).
 4. **Tests/builds** — tests import from `vite-plus/test`; libraries `vp pack`, apps `vp build`.

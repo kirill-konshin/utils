@@ -216,7 +216,7 @@ What maps where:
   </tbody>
 </table>
 
-Not carried over: `@nx/dependency-checks` (Oxlint does not lint JSON), `@typescript-eslint/naming-convention` (type-aware only, off by default). `@nx/eslint-plugin` needs the `eslint` package installed (as a library; ESLint itself does not run). Oxlint type-aware linting and type checking (tsgolint, the TypeScript 7 engine) are on by default — `vp check` is the type check, `vp pack` does not type-check; `vitePlus: { typeAware: false }` turns them off. tsgolint rejects tsconfig options TypeScript 7 removed (`target: es5`, `moduleResolution: node`, `downlevelIteration`).
+Not carried over: `@nx/dependency-checks` (Oxlint does not lint JSON), `@typescript-eslint/naming-convention` (type-aware only, off by default). `@nx/eslint-plugin` and the Tailwind plugin need the `eslint` package installed (as a library; ESLint itself does not run; Tailwind: a known gap, see [Issues](#issues)). Oxlint type-aware linting and type checking (tsgolint, the TypeScript 7 engine) are on by default — `vp check` is the type check, `vp pack` does not type-check; `vitePlus: { typeAware: false }` turns them off. tsgolint rejects tsconfig options TypeScript 7 removed (`target: es5`, `moduleResolution: node`, `downlevelIteration`).
 
 `package.json`:
 
@@ -675,7 +675,7 @@ Due to limitations package visibility between leaf and root this package has to 
 
 ¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires.
 
-`vitePlusConfig` runs the same gates (`src/gates.ts`, shared with the ESLint blocks), with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`) and `nx` (needs `eslint`) demand a resolvable package; `vitest` is ON unless set to `false` (Vite+ bundles it); `next` needs no package (Oxlint's `nextjs` plugin is native). `typeAware` differs by backend: `eslint.typeAware` is OFF by default (slow), `vitePlus.typeAware` ON.
+`vitePlusConfig` runs the same gates (`src/gates.ts`, shared with the ESLint blocks), with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`), `nx` (needs `eslint`) and `tailwind` (needs `eslint`, a known gap, see [Issues](#issues), besides `tailwindcss`) demand a resolvable package; `vitest` is ON unless set to `false` (Vite+ bundles it); `next` needs no package (Oxlint's `nextjs` plugin is native). `typeAware` differs by backend: `eslint.typeAware` is OFF by default (slow), `vitePlus.typeAware` ON.
 
 The machinery is controlled by the `detection` key of `lint.config.ts` (same toggle notation as the tools):
 
@@ -712,6 +712,8 @@ paths:
         - [ ] pnpm — root detection via `@manypkg/find-root` (`pnpm-workspace.yaml`); `public-hoist-pattern` guidance unverified in a real pnpm workspace
         - [ ] npm — env fast-path (`npm_config_local_prefix`) verified previously; `@manypkg/find-root` fallback unverified since the switch
     - [x] Yarn [constraints](https://yarnpkg.com/features/constraints) helper enforces root overrides/resolutions or default dependency consistency
+- Vite+
+    - [ ] `eslint-plugin-tailwindcss` as an Oxlint JS plugin needs the `eslint` package (a required peer, loaded through `@typescript-eslint/utils`): without it `vp check` stops before linting with `Cannot find module 'eslint'`. Workaround until fixed: `eslint` in the root `devDependencies`, as a library only (the `lint-tailwind` skill)
 - ESLint 9
     - [x] https://github.com/microsoft/rushstack/issues/4635 Failed to patch ESLint because the calling module was not recognized
     - [x] https://github.com/microsoft/rushstack/issues/4965 Failed to patch ESLint because the calling module was not recognized

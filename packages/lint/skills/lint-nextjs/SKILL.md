@@ -1,9 +1,23 @@
 ---
 name: lint-nextjs
-description: Our Next.js App Router conventions on top of the vendor Next.js skills - typed `LayoutProps` / `PageProps`, auth-guarded layouts, `params` / `searchParams` in server and client pages, page and component file placement, where `next.config.ts` details are. Use when writing or reviewing Next.js pages, layouts, route handlers or `next.config.ts`.
+description: Our Next.js App Router conventions on top of the vendor Next.js skills - `next typegen` in `postinstall`, typed `LayoutProps` / `PageProps`, auth-guarded layouts, `params` / `searchParams` in server and client pages, page and component file placement, where `next.config.ts` details are. Use when writing or reviewing Next.js pages, layouts, route handlers or `next.config.ts`.
 ---
 
 The binding rules are in [rules/nextjs.md](../../rules/nextjs.md). Next.js API knowledge: the docs that `next` bundles (`node_modules/next/dist/docs/`), the `next-*` skills and the `vercel-react-best-practices` skill; MUI setup: the `material-ui-nextjs` skill.
+
+# Route types in `postinstall`
+
+`LayoutProps`, `PageProps` and `RouteContext` are global types that Next.js generates into `.next/types`, referenced from `next-env.d.ts` (both gitignored). `next dev` and `next build` write them, so a fresh clone or a CI type check (`vp check`) fails without them. Every Next.js app runs `next typegen` in `postinstall`:
+
+```jsonc
+{
+    "scripts": {
+        "postinstall": "lint-prepare init && vp config && next typegen",
+    },
+}
+```
+
+- Monorepo: `next typegen` goes into the `postinstall` of each Next.js app package, not the root
 
 # Layouts
 

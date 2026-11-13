@@ -32,6 +32,7 @@ The binding rules are in [rules/tailwind.md](../../rules/tailwind.md). This skil
 # ESLint (eslint-plugin-tailwindcss, bundled with @kirill.konshin/lint)
 
 - With Vite+ the same plugin runs as an Oxlint JS plugin with the same detection; both read `tailwind` from `lint.config.ts`
+- Known gap: the plugin needs the `eslint` package (a required peer, loaded through `@typescript-eslint/utils`) also with Vite+, where ESLint does not run; without it `vp check` stops before linting with `Failed to load JS plugin … Cannot find module 'eslint'`. Temporary workaround: add `eslint` to the root `devDependencies`, as a library only (no `eslint.config.*`)
 - The plugin MUST be able to resolve the Tailwind entry CSS or it hard-crashes lint (ENOENT)
 - Zero-config happy path: when the workspace contains exactly ONE `*.css` with `@import "tailwindcss"` (scanned across the root + every workspace package, `.gitignore`-aware), rules auto-enable with that entry
 - Rules auto-scope to the workspace package owning the entry CSS (block `basePath`); pass `tailwind: { scoped: false }` to lint the whole workspace
