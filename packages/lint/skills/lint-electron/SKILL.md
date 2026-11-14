@@ -70,6 +70,42 @@ files:
     - '!.next/standalone/node_modules/electron'
 ```
 
+Keep `asar` on (the electron-builder default). The packaged app is read-only, so:
+
+- Unpack native code by name: electron-builder unpacks it by itself only for dependencies, not for files that come in through `files`, such as the standalone `node_modules`
+
+    ```yaml
+    asarUnpack:
+        - '**/*.node'
+        - '**/node_modules/sharp/**'
+        - '**/node_modules/@img/**'
+    ```
+
+- Next.js writes its ISR, fetch and image caches inside the app: `next-electron-rsc` keeps the ISR and fetch cache in memory and serves images as they are; `experimental_cacheDir` of `createHandler` moves them to Electron's `userData` folder
+- If the dependency install of electron-builder fails while it builds `sharp` from source, set `npmRebuild: false`: the standalone folder has its own `node_modules`
+
+# macOS Signing
+
+Sign in ONE pass: a custom `mac.sign` (electron-builder 26) that calls `@electron/osx-sign` replaces electron-builder's own signing; never sign ad hoc first and again in `afterSign` (`afterSign` only runs when electron-builder signed itself). Keep `mac.identity` set (`-` is enough) so electron-builder runs the signing step that calls `sign`.
+
+```ts
+mac: {
+    identity: '-',
+    sign: ({ app }) =>
+        sign({
+            app,
+            identity: '<certificate name>',
+            batchCodesignCalls: true, // one codesign per argument group
+            ignore: (file) => file.endsWith('.pak'), // sealed by Electron's framework
+            optionsForFile: () => ({ timestamp: 'none' }), // ONLY without notarization
+        }),
+},
+```
+
+- osx-sign runs one `codesign` per binary-looking file, with an Apple timestamp request each; 223 of 245 files of an Electron app are `.pak`
+- Measured (365 MB app): 84 s -> 25 s (batch + no timestamp) -> 10 s (+ skip `.pak`), `codesign --verify --deep --strict` still passes
+- Notarized builds (Developer ID) need the timestamp: keep the default there and only batch and skip `.pak`
+
 # CI Builds
 
 ## Gitlab

@@ -76,6 +76,14 @@ export default function Page({ params }: PageProps<'/blog/[slug]'>) {
     - Example: `actions.ts` with `'use server'` actions beside a `'use client'` page
 - Admin pages: the `lint-mui` skill.
 
+# Real-time updates
+
+For server-to-client updates, use HTTP streaming or Server-Sent Events from a Route Handler (a `ReadableStream` in a `Response`). Do not use WebSockets.
+
+- The browser integration is cleaner: plain `fetch` or `EventSource`, with reconnects, proxies and cookies as for any other request
+- No instrumentation is needed: a Route Handler cannot accept a WebSocket upgrade, so a WebSocket server needs a custom server or an instrumentation hook
+- In Electron with `next-electron-rsc`, streaming works in-process; a WebSocket needs a real socket for the HTTP upgrade, so it needs an open port (the `lint-electron` skill)
+
 # `next.config.ts`
 
 `defineNextConfig` of `@kirill.konshin/next/config`: what it sets and how to extend it is in the `next` skill, it installs with the package. The same skill lists the package's utilities (`AppLink`, `SoftLink`, `NoSSR`, …).
