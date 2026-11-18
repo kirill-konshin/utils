@@ -336,9 +336,10 @@ export function fmtConfig(): OxfmtConfig {
             '.idea',
             '.husky',
             '.yarn',
-            // generated, rewritten by their tools: `lint-prepare` + `vp config`, `next build`
+            // generated, rewritten by their tools: `lint-prepare` + `vp config`, `next build`, `graphify update`
             '/AGENTS.md',
             '**/next-env.d.ts',
+            '**/graphify-out',
             // OpenSpec writes these; they stay exactly as `openspec update` leaves them
             '.agents/skills/openspec-*',
             '.claude/skills/openspec-*',

@@ -84,6 +84,16 @@ export type SkillSourceOptions = ToggleOptions & {
  */
 export type SkillsConfig = Record<string, boolean | SkillSourceOptions>;
 
+/**
+ * graphify (https://graphify.com), a code knowledge graph for agents, set up by `lint-prepare`. Left out, it is
+ * detected: a `graphify` on `PATH` gets the skill and a graph build. `true` (or options) installs it into the project
+ * `.venv` with `uv` and also writes its AGENTS.md section and Claude Code hooks. `false` turns it off.
+ */
+export type GraphifyOptions = ToggleOptions & {
+    /** Version of the `graphifyy` PyPI package installed into `.venv`, see {@link GRAPHIFY_VERSION}. */
+    version?: string;
+};
+
 export type LintConfig = {
     detection?: boolean | DetectionOptions;
     next?: boolean | NextOptions;
@@ -97,11 +107,16 @@ export type LintConfig = {
     vitePlus?: VitePlusOptions;
     /** Skills `lint-prepare` installs, merged over {@link DEFAULT_LINT_CONFIG}. */
     skills?: SkillsConfig;
+    /** Detected when left out, see {@link GraphifyOptions}. */
+    graphify?: boolean | GraphifyOptions;
     /** Package rules by name (file name without `.md`): `false` leaves a rule out. */
     rules?: Record<string, boolean>;
 };
 
 export const LINT_CONFIG_FILE = 'lint.config.ts';
+
+/** The `graphifyy` version `graphify: true` installs into `.venv`, unless `version` overrides it. */
+export const GRAPHIFY_VERSION = '0.9.102';
 
 /** `{ name: true }` for each name. */
 const only = (...names: string[]): Record<string, boolean> => Object.fromEntries(names.map((name) => [name, true]));
@@ -228,6 +243,12 @@ export const DEFAULT_LINT_CONFIG: LintConfig = {
         },
         // shipped in `@playwright/cli` too, found by `skills experimental_sync` only when it is a direct dependency
         'microsoft/playwright-cli': { ref: 'b1a5903c5b633b8c9f843ad7b629c2a78437040c', skills: only('playwright-cli') },
+        // Chrome's web platform guidance (v1.0.1); the skill runs its own CLI with `npx`, no dependency needed.
+        // `chrome-extensions` is opt-in: `{ skills: { 'chrome-extensions': true } }`
+        'GoogleChrome/modern-web-guidance': {
+            ref: '64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65',
+            skills: only('modern-web-guidance'),
+        },
     },
 };
 

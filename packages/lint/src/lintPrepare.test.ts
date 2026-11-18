@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, test, vi } from 'vite-plus/test';
 import { parse } from 'yaml';
 
+import { DEFAULT_LINT_CONFIG, type LintConfig, mergeLintConfig } from './config.js';
 import {
     enabledRules,
     generateAgentsFile,
@@ -209,6 +210,33 @@ test("syncAgentDirs: mirrors the user's own top-level .agents entries into .clau
         for (const entry of ['rules/auth.md', 'rules/local.md', 'skills/own', 'skills/lint-repo']) {
             assert.equal(linkTarget(join(cwd, '.claude', entry)), join(realpathSync(cwd), '.agents', entry));
         }
+    });
+});
+
+test("graphify's skills are installed, not the user's: git-ignored in both agent dirs, never mirrored", async () => {
+    const stamped = (dir: string) => ({
+        [`${dir}/skills/graphify/SKILL.md`]: dir,
+        [`${dir}/skills/graphify/.graphify_version`]: '0.9',
+    });
+
+    await inTempDir({ ...stamped('.agents'), ...stamped('.claude') }, async (cwd) => {
+        sync(cwd);
+        recordSyncedSkills(cwd);
+
+        assert.equal(readUserEntries(cwd).size, 0);
+        for (const dir of AGENT_DIRS) {
+            assert.ok(lstatSync(join(cwd, dir, 'skills/graphify')).isDirectory(), dir);
+            assert.deepEqual(lines(join(cwd, dir, 'skills/.gitignore')).slice(2), [GITIGNORE_SYNCED, '/graphify', '']);
+        }
+    });
+
+    // without the stamp, a graphify skill folder is the user's own
+    await inTempDir({ '.agents/skills/graphify/SKILL.md': 'mine' }, async (cwd) => {
+        sync(cwd);
+        assert.equal(
+            linkTarget(join(cwd, '.claude/skills/graphify')),
+            join(realpathSync(cwd), '.agents/skills/graphify'),
+        );
     });
 });
 
@@ -409,6 +437,19 @@ test('planSkills: a skill gated by a package name is on only when the workspace 
         { source: 'mixed/repo', ref: undefined, skills: ['always'], exclude: ['gated'] },
         { source: 'forced/repo', ref: undefined, skills: ['cli'], exclude: [] },
     ]);
+});
+
+test('planSkills: Modern Web Guidance installs its main skill by default, chrome-extensions only when turned on', () => {
+    const source = 'GoogleChrome/modern-web-guidance';
+    const remote = (config: LintConfig) =>
+        planSkills(mergeLintConfig(DEFAULT_LINT_CONFIG, config).skills ?? {}).remote.find((r) => r.source === source);
+
+    assert.deepEqual(remote({})?.skills, ['modern-web-guidance']);
+    assert.deepEqual(remote({ skills: { [source]: { skills: { 'chrome-extensions': true } } } })?.skills, [
+        'modern-web-guidance',
+        'chrome-extensions',
+    ]);
+    assert.equal(remote({ skills: { [source]: false } }), undefined);
 });
 
 test('readPackageSkills: the skills an installed package ships', async () => {

@@ -146,7 +146,11 @@ export default defineLintConfig({
         'vercel-labs/agent-skills': { skills: { 'vercel-react-native-skills': false } }, // a default source, one skill left out
         'mattpocock/skills': { skills: { tdd: true } }, // an extra source, only this skill
         '@kirill.konshin/lint': { skills: { 'lint-electron': false } }, // this package's own skills
+        'GoogleChrome/modern-web-guidance': { skills: { 'chrome-extensions': true } }, // an opt-in skill of a default source
     },
+
+    // graphify code graph, see "graphify"; left out: used when `graphify` is on PATH
+    graphify: { version: '0.9.102' }, // true or options: installed into .venv with uv; false: off
 
     // package rules by name: false leaves a rule out
     rules: { redux: false },
@@ -487,7 +491,7 @@ In the project root, `lint-prepare`:
 - Installs the skills of the `skills` map of `lint.config.ts`, merged over the defaults, with the [`skills` CLI](https://github.com/vercel-labs/skills), into `.agents/skills/` and from there into `.claude/skills/`. The map is keyed by source, each value uses the toggle notation; `skills: { name: true | false | 'package' }` picks skills of a source — with no `true` or package entry every skill except the `false` ones; with one, only the skills that are on. A package name gates a skill: it is on when the root or a workspace package declares that package in `dependencies` or `devDependencies` (`'vercel-cli': 'vercel'`), off with `detection: false`; `true` / `false` in `lint.config.ts` overrides the gate:
     - npm packages (`@scope/name`, or a name without `/`) are dependencies that ship skills: `skills experimental_sync -y -r -a codex claude-code` links every `skills/<name>/` folder of the dependencies of the root and of every workspace package; the map only leaves some out (`--exclude`). Default: this package's own skills (`'@kirill.konshin/lint': true`) — e.g. `lint-repo`, which sets up the tooling above and audits the repo against the rules.
     - Git sources (`owner/repo`) are installed with `skills add`, at `ref` when set (pin a full 40-character commit SHA). A source whose skills `skills-lock.json` already has at the same ref is not fetched again. `lint.config.ts` owns the remote skills of `skills-lock.json`: a remote skill it no longer lists is removed (`skills remove`).
-    - Defaults — every project gets them, turn off what it does not need: the [Core Pack](https://skills.sh/p/DxVN7q53wGdAcZQt) (`vercel-labs/agent-skills` incl. `web-design-guidelines`, `vercel/ai`, `shadcn-ui/ui`, `heroui-inc/heroui`, `mui/material-ui` without `material-ui-tailwind`, `neondatabase/agent-skills`) and the official skills of the libraries the rules cover (`vercel/next.js`, `reduxjs/redux-toolkit`, `vercel/turborepo`, `nrwl/nx-ai-agents-config`, `expo/skills`, `microsoft/playwright-cli`). Gated by the `vercel` dependency (projects that install the Vercel CLI): `vercel/vercel` (`vercel-cli`) and `deploy-to-vercel` of `vercel-labs/agent-skills`. Each source lists its skills and pins a commit: `DEFAULT_LINT_CONFIG` in `src/config.ts`.
+    - Defaults — every project gets them, turn off what it does not need: the [Core Pack](https://skills.sh/p/DxVN7q53wGdAcZQt) (`vercel-labs/agent-skills` incl. `web-design-guidelines`, `vercel/ai`, `shadcn-ui/ui`, `heroui-inc/heroui`, `mui/material-ui` without `material-ui-tailwind`, `neondatabase/agent-skills`) and the official skills of the libraries the rules cover (`vercel/next.js`, `reduxjs/redux-toolkit`, `vercel/turborepo`, `nrwl/nx-ai-agents-config`, `expo/skills`, `microsoft/playwright-cli`), and [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance) (`GoogleChrome/modern-web-guidance`: `modern-web-guidance`; `chrome-extensions` is opt-in). The Modern Web Guidance skill runs its CLI with `npx`: no dependency to add. Gated by the `vercel` dependency (projects that install the Vercel CLI): `vercel/vercel` (`vercel-cli`) and `deploy-to-vercel` of `vercel-labs/agent-skills`. Each source lists its skills and pins a commit: `DEFAULT_LINT_CONFIG` in `src/config.ts`.
     - A skill folder of yours with the same name in `.agents/skills/` wins.
     - A failed CLI run is a warning, the install goes on: run `lint-prepare` again.
     - On CI (`CI` set) nothing remote is fetched (`--no-remote`, no `skills add`): no network needed.
@@ -498,6 +502,24 @@ In the project root, `lint-prepare`:
 - Removes dead links (e.g. after renaming a file) and the links it placed before but no longer needs, including what older versions placed (skill links, `commands/`). Each directory gets a generated `.gitignore` listing its links and the skills the `skills` CLI installed, so your own entries stay tracked.
 - Writes an empty marker pair for each section another tool owns into the generated `AGENTS.md` — currently Vite+ (`<!--VITE PLUS START-->`). The tool fills it, so run it **after** `lint-prepare` in the same install script (`lint-prepare init && vp config`): tools write their own agent content, nothing is copied by hand.
 - Generates `AGENTS.md` for other assistants (Codex, Cursor, Copilot, …) with a `# Rules` section — one entry per rule (the package's and yours): its title, frontmatter `description`, the `paths` it is scoped to and a plain link to its `.agents/rules/<file>` entry — and symlinks `CLAUDE.md` to it. The links are never `@` imports: Claude Code loads `.claude/rules` itself and honours each rule's `paths`, while an import would load every rule into every session.
+- Sets up [graphify](#graphify) when `lint.config.ts` asks for it or finds it.
+
+### graphify
+
+[graphify](https://graphify.com) builds a code knowledge graph (`graphify-out/`) that agents query instead of grepping. It is a Python tool (PyPI `graphifyy`), so it is not a dependency: `lint-prepare` sets it up by the `graphify` key of [`lint.config.ts`](#lintconfigts):
+
+| `graphify`                     | Executable                                                    | Skill | AGENTS.md section, Claude Code hooks | Root `.gitignore`         |
+| ------------------------------ | ------------------------------------------------------------- | ----- | ------------------------------------ | ------------------------- |
+| left out                       | `graphify` on `PATH` (any install); none: skipped with a note | yes   | no                                   | `/graphify-out`           |
+| `true`, `{ version: '0.9.x' }` | project `.venv`, created with `uv` (required)                 | yes   | yes                                  | `/graphify-out`, `/.venv` |
+| `false`                        | none                                                          | no    | removed                              | none                      |
+
+- The skills: graphify installs them where skills live (`graphify install --project`): the generic flavor into `.agents/skills/graphify` (Codex), the Claude Code flavor into `.claude/skills/graphify`, which also registers it in `.claude/CLAUDE.md`. Both are git-ignored like the skills the `skills` CLI installs (`lint-prepare` knows them by graphify's `.graphify_version` stamp); `false` removes them and the registration.
+- The graph: `graphify update .` (code only, no LLM, no API key) after everything else. Commit nothing of `graphify-out/`.
+- `true` only, committed, so every clone gets the same: `lint-prepare` writes a `## graphify` heading into the generated `AGENTS.md`, followed by its own `## graphify virtualenv` heading with how to reach `.venv`; then `graphify claude install` fills the `## graphify` section (it replaces up to the next `##` heading) and writes its hooks into `.claude/settings.json`, which `lint-prepare` points at `"$CLAUDE_PROJECT_DIR"/.venv/bin/graphify`. The next generation keeps the section.
+- `graphifyy` version for `.venv`: `GRAPHIFY_VERSION` of `@kirill.konshin/lint/config`, or `version`.
+- Nothing on CI; a failed graphify run is a warning, except a missing `uv` for `true`. `engines.uv` of this package documents the `uv` version.
+- The root `.gitignore` gets a marked block (`# @kirill.konshin/lint: graphify`); it follows `lint.config.ts` only, never what a machine has. Vite+ ignores `graphify-out` too.
 
 ### OpenSpec
 

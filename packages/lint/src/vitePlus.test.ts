@@ -33,6 +33,7 @@ test('fmt ignores what the recommended .prettierignore did, and files their tool
         '.yarn',
         '/AGENTS.md',
         '**/next-env.d.ts',
+        '**/graphify-out',
         '.agents/skills/openspec-*',
         '.claude/skills/openspec-*',
         '.claude/commands/opsx',

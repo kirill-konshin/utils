@@ -38,6 +38,8 @@ export const GLOBAL_IGNORES = [
     '**/.nx',
     '**/.turbo',
     '**/.yarn',
+    // graphify's code graph, built by lint-prepare
+    '**/graphify-out',
     // The spec-tools bundle: built, not source, and lint-prepare links it into the consumer's `.agents` and `.claude`.
     '**/skills/spec-tools/scripts/cli.js',
 ];

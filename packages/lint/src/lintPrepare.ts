@@ -28,6 +28,14 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
 import { LINT_CONFIG_FILE, type LintConfig, resolveLintConfig, type SkillsConfig } from './config.js';
+import {
+    finishGraphify,
+    GRAPHIFY_SKILL,
+    graphifyAgentsSection,
+    isGraphifySkill,
+    setUpGraphify,
+    writeGitignoreBlock,
+} from './graphify.js';
 import { asOptions, findWorkspaceRoot, workspaceDependsOn } from './lib.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -424,7 +432,7 @@ export function readUserEntries(cwd: string): Map<string, string> {
 
         for (const name of fs.readdirSync(root)) {
             const entry = path.join(root, name);
-            const isSynced = kind === 'skills' && (synced.has(name) || isPackageLink(entry));
+            const isSynced = kind === 'skills' && (isToolSkill(entry, synced) || isPackageLink(entry));
 
             if (!name.startsWith('.') && !own.has(name) && !isSynced && fs.existsSync(entry))
                 entries.set(path.join(kind, name), entry);
@@ -590,11 +598,11 @@ export function enabledRules(rules: Rule[], config: LintConfig): Rule[] {
 }
 
 /**
- * List the skills the `skills` CLI installed in the `.gitignore` of every agent `skills` dir: they stay out of git, and
- * the links this tool placed keep their own list.
+ * List the skills the `skills` CLI and graphify installed in the `.gitignore` of every agent `skills` dir: they stay out
+ * of git, and the links this tool placed keep their own list.
  */
 export function recordSyncedSkills(cwd: string): void {
-    const synced = [...readSyncedSkills(cwd)];
+    const synced = readSyncedSkills(cwd);
 
     for (const dir of AGENT_DIRS) {
         const root = path.join(cwd, dir, 'skills');
@@ -605,9 +613,16 @@ export function recordSyncedSkills(cwd: string): void {
         writeManifest(
             gitignore,
             readManifest(gitignore),
-            synced.filter((name) => lstat(path.join(root, name))),
+            [...new Set([...synced, GRAPHIFY_SKILL])].filter((name) => isToolSkill(path.join(root, name), synced)),
         );
     }
+}
+
+/** A skill a tool installed: the `skills` CLI (its lock lists it) or graphify (its stamp is inside). */
+function isToolSkill(entry: string, synced: Set<string>): boolean {
+    const name = path.basename(entry);
+
+    return !!lstat(entry) && (synced.has(name) || (name === GRAPHIFY_SKILL && isGraphifySkill(entry)));
 }
 
 /**
@@ -721,9 +736,14 @@ export function symlinkClaudeMd(cwd: string): void {
  *
  * The links are plain, never `@path` imports: Claude Code loads `.claude/rules` itself (syncAgentDirs() links them
  * there) and honours each rule's `paths`, while an `@` import would load every rule into every session, scoped or not.
- * Codex, which expands no `@`, reads this index.
+ * Codex, which expands no `@`, reads this index. `graphifySection` (graphify.ts) follows the tool sections.
  */
-export function generateAgentsFile(rules: Rule[], customSection: string | null, previous = ''): string {
+export function generateAgentsFile(
+    rules: Rule[],
+    customSection: string | null,
+    previous = '',
+    graphifySection?: string,
+): string {
     const entries = rules.map((rule) => {
         // the canonical entry (a package link or the user's own file), not the package install path
         const rulePath = `${CANONICAL_AGENT_DIR}/rules/${rule.file}`;
@@ -739,6 +759,7 @@ export function generateAgentsFile(rules: Rule[], customSection: string | null, 
         const to = from === -1 ? -1 : previous.indexOf(end, from);
         return to === -1 ? `${start}\n${end}` : previous.slice(from, to + end.length);
     });
+    if (graphifySection) sections.push(graphifySection);
     const generated = `${HEADER}\n\n# Rules\n\n${entries.join('\n')}\n\n${sections.join('\n\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
 
     return customSection ? `${generated}\n\n${customSection}\n` : `${generated}\n`;
@@ -803,6 +824,10 @@ export async function main(): Promise<void> {
         const rules = enabledRules(readRules(), config);
         console.log(`Found ${rules.length} rule files: ${rules.map((r) => r.name).join(', ')}`);
 
+        // before the agent dirs: graphify's skills are installed, not the user's own
+        const graphify = setUpGraphify(cwd, config.graphify, spawnSync);
+        writeGitignoreBlock(cwd, graphify.mode);
+
         const userEntries = readUserEntries(cwd);
         syncAgentDirs(cwd, packageEntries(rules), userEntries);
         console.log(
@@ -824,12 +849,22 @@ export async function main(): Promise<void> {
         recordSyncedSkills(cwd);
 
         const previous = exists ? fs.readFileSync(targetPath, 'utf-8') : '';
-        const content = generateAgentsFile(installedRules(rules, userEntries), customSection, previous);
+        // the anchors keep graphify's section from the last run; graphify fills them below
+        const graphifySection = graphify.mode === 'venv' ? graphifyAgentsSection(previous) : undefined;
+        const content = generateAgentsFile(
+            installedRules(rules, userEntries),
+            customSection,
+            previous,
+            graphifySection,
+        );
         fs.writeFileSync(targetPath, content, 'utf-8');
         console.log(`${exists ? 'Updated' : 'Created'} ${AGENTS_FILE}`);
 
         symlinkClaudeMd(cwd);
         console.log(`Symlinked ${CLAUDE_FILE} -> ${AGENTS_FILE}`);
+
+        // last: it writes through the CLAUDE.md link into AGENTS.md, and the graph build is the slowest step
+        finishGraphify(cwd, graphify, spawnSync);
         return;
     }
 
