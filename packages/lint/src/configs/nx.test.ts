@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import { test } from 'vite-plus/test';
+import { test, vi } from 'vite-plus/test';
 
 import { hasNxRuleIn, inTempDir } from '../testUtils.js';
 import { nxConfig } from './nx.js';
+
+// the plugins load on demand, in the first test that builds their block: slow under a full parallel run
+vi.setConfig({ testTimeout: 30_000 });
 
 test('true/false/enabled: false override detection', async () => {
     assert.ok(hasNxRuleIn(await nxConfig(true)));

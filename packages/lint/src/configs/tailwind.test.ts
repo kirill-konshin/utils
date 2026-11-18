@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { isAbsolute, join } from 'node:path';
-import { test } from 'vite-plus/test';
+import { test, vi } from 'vite-plus/test';
 
 import { inTempDir, TAILWIND_ENTRY, tailwindBlockOf } from '../testUtils.js';
 import { findTailwindEntry, tailwindConfig } from './tailwind.js';
+
+// the plugins load on demand, in the first test that builds their block: slow under a full parallel run
+vi.setConfig({ testTimeout: 30_000 });
 
 test('auto-detects a single entry CSS when forced on', async () => {
     await inTempDir({ 'app.css': TAILWIND_ENTRY }, async () => {
@@ -39,7 +42,7 @@ test('ambiguous entries fail loudly even in auto mode (a silent skip is hard to 
 
 test('auto-detected but no entry CSS stays inert (no block, no error)', async () => {
     await inTempDir({}, async () => {
-        // hasTailwind is true in this monorepo, so this exercises the detected-on + zero-entries path
+        // the temp workspace has tailwindcss, so this exercises the detected-on + zero-entries path
         assert.deepEqual(await tailwindConfig(), []);
     });
 });

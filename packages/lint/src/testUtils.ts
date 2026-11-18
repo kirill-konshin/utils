@@ -10,19 +10,30 @@ export const TAILWIND_ENTRY = '@import "tailwindcss";\n';
 type TailwindBlock = Linter.Config & { settings: { tailwindcss: { cssConfigPath: string } } };
 type NextBlock = Linter.Config & { settings: { next: { rootDir: string | string[] } } };
 
+/** A stand-in install of `name` in a temp workspace: enough for the package probes to resolve it. */
+export const stubPackage = (name: string): Record<string, string> => ({
+    [`node_modules/${name}/package.json`]: JSON.stringify({ name, main: 'index.js' }),
+    [`node_modules/${name}/index.js`]: '',
+});
+
 /**
  * Run `fn` with cwd pointed at a throwaway dir containing `files` (nested paths allowed) -
  * workspace-anchored scans (findTailwindEntry, findNextRoots, .gitignore) must not see the
  * monorepo's own files. `PROJECT_CWD` (the cheapest source findWorkspaceRoot accepts) is pointed
  * at the temp dir too, using the REAL path: `process.cwd()` resolves the `/var` → `/private/var`
- * symlink on macOS and the containment check compares paths literally. The `has*` capability
- * probes are module-load-time and unaffected.
- *
+ * symlink on macOS and the containment check compares paths literally. The capability probes run against the temp
+ * dir, so it holds stand-in installs of `packages` - by default the two the plugins need resolvable when Next and
+ * Tailwind are on, as in this monorepo; pass `[]` for a workspace without them.
  */
-export async function inTempDir<T>(files: Record<string, string>, fn: (dir: string) => Promise<T>): Promise<T> {
+export async function inTempDir<T>(
+    files: Record<string, string>,
+    fn: (dir: string) => Promise<T>,
+    { packages = ['next', 'tailwindcss'] }: { packages?: string[] } = {},
+): Promise<T> {
     const dir = mkdtempSync(join(tmpdir(), 'lint-config-test-'));
     const previousCwd = process.cwd();
     const previousProjectCwd = process.env.PROJECT_CWD;
+    files = { ...Object.assign({}, ...packages.map(stubPackage)), ...files };
     try {
         for (const [name, content] of Object.entries(files)) {
             mkdirSync(join(dir, dirname(name)), { recursive: true });

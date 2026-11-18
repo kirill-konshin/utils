@@ -15,6 +15,21 @@ export function git(cwd: string, args: string[]): string | null {
     }
 }
 
+/**
+ * A git command's stdout, for a caller that stops on a failure: it throws, and git's own message reaches stderr.
+ * @param input written to git's stdin
+ */
+export const gitOrThrow = (cwd: string, args: readonly string[], input?: string): string =>
+    execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, input });
+
+let top: string | undefined;
+
+/**
+ * The repository the tools run in: the working tree the current directory belongs to, a detached audit tree included.
+ * Resolved on first use, so importing a module never needs a repository; throws outside one.
+ */
+export const repoRoot = (): string => (top ??= gitOrThrow(process.cwd(), ['rev-parse', '--show-toplevel']).trim());
+
 /** Answers a process asks more than once (git can be slow on a large or busy worktree). */
 const memo = new Map();
 

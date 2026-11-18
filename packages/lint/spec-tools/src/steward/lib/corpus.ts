@@ -224,17 +224,19 @@ export function parseSpec(text: string, file: string, capability: string): Capab
     return { capability, file, purpose: purpose.join('\n').trim(), slugs, requirements, duplicates };
 }
 
-/** Every spec.md under a directory on disk. */
-function walkSpecs(dir: string) {
-    const out: string[] = [];
-    if (!fs.existsSync(dir)) return out;
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const p = path.join(dir, entry.name);
-        if (entry.isDirectory()) out.push(...walkSpecs(p));
-        else if (entry.name === 'spec.md') out.push(p);
-    }
-    return out.sort();
+/**
+ * Every file under a directory on disk whose name `keep` accepts, depth first in the order the directory lists them;
+ * a symbolic link is never followed. Throws when the directory does not exist.
+ */
+export function walkFiles(dir: string, keep: (name: string) => boolean): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+        const full = path.join(dir, entry.name);
+        return entry.isDirectory() ? walkFiles(full, keep) : keep(entry.name) ? [full] : [];
+    });
 }
+
+/** Every spec.md under a directory on disk, sorted. */
+const walkSpecs = (dir: string) => (fs.existsSync(dir) ? walkFiles(dir, (name) => name === 'spec.md').sort() : []);
 
 /** `openspec/specs/billing/refunds/spec.md` → `billing/refunds`. */
 export const capabilityOf = (specsDir: string, file: string) =>

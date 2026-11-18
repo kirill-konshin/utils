@@ -1,11 +1,19 @@
 import * as path from 'node:path';
 
 import { type AffectedOptions, affectedOptions, affectedScope, describeOptions } from './auditChanged';
-import { type EvidenceFile, idOf, loadEvidence, PART_BYTES, requirementsOf, writeParts } from './auditParts';
+import {
+    type EvidenceFile,
+    type EvidenceModel,
+    idOf,
+    loadEvidence,
+    PART_BYTES,
+    requirementsOf,
+    writeParts,
+} from './auditParts';
 import { diffBase, isNightly, mergeRequest } from './ci';
 import { writeData } from './data';
 import { AUDIT_FILES, type AuditName, findingsFile, PARTS_DIR } from './files';
-import { root } from './repo';
+import { repoRoot } from './steward/lib/git';
 import { sweepUnits } from './stewardAudit';
 
 /**
@@ -149,9 +157,13 @@ export type ScopeData = {
  * The scope of one audit. spec-verify's parts are capabilities; spec-steward's are the same parts plus its sweeps, each a
  * unit of its own after the last part.
  */
-export function main(env: NodeJS.ProcessEnv = process.env, audit: AuditName = 'spec-verify'): string {
+export function main(
+    env: NodeJS.ProcessEnv = process.env,
+    audit: AuditName = 'spec-verify',
+    evidence?: EvidenceModel,
+): string {
     const kind = modeFor(env);
-    const model = loadEvidence();
+    const model = evidence ?? loadEvidence();
     const all = requirementsOf(model);
     const affected = kind === 'affected' ? affectedScope(diffBase(env), all, affectedOptions(env)) : undefined;
     const corpus = [...new Set(all.map((r) => r.capability))].sort();
@@ -176,6 +188,6 @@ export function main(env: NodeJS.ProcessEnv = process.env, audit: AuditName = 's
         readers: READERS_PER_PART,
         parts,
     };
-    writeData(path.join(root(), AUDIT_FILES[audit].scope), data);
+    writeData(path.join(repoRoot(), AUDIT_FILES[audit].scope), data);
     return report;
 }

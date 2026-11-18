@@ -31,7 +31,7 @@ import {
 export function nextGate(option: boolean | NextOptions | undefined, strict: boolean, { requirePackage = true } = {}) {
     return toolGate(option, strict, {
         tool: 'next',
-        has: hasNext,
+        has: hasNext(),
         packageName: 'next',
         requirePackage,
         /*
@@ -56,61 +56,79 @@ export function nextGate(option: boolean | NextOptions | undefined, strict: bool
 }
 
 /**
- * Storybook: a `.storybook/main.*` marks a Storybook repo even when the package sits in a leaf package;
- * `eslint-plugin-storybook` statically imports `storybook`, so it must be resolvable from the workspace root.
+ * A tool marked by a config file: the file anywhere in the workspace marks the repo even when the tool's package
+ * (`tool`) sits in a leaf package.
+ */
+function configFileGate(
+    option: boolean | ToggleOptions | undefined,
+    strict: boolean,
+    spec: { tool: string; has: boolean; file: string; dot?: boolean; requirePackage?: boolean },
+) {
+    const { tool, has, file, dot, requirePackage } = spec;
+    return toolGate(option, strict, {
+        tool,
+        has,
+        packageName: tool,
+        requirePackage,
+        scan: () => scanWorkspace(file, GLOBAL_IGNORES, { dot }),
+    });
+}
+
+/**
+ * Storybook: a `.storybook/main.*` marks a Storybook repo; `eslint-plugin-storybook` statically imports `storybook`,
+ * so it must be resolvable from the workspace root.
  */
 export function storybookGate(option: boolean | ToggleOptions | undefined, strict: boolean) {
-    return toolGate(option, strict, {
+    return configFileGate(option, strict, {
         tool: 'storybook',
-        has: hasStorybook,
-        packageName: 'storybook',
-        scan: () => scanWorkspace('.storybook/main.*', GLOBAL_IGNORES, { dot: true }),
+        has: hasStorybook(),
+        file: '.storybook/main.*',
+        dot: true,
     });
 }
 
 /** Turborepo: probe only, never strict - no evidence scan. */
 export function turboGate(option: boolean | ToggleOptions | undefined) {
-    return toolGate(option, false, { tool: 'turbo', has: hasTurbo });
+    return toolGate(option, false, { tool: 'turbo', has: hasTurbo() });
 }
 
 /**
- * Nx: `nx.json` at the workspace root (strict: at cwd). `packageName`: the package the integration needs resolvable -
- * the Vite+ config runs `@nx/eslint-plugin` as a JS plugin, which needs `eslint`.
+ * Nx: in use when `nx.json` is at the workspace root (strict: at cwd). `packageName`: the package the integration needs
+ * resolvable, checked on its own - the Vite+ config runs `@nx/eslint-plugin` as a JS plugin, which needs `eslint`.
  */
-export function nxGate(option: boolean | ToggleOptions | undefined, strict: boolean, { packageName = '' } = {}) {
+export function nxGate(
+    option: boolean | ToggleOptions | undefined,
+    strict: boolean,
+    { packageName }: { packageName?: string } = {},
+) {
     return toolGate(option, strict, {
         tool: 'nx',
-        has: hasNx,
-        // hasNx is the one non-strict `has*` (a workspace-root file check) - strict stays at cwd
+        has: hasNx(),
+        // hasNx is the one `has*` that is a workspace-root file check - strict looks at cwd
         strictHas: strict && existsSync(resolve(process.cwd(), 'nx.json')),
-        ...(packageName ? { packageName } : {}),
+        packageName,
     });
 }
 
 /*
  * Test runners: a runner config file marks the repo even when the runner sits in a leaf package. The rules are pure AST
- * checks that work without the runner, so forcing one on never throws (`requirePackage: false`).
+ * checks that work without the runner, so forcing one on never throws (`requirePackage: false`); the one Jest rule that
+ * needs the installed version gets it from the leaf install (`configs/testing.ts`).
  */
 
 export function jestGate(option: boolean | ToggleOptions | undefined, strict: boolean) {
-    return toolGate(option, strict, {
+    return configFileGate(option, strict, {
         tool: 'jest',
-        has: hasJest,
-        packageName: 'jest',
+        has: hasJest(),
+        file: 'jest.config.*',
         requirePackage: false,
-        scan: () => scanWorkspace('jest.config.*', GLOBAL_IGNORES),
     });
 }
 
 export function vitestGate(option: boolean | ToggleOptions | undefined, strict: boolean) {
-    return toolGate(option, strict, {
-        tool: 'vitest',
-        has: hasVitest,
-        packageName: 'vitest',
-        requirePackage: false,
-        // vitest is often configured inside vite.config.* - both count as evidence
-        scan: () => scanWorkspace('{vitest,vite}.config.*', GLOBAL_IGNORES),
-    });
+    // vitest is often configured inside vite.config.* - both count as evidence
+    const file = '{vitest,vite}.config.*';
+    return configFileGate(option, strict, { tool: 'vitest', has: hasVitest(), file, requirePackage: false });
 }
 
 /**
@@ -160,7 +178,7 @@ export function tailwindGate(
      */
     const { enabled, options, files } = toolGate(option, strict, {
         tool: 'tailwind',
-        has: hasTailwind,
+        has: hasTailwind(),
         packageName: 'tailwindcss',
         needs: {
             what: 'entry CSS',

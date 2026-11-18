@@ -4,11 +4,9 @@
  * citations are optional pointers, listed when present and never evidence. Every excerpt keeps its file's own line
  * numbers, as one JSON model (`evidence --json`) — what spec-tools assembles each audit's evidence files from.
  */
-import fs from 'node:fs';
-import path from 'node:path';
 
-import type { Citation } from './citations';
-import { isTestFile } from './citations';
+import type { Citation, FileReader } from './citations';
+import { fileReader, isTestFile } from './citations';
 import type { Corpus, Requirement } from './corpus';
 import { allRequirements } from './corpus';
 import { listFiles } from './git';
@@ -39,17 +37,16 @@ const COMMON = new Set([
 export const isSource = (file: string): boolean =>
     SOURCE_EXT.test(file) && !SOURCE_SKIP.test(file) && !isTestFile(file);
 
-/** The non-test source files of a repository, read once, comments blanked for searching. */
-export function sourceIndex(root: string): Source[] {
+/**
+ * The non-test source files of a repository, read once, comments blanked for searching.
+ * @param read shared with the citation scan (`fileReader`), so a source is read once between them
+ */
+export function sourceIndex(root: string, read: FileReader = fileReader(root)): Source[] {
     return (listFiles(root) ?? []).filter(isSource).flatMap((file) => {
-        try {
-            const raw = fs.readFileSync(path.join(root, file), 'utf8');
-            return raw.length < 400_000 && !raw.includes('\0')
-                ? [{ file, text: stripComments(file, raw), lines: raw.split('\n') }]
-                : [];
-        } catch {
-            return [];
-        }
+        const raw = read(file)?.toString('utf8');
+        return raw !== undefined && raw.length < 400_000 && !raw.includes('\0')
+            ? [{ file, text: stripComments(file, raw), lines: raw.split('\n') }]
+            : [];
     });
 }
 
@@ -71,6 +68,8 @@ export function termHits(term: string, sources: Source[]): { file: string; line:
     const re = termPattern(term);
     const hits = [];
     for (const s of sources) {
+        // The pattern matches the term verbatim, so a source without it has no hit.
+        if (!s.text.includes(term)) continue;
         let line = 1;
         let from = 0;
         let last = -1;
@@ -86,15 +85,24 @@ export function termHits(term: string, sources: Source[]): { file: string; line:
     return hits;
 }
 
+/** What `relatedOf` compares a requirement by: its search terms and the words of its statement. */
+type Vocabulary = { terms: string[]; words: string[] };
+
 /** Requirements sharing terms or wording with `r`, strongest first. */
-function relatedOf(r: Requirement, everywhere: { corpus: Corpus; requirement: Requirement }[], corpus: Corpus) {
-    const mine = new Set(searchTerms(r));
-    const myWords = words(r.statement);
+function relatedOf(
+    r: Requirement,
+    everywhere: { corpus: Corpus; requirement: Requirement }[],
+    corpus: Corpus,
+    vocabulary: (r: Requirement) => Vocabulary,
+) {
+    const own = vocabulary(r);
+    const mine = new Set(own.terms);
     return everywhere
         .filter((x) => x.requirement.id !== r.id || x.corpus.name !== corpus.name)
         .map((x) => {
-            const shared = searchTerms(x.requirement).filter((t) => mine.has(t));
-            return { x, shared, score: shared.length + jaccard(myWords, words(x.requirement.statement)) * 3 };
+            const other = vocabulary(x.requirement);
+            const shared = other.terms.filter((t) => mine.has(t));
+            return { x, shared, score: shared.length + jaccard(own.words, other.words) * 3 };
         })
         .filter((y) => y.shared.length || y.score >= 1.2)
         .sort((a, b) => b.score - a.score)
@@ -110,6 +118,11 @@ function citationsOf(r: Requirement, citations: Citation[]) {
 /** The audit's evidence model for one repository, `.spec-audit/evidence.yaml`. */
 export function evidenceModel(corpus: Corpus, citations: Citation[], sources: Source[]) {
     const everywhere = allRequirements(corpus).map((requirement) => ({ corpus, requirement }));
+    // Each requirement's terms and words, computed once: every pair of requirements compares them.
+    const vocabularies = new Map(
+        everywhere.map(({ requirement: r }) => [r, { terms: searchTerms(r), words: words(r.statement) }]),
+    );
+    const vocabulary = (r: Requirement) => vocabularies.get(r)!;
 
     const hitsByTerm: Map<string, { file: string; line: number }[]> = new Map();
     const hitsOf = (term: string) => {
@@ -162,8 +175,11 @@ export function evidenceModel(corpus: Corpus, citations: Citation[], sources: So
                         kind: c.kind === 'doc' ? 'doc' : 'code',
                         window: c.window,
                     })),
-                terms: searchTerms(r).map((term) => ({ term, hits: hitsOf(term) })),
-                related: relatedOf(r, everywhere, corpus).map(({ x, shared }) => ({ id: x.requirement.id, shared })),
+                terms: vocabulary(r).terms.map((term) => ({ term, hits: hitsOf(term) })),
+                related: relatedOf(r, everywhere, corpus, vocabulary).map(({ x, shared }) => ({
+                    id: x.requirement.id,
+                    shared,
+                })),
             };
         }),
     };

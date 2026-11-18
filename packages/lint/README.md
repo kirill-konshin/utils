@@ -110,7 +110,7 @@ import { defineLintConfig, tsExts } from '@kirill.konshin/lint/config'; // tsExt
 
 export default defineLintConfig({
     // enabled (default true) = tools are ON unless said otherwise;
-    // strict (default false) = same-scope package probes only, no workspace evidence scans
+    // strict (default false) = probes from cwd only, no workspace evidence scans
     detection: { enabled: true, strict: false }, // default
 
     // ON by default; app roots auto-detected (next.config.*, package.json depending on next, src/{app,pages}/);
@@ -305,7 +305,7 @@ https://prettier.io/docs/ignore:
 
 `eslint.config.mjs`:
 
-Every tool integration — Next.js, Nx, Turborepo, Storybook, Jest, Vitest, Tailwind — is auto-detected (the detection results are exported as `has*` booleans for debugging). Settings come from [`lint.config.ts`](#lintconfigts); `eslintConfig(overrides)` merges its argument over them:
+Every tool integration — Next.js, Nx, Turborepo, Storybook, Jest, Vitest, Tailwind — is auto-detected (the package probes are exported for debugging as `has*` functions - `hasNext()`, `hasNx()`, ...; they run when a gate needs them, never on import). Settings come from [`lint.config.ts`](#lintconfigts); `eslintConfig(overrides)` merges its argument over them:
 
 ```js
 import { defineConfig } from 'eslint/config';
@@ -695,14 +695,14 @@ Due to limitations package visibility between leaf and root this package has to 
   </tbody>
 </table>
 
-¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires.
+¹ the plugins need the tool's package resolvable at lint time (`tailwindcss` for the theme-loading workers, `next` for `eslint-config-next`'s internal `require`s, `storybook` for its plugin's static import, `jest` for version sniffing) — resolvable from the workspace root, or the hard error of step 3 fires. Exception: `jest` is only needed for the version of `jest/no-deprecated-functions`, so a leaf-only install passes its version in `settings.jest.version`, and with none anywhere that one rule is off.
 
-`vitePlusConfig` runs the same gates (`src/gates.ts`, shared with the ESLint blocks), with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`), `nx` (needs `eslint`) and `tailwind` (needs `eslint`, a known gap, see [Issues](#issues), besides `tailwindcss`) demand a resolvable package; `vitest` is ON unless set to `false` (Vite+ bundles it); `next` needs no package (Oxlint's `nextjs` plugin is native). `typeAware` differs by backend: `eslint.typeAware` is OFF by default (slow), `vitePlus.typeAware` ON.
+`vitePlusConfig` runs the same gates (`src/gates.ts`, shared with the ESLint blocks), with three differences: Oxlint JS plugins load from this package, so only `storybook` (its plugin imports `storybook`), `nx` (needs `eslint`) and `tailwind` (needs `eslint`, a known gap, see [Issues](#issues), besides `tailwindcss`) demand a resolvable package; `vitest` is ON unless set to `false` or Jest is detected (Vite+ bundles Vitest; set both to lint a repo that runs both); `next` needs no package (Oxlint's `nextjs` plugin is native). `typeAware` differs by backend: `eslint.typeAware` is OFF by default (slow), `vitePlus.typeAware` ON.
 
 The machinery is controlled by the `detection` key of `lint.config.ts` (same toggle notation as the tools):
 
 - `detection: false` — tools are OFF unless explicitly enabled; enabled tools still auto-detect their settings (step 2)
-- `detection: { strict: true }` — only step 1 runs: the `has*` package probes **are** the strict detection — no workspace evidence scans (2). Mandatory settings (`cssConfigPath`) must then be explicit, and `nx.json` is checked at **cwd** instead of the workspace root (`hasNx` is the only non-package `has*`)
+- `detection: { strict: true }` — only step 1 runs, from **cwd** instead of the workspace root: each tool's package resolvable from cwd, `nx.json` at cwd — no workspace evidence scans (2). Mandatory settings (`cssConfigPath`) must then be explicit
 - `detection: { enabled: false, strict: true }` — fully explicit: tools on only when set, probes only
 
 Set `LINT_DEBUG=1` to trace the machinery: `has*` probe results, every workspace scan (glob, root, files found) and each tool's gate verdict (supplied options, absolutized & scanned evidence files, effective enabled status + reason).

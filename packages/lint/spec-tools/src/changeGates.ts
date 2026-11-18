@@ -13,18 +13,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { gateBase } from './ci';
-import { git, root } from './repo';
+import { walkFiles } from './steward/lib/corpus';
+import { filesAt, gitOrThrow, repoRoot, showMany } from './steward/lib/git';
 import { slugify } from './steward/lib/util';
+
+const isSpec = (name: string) => name === 'spec.md';
+const isMarkdown = (name: string) => name.endsWith('.md');
 
 /** Every capability specification in the working tree, with its requirement and scenario headings. */
 export function capabilitySpecs() {
-    const base = path.join(root(), 'openspec/specs');
-    const walk = (dir: string): string[] =>
-        fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-            const full = path.join(dir, entry.name);
-            return entry.isDirectory() ? walk(full) : entry.name === 'spec.md' ? [full] : [];
-        });
-    return walk(base).map((file) => {
+    const base = path.join(repoRoot(), 'openspec/specs');
+    return walkFiles(base, isSpec).map((file) => {
         const lines = fs.readFileSync(file, 'utf8').split('\n');
         const headingsAt = (depth: number, kind: string) =>
             lines.flatMap((line, i) => {
@@ -37,7 +36,7 @@ export function capabilitySpecs() {
         const scenarios = headingsAt(4, 'Scenario');
         return {
             capability: path.relative(base, path.dirname(file)),
-            file: path.relative(root(), file),
+            file: path.relative(repoRoot(), file),
             requirements,
             scenarios,
         };
@@ -84,22 +83,28 @@ export const normalizeBlock = (text: string) => text.replace(/\s+/g, ' ').trim()
  * The specification files git sees renamed between a ref and the working tree, base path to head path. A capability
  * that moved is the same capability under a new path, so every comparison against a base reads it there.
  */
-export function specMovesSince(ref: string, rootDir: string = root()): Map<string, string> {
+export function specMovesSince(ref: string, rootDir: string = repoRoot()): Map<string, string> {
     const moves = new Map<string, string>();
-    for (const line of git(['diff', '-M', '--name-status', ref, '--', 'openspec/specs'], rootDir).split('\n')) {
+    for (const line of gitOrThrow(rootDir, ['diff', '-M', '--name-status', ref, '--', 'openspec/specs']).split('\n')) {
         const [kind, from, to] = line.split('\t');
         if (kind?.startsWith('R') && from?.endsWith('/spec.md') && to) moves.set(from, to);
     }
     return moves;
 }
 
-/** The specification files at a git ref, each with its text there, addressed by its path in the working tree. */
-function specsAt(ref: string, rootDir: string = root()): { file: string; text: string }[] {
+/**
+ * The specification files at a git ref, each with its text there, addressed by its path in the working tree; read in
+ * one git process.
+ */
+function specsAt(ref: string, rootDir: string = repoRoot()): { file: string; text: string }[] {
     const moves = specMovesSince(ref, rootDir);
-    return git(['ls-tree', '-r', '--name-only', ref, '--', 'openspec/specs'], rootDir)
-        .split('\n')
-        .filter((file) => file.endsWith('/spec.md'))
-        .map((file) => ({ file: moves.get(file) ?? file, text: git(['show', `${ref}:${file}`], rootDir) }));
+    const files = filesAt(rootDir, ref, 'openspec/specs').filter((file) => file.endsWith('/spec.md'));
+    const texts = showMany(rootDir, ref, files);
+    return files.map((file) => {
+        const text = texts.get(file);
+        if (typeof text !== 'string') throw new Error(`${ref}:${file} could not be read`);
+        return { file: moves.get(file) ?? file, text };
+    });
 }
 
 /** Every requirement in the specifications as they stand at a git ref — the base `spec-diff` renders against. */
@@ -112,7 +117,7 @@ export function requirementsAt(ref: string): RequirementBlock[] {
  * track an empty directory, so a change folder emptied on disk is invisible to every gate built on `git diff` —
  * which is how two of them survived unnoticed for five days.
  */
-export function malformedArchivedChanges(rootDir: string = root()) {
+export function malformedArchivedChanges(rootDir: string = repoRoot()) {
     const base = path.join(rootDir, 'openspec/changes/archive');
     if (!fs.existsSync(base)) return [];
     return fs
@@ -124,14 +129,8 @@ export function malformedArchivedChanges(rootDir: string = root()) {
             if (missing.length) return [`${entry.name} — missing ${missing.join(' and ')}`];
             // A delta directory that carries no specification is a merge that silently dropped one.
             const specs = path.join(dir, 'specs');
-            if (fs.existsSync(specs)) {
-                const walk = (current: string): string[] =>
-                    fs.readdirSync(current, { withFileTypes: true }).flatMap((child) => {
-                        const full = path.join(current, child.name);
-                        return child.isDirectory() ? walk(full) : child.name.endsWith('.md') ? [full] : [];
-                    });
-                if (walk(specs).length === 0) return [`${entry.name} — carries a specs/ tree with no delta file`];
-            }
+            if (fs.existsSync(specs) && walkFiles(specs, isMarkdown).length === 0)
+                return [`${entry.name} — carries a specs/ tree with no delta file`];
             return [];
         });
 }
@@ -143,14 +142,9 @@ export function malformedArchivedChanges(rootDir: string = root()) {
  * legitimate on a branch (sync, push, watch CI go green) and unfinished on a merge request, which is why
  * `workflowEvidence` — the merge-request gate — reads it and the change gates do not.
  */
-export function syncedUnarchivedChanges(rootDir: string = root()) {
+export function syncedUnarchivedChanges(rootDir: string = repoRoot()) {
     const changes = path.join(rootDir, 'openspec/changes');
     if (!fs.existsSync(changes)) return [];
-    const walk = (dir: string): string[] =>
-        fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-            const full = path.join(dir, entry.name);
-            return entry.isDirectory() ? walk(full) : entry.name === 'spec.md' ? [full] : [];
-        });
     const section = (text: string, op: 'ADDED' | 'REMOVED' | 'MODIFIED') => {
         const start = text.indexOf(`## ${op} Requirements`);
         if (start < 0) return '';
@@ -174,7 +168,7 @@ export function syncedUnarchivedChanges(rootDir: string = root()) {
         .flatMap((entry) => {
             const specs = path.join(changes, entry.name, 'specs');
             if (!fs.existsSync(specs)) return [];
-            return walk(specs).flatMap((delta) => {
+            return walkFiles(specs, isSpec).flatMap((delta) => {
                 const capability = path.relative(specs, path.dirname(delta));
                 const main = path.join(rootDir, 'openspec/specs', capability, 'spec.md');
                 if (!fs.existsSync(main)) return [];
@@ -198,7 +192,7 @@ export function syncedUnarchivedChanges(rootDir: string = root()) {
 }
 
 /** Every open change — a directory under `openspec/changes/` other than the archive. */
-export function openChanges(rootDir: string = root()): string[] {
+export function openChanges(rootDir: string = repoRoot()): string[] {
     const changes = path.join(rootDir, 'openspec/changes');
     if (!fs.existsSync(changes)) return [];
     return fs
@@ -214,17 +208,12 @@ export function openChanges(rootDir: string = root()): string[] {
  * the longer they sit. Read from the filesystem so an unstaged delta counts too; a parked proposal is `skip_specs`
  * and carries none.
  */
-export function deltaFilesInOpenChanges(rootDir: string = root()): string[] {
+export function deltaFilesInOpenChanges(rootDir: string = repoRoot()): string[] {
     const changes = path.join(rootDir, 'openspec/changes');
-    const walk = (dir: string): string[] =>
-        fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-            const full = path.join(dir, entry.name);
-            return entry.isDirectory() ? walk(full) : entry.name.endsWith('.md') ? [full] : [];
-        });
     return openChanges(rootDir).flatMap((change) => {
         const specs = path.join(changes, change, 'specs');
         if (!fs.existsSync(specs)) return [];
-        const deltas = walk(specs).map((f) => path.relative(path.join(changes, change), f));
+        const deltas = walkFiles(specs, isMarkdown).map((f) => path.relative(path.join(changes, change), f));
         return deltas.length ? [`${change} — carries ${deltas.length} delta file(s): ${deltas.join(', ')}`] : [];
     });
 }
@@ -233,10 +222,10 @@ export function deltaFilesInOpenChanges(rootDir: string = root()): string[] {
  * The open changes this tree touches against a base — files changed or untracked under their directories. On the
  * default branch itself nothing is touched, which keeps a stale change failing its own pipeline and no one else's.
  */
-export function touchedOpenChanges(base: string, rootDir: string = root()): string[] {
+export function touchedOpenChanges(base: string, rootDir: string = repoRoot()): string[] {
     const files = [
-        ...git(['diff', '--name-only', base, '--', 'openspec/changes'], rootDir).split('\n'),
-        ...git(['ls-files', '--others', '--exclude-standard', '--', 'openspec/changes'], rootDir).split('\n'),
+        ...gitOrThrow(rootDir, ['diff', '--name-only', base, '--', 'openspec/changes']).split('\n'),
+        ...gitOrThrow(rootDir, ['ls-files', '--others', '--exclude-standard', '--', 'openspec/changes']).split('\n'),
     ];
     const names = new Set<string>();
     for (const file of files) {
@@ -252,17 +241,12 @@ export function touchedOpenChanges(base: string, rootDir: string = root()): stri
  * renamed or removed, and OpenSpec's own validation lets it through. Judged over the changes named only: a synced
  * change's REMOVED and RENAMED headings are legitimately gone, so callers leave synced changes out.
  */
-export function staleDeltaTargets(changes: readonly string[], rootDir: string = root()): string[] {
-    const walk = (dir: string): string[] =>
-        fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-            const full = path.join(dir, entry.name);
-            return entry.isDirectory() ? walk(full) : entry.name === 'spec.md' ? [full] : [];
-        });
+export function staleDeltaTargets(changes: readonly string[], rootDir: string = repoRoot()): string[] {
     const hits: string[] = [];
     for (const change of changes) {
         const specs = path.join(rootDir, 'openspec/changes', change, 'specs');
         if (!fs.existsSync(specs)) continue;
-        for (const delta of walk(specs)) {
+        for (const delta of walkFiles(specs, isSpec)) {
             const capability = path.relative(specs, path.dirname(delta));
             const standing = path.join(rootDir, 'openspec/specs', capability, 'spec.md');
             const headings = new Set(
@@ -301,14 +285,9 @@ export function staleDeltaTargets(changes: readonly string[], rootDir: string = 
  * delta counts too. It guards after sync as much as at archive: a change that carries deltas never sets `skip_specs`,
  * whatever state its workflow is in.
  */
-export function skipSpecsWithDeltas(rootDir: string = root()) {
+export function skipSpecsWithDeltas(rootDir: string = repoRoot()) {
     const changes = path.join(rootDir, 'openspec/changes');
     if (!fs.existsSync(changes)) return [];
-    const walk = (dir: string): string[] =>
-        fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-            const full = path.join(dir, entry.name);
-            return entry.isDirectory() ? walk(full) : entry.name.endsWith('.md') ? [full] : [];
-        });
     const dirs = (dir: string) => fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory());
     // Open changes and archived ones alike: the archive is where the loss would already have happened.
     const candidates = dirs(changes).flatMap((e) =>
@@ -320,7 +299,7 @@ export function skipSpecsWithDeltas(rootDir: string = root()) {
         const cfg = path.join(dir, '.openspec.yaml');
         if (!fs.existsSync(cfg) || !/^\s*skip_specs:\s*true/m.test(fs.readFileSync(cfg, 'utf8'))) return [];
         const specs = path.join(dir, 'specs');
-        if (!fs.existsSync(specs) || walk(specs).length === 0) return [];
+        if (!fs.existsSync(specs) || walkFiles(specs, isMarkdown).length === 0) return [];
         return [
             `${path.relative(changes, dir)} sets skip_specs: true but carries delta files — archive would discard them`,
         ];

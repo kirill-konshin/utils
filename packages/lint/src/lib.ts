@@ -7,14 +7,17 @@ import { globSync } from 'glob';
 import { isPackageExists } from 'local-pkg';
 import { PathScurry } from 'path-scurry';
 
-import type { ToggleOptions } from './config.js';
+import type { LintConfig, ToggleOptions } from './config.js';
 
 type NormalizedOptions<T extends ToggleOptions> = Omit<T, 'enabled'>;
 
 type ToolGateSpec<T extends ToggleOptions> = {
     tool: string;
+    /** Is the tool in use (the workspace-root probe)? Usually `packageName` resolvable, `nx.json` for Nx. */
     has: boolean;
+    /** The strict probe from cwd, when it is not `packageName` resolvable from cwd. */
     strictHas?: boolean;
+    /** The package the integration needs at lint time - checked on its own, whatever `has` probes. */
     packageName?: string;
     requirePackage?: boolean;
     absolutizeOptions?: (options: NormalizedOptions<T>) => string[];
@@ -56,21 +59,25 @@ function debug(message: string, ...args: unknown[]): void {
 }
 
 /**
- * Capability gate: is a package resolvable from the workspace root - the scope the ESLint plugins
- * themselves resolve from at lint time?
+ * Capability gate: is a package resolvable from `scope` - by default the workspace root, the scope the ESLint plugins
+ * themselves resolve from at lint time; strict detection probes from cwd (see {@link toolGate}).
  */
-export function isPackageResolvable(packageName: string): boolean {
-    return isPackageExists(packageName, { paths: [findWorkspaceRoot()] });
+export function isPackageResolvable(packageName: string, scope: string = findWorkspaceRoot()): boolean {
+    return isPackageExists(packageName, { paths: [scope] });
 }
+
+/** Is `path` `dir` itself or inside it? */
+const isInside = (dir: string, path: string): boolean => {
+    const rel = relative(dir, path);
+    return !rel.startsWith('..') && !isAbsolute(rel);
+};
 
 /**
  * An env-supplied root candidate is only plausible when it is an absolute existing directory that
  * contains (or is) `cwd` - guards against stale env leaking in from an unrelated checkout.
  */
 function isRootOf(root: string | undefined, cwd: string): boolean {
-    if (!root || !isAbsolute(root) || !existsSync(root)) return false;
-    const rel = relative(root, cwd);
-    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+    return Boolean(root && isAbsolute(root) && existsSync(root) && isInside(root, cwd));
 }
 
 const workspaceRoots = new Map<string, string>();
@@ -111,28 +118,39 @@ export function findWorkspaceRoot(cwd = process.cwd()): string {
     return root;
 }
 
-const workspacePackageDirs = new Map<string, string[]>();
+type Manifest = { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+type Workspace = { dirs: string[]; manifests: Manifest[] };
+
+const workspaces = new Map<string, Workspace>();
 
 /**
- * Absolute directories of all workspace packages - the real `workspaces` / `pnpm-workspace.yaml`
- * globs expanded by `@manypkg/get-packages`, NOT a scan heuristic. Single-package repos yield the
- * root itself; no package.json at all yields an empty list (degenerate sandboxes, tests).
+ * The workspace of `root`, read once per process: the absolute directories of its packages - the real `workspaces` /
+ * `pnpm-workspace.yaml` globs expanded by `@manypkg/get-packages`, NOT a scan heuristic; a single-package repo yields
+ * the root itself - and the manifests of the root and every package. No package.json at all yields nothing
+ * (degenerate sandboxes, tests).
  */
-function findWorkspacePackages(): string[] {
-    const root = findWorkspaceRoot();
-    const cached = workspacePackageDirs.get(root);
+function workspaceOf(root: string = findWorkspaceRoot()): Workspace {
+    const cached = workspaces.get(root);
     if (cached) return cached;
 
-    let dirs: string[] = [];
+    let workspace: Workspace = { dirs: [], manifests: [] };
     try {
-        dirs = getPackagesSync(root).packages.map((pkg) => pkg.dir);
+        const { rootPackage, packages } = getPackagesSync(root);
+        workspace = {
+            dirs: packages.map((pkg) => pkg.dir),
+            manifests: [rootPackage, ...packages].flatMap((pkg) => (pkg ? [pkg.packageJson as Manifest] : [])),
+        };
     } catch {
         // no package.json at the root - only the root scan applies
     }
 
-    workspacePackageDirs.set(root, dirs);
-    return dirs;
+    workspaces.set(root, workspace);
+    return workspace;
 }
+
+/** Does this manifest declare `packageName`? Peer/optional declarations mark libraries, not users - ignored. */
+const declares = ({ dependencies, devDependencies }: Manifest, packageName: string): boolean =>
+    Boolean(dependencies?.[packageName] ?? devDependencies?.[packageName]);
 
 /**
  * Does the root or a workspace package of `root` declare `packageName` in `dependencies` or `devDependencies`?
@@ -140,20 +158,12 @@ function findWorkspacePackages(): string[] {
  * (`@manypkg/get-packages`), no scan; false without a `package.json`.
  */
 export function workspaceDependsOn(packageName: string, root: string = findWorkspaceRoot()): boolean {
-    try {
-        const { rootPackage, packages } = getPackagesSync(root);
-        return [rootPackage, ...packages].some((pkg) => {
-            const { dependencies, devDependencies } = pkg?.packageJson ?? {};
-            return Boolean(dependencies?.[packageName] ?? devDependencies?.[packageName]);
-        });
-    } catch {
-        return false;
-    }
+    return workspaceOf(root).manifests.some((manifest) => declares(manifest, packageName));
 }
 
 /**
  * The workspace package owning `file` (e.g. the Tailwind entry CSS) - matched against the real
- * workspace package dirs (see {@link findWorkspacePackages}), NOT by walking to the nearest
+ * workspace package dirs (see {@link workspaceOf}), NOT by walking to the nearest
  * package.json: a directory that is not a declared workspace member belongs to the root. Returns
  * the workspace root when no package contains `file`.
  *
@@ -161,13 +171,10 @@ export function workspaceDependsOn(packageName: string, root: string = findWorks
 export function packageDirOf(file: string): string {
     const root = findWorkspaceRoot();
     return (
-        findWorkspacePackages()
-            .filter((dir) => dir !== root)
+        workspaceOf(root)
+            .dirs.filter((dir) => dir !== root)
             .sort((a, b) => b.length - a.length) // nested packages: the deepest match wins
-            .find((dir) => {
-                const rel = relative(dir, file);
-                return !rel.startsWith('..') && !isAbsolute(rel);
-            }) ?? root
+            .find((dir) => isInside(dir, file)) ?? root
     );
 }
 
@@ -190,6 +197,7 @@ const SCAN_IGNORES = [
 ];
 
 const scurries = new Map<string, PathScurry>();
+const gitignores = new Map<string, string[]>();
 
 /**
  * Filesystem cache of a scanned directory, shared by every {@link scanWorkspace} call: the detection scans all walk
@@ -206,8 +214,27 @@ function scurryOf(dir: string): PathScurry {
 }
 
 /**
+ * The root `.gitignore` as glob ignore patterns, read once per root. Reuses ESLint's gitignore->minimatch conversion;
+ * glob's `ignore` speaks the same language. Negations dropped: glob's ignore cannot un-ignore.
+ */
+function gitignoredOf(root: string): string[] {
+    const cached = gitignores.get(root);
+    if (cached) return cached;
+
+    let patterns: string[] = [];
+    try {
+        patterns = (includeIgnoreFile(resolve(root, '.gitignore')).ignores ?? []).filter((p) => !p.startsWith('!'));
+    } catch {
+        // no .gitignore - the scans are just less filtered
+    }
+
+    gitignores.set(root, patterns);
+    return patterns;
+}
+
+/**
  * Glob for config-file candidates across the workspace: the root directory plus every workspace
- * package (the real `workspaces` globs via {@link findWorkspacePackages}, not a depth heuristic),
+ * package (the real `workspaces` globs via {@link workspaceOf}, not a depth heuristic),
  * skipping dot dirs, build outputs, the given ignore patterns and everything in the root
  * `.gitignore`. Anchored to {@link findWorkspaceRoot}, NOT cwd.
  *
@@ -221,21 +248,10 @@ export function scanWorkspace(
     { dot = false }: { dot?: boolean } = {},
 ): string[] {
     const root = findWorkspaceRoot();
-    const packages = findWorkspacePackages().filter((dir) => dir !== root);
-
-    let gitignored: string[] = [];
-    try {
-        // Reuse ESLint's gitignore->minimatch conversion; glob's `ignore` speaks the same language.
-        // Negations dropped: glob's ignore cannot un-ignore.
-        gitignored = (includeIgnoreFile(resolve(root, '.gitignore')).ignores ?? []).filter(
-            (pattern) => !pattern.startsWith('!'),
-        );
-    } catch {
-        // no .gitignore - the scan is just less filtered
-    }
+    const packages = workspaceOf(root).dirs.filter((dir) => dir !== root);
 
     // `<dir-pattern>/**` variants prune the CONTENTS of ignored directories, not just the dir itself
-    const ignore = [...ignores, ...SCAN_IGNORES, ...gitignored].flatMap((pattern) => [
+    const ignore = [...ignores, ...SCAN_IGNORES, ...gitignoredOf(root)].flatMap((pattern) => [
         pattern,
         pattern.endsWith('/') ? `${pattern}**` : `${pattern}/**`,
     ]);
@@ -267,8 +283,7 @@ export function scanWorkspace(
  */
 function dependsOnNext(file: string): boolean {
     try {
-        const { dependencies, devDependencies } = JSON.parse(readFileSync(file, 'utf-8'));
-        return Boolean(dependencies?.next ?? devDependencies?.next);
+        return declares(JSON.parse(readFileSync(file, 'utf-8')) as Manifest, 'next');
     } catch {
         return false; // unreadable / malformed - not evidence
     }
@@ -302,24 +317,37 @@ export function findNextRoots(ignores: string[]): string[] {
     ].sort();
 }
 
+const probes = new Map<string, boolean>();
+
+/** `check` of the workspace root, run once per root and only when a gate asks for it - not when a module loads. */
+function probe(name: string, check: (root: string) => boolean): boolean {
+    const root = findWorkspaceRoot();
+    const key = `${root}\0${name}`;
+    const cached = probes.get(key);
+    if (cached !== undefined) return cached;
+
+    const found = check(root);
+    probes.set(key, found);
+    debug('capability probe', { name, root, found });
+    return found;
+}
+
 /*
  * Capability detection, exported for debugging. Package probes resolve from the WORKSPACE ROOT -
  * the same scope the plugins' own resolution sees at lint time (eslint-plugin-tailwindcss's
  * workers, eslint-config-next's internal `require`s, eslint-plugin-storybook's static import,
  * eslint-plugin-jest's version sniffing). A tool hoisted to the root (default npm/yarn behavior)
- * is visible; a leaf-only install is not - `toolGate` then fails with hoisting guidance instead of
- * a cryptic plugin crash. `nx.json` is checked at the workspace root, not via cwd.
+ * is visible; a leaf-only install is not - `toolGate` then fails with hoisting guidance. `nx.json`
+ * is checked at the workspace root, not via cwd. Lazy and cached: importing a module of this package runs none.
  */
-export const hasNext = isPackageResolvable('next');
-export const hasStorybook = isPackageResolvable('storybook');
-export const hasVite = isPackageResolvable('vite');
-export const hasJest = isPackageResolvable('jest');
-export const hasVitest = isPackageResolvable('vitest');
-export const hasTurbo = isPackageResolvable('turbo');
-export const hasNx = existsSync(resolve(findWorkspaceRoot(), 'nx.json'));
-export const hasTailwind = isPackageResolvable('tailwindcss');
-
-debug('capability probes', { hasNext, hasStorybook, hasVite, hasJest, hasVitest, hasTurbo, hasNx, hasTailwind });
+export const hasNext = (): boolean => probe('next', (root) => isPackageResolvable('next', root));
+export const hasStorybook = (): boolean => probe('storybook', (root) => isPackageResolvable('storybook', root));
+export const hasVite = (): boolean => probe('vite', (root) => isPackageResolvable('vite', root));
+export const hasJest = (): boolean => probe('jest', (root) => isPackageResolvable('jest', root));
+export const hasVitest = (): boolean => probe('vitest', (root) => isPackageResolvable('vitest', root));
+export const hasTurbo = (): boolean => probe('turbo', (root) => isPackageResolvable('turbo', root));
+export const hasNx = (): boolean => probe('nx.json', (root) => existsSync(resolve(root, 'nx.json')));
+export const hasTailwind = (): boolean => probe('tailwindcss', (root) => isPackageResolvable('tailwindcss', root));
 
 /**
  * Normalize a defineLintConfig flag into its options object with a canonical `enabled`:
@@ -340,6 +368,21 @@ export function asOptions<T extends ToggleOptions>(
     return {} as NormalizedOptions<T> & { enabled?: boolean };
 }
 
+/** A tool option with the `detection` setting applied: see {@link detectionOf}. */
+type DetectionFlag = <T>(option: T | undefined) => T | false | undefined;
+
+/**
+ * The `detection` setting of `lint.config.ts`, read the same way by the ESLint config, the Vite+ config and
+ * `lint-prepare` (same toggle notation as the tools): `detect` - tools are ON unless said otherwise (default true);
+ * `strict` - same-scope probes from cwd only, no workspace evidence scans (default false; for per-package monorepo
+ * configs); `flag` - with detection off, a tool not mentioned explicitly is OFF instead of auto-detected.
+ */
+export function detectionOf(config: LintConfig): { detect: boolean; strict: boolean; flag: DetectionFlag } {
+    const { enabled: detect = true, strict = false } = asOptions(config.detection);
+    const flag: DetectionFlag = (option) => (option === undefined && !detect ? false : option);
+    return { detect, strict, flag };
+}
+
 /**
  * Shared activation gate of the tool-scoped config blocks (next, storybook, turbo, nx, jest,
  * vitest, tailwind) - the one decision every block repeats: is the tool ON, and can its plugin
@@ -348,16 +391,16 @@ export function asOptions<T extends ToggleOptions>(
  *
  * Decision flow:
  * - `enabled: false` → off, always.
- * - strict (defineLintConfig `detection.strict`): the same-scope probe gates (`strictHas`,
- *   defaulting to `has`); `scan` never runs, but `absolutizeOptions` evidence still counts. A tool
- *   that is ON while its package is unresolvable (`requirePackage`) or its mandatory evidence is
- *   missing (`needs`) throws instead of producing a config that crashes at lint time.
+ * - strict (defineLintConfig `detection.strict`): every probe runs from cwd - `packageName` resolvable from
+ *   cwd, or the tool's own `strictHas` (e.g. `nx.json` at cwd), else `has`; `scan` never runs, but
+ *   `absolutizeOptions` evidence still counts. A tool that is ON while its package is unresolvable from cwd
+ *   (`requirePackage`) or its mandatory evidence is missing (`needs`) throws instead of producing a config that
+ *   crashes at lint time.
  * - non-strict: evidence-based detection - `absolutizeOptions(options)` wins over the `scan()`
  *   auto-discovery; the tool is detected when the package probe hits or evidence exists (`needs`
  *   makes evidence mandatory even when the probe hits). A tool that is ON while `packageName` is
- *   unresolvable from the workspace root throws an actionable HOISTING error (no silent skip, no
- *   symlink bridging - the plugins resolve from the root scope, so only hoisting actually fixes
- *   them; the user or their AI agent picks it up from the error).
+ *   unresolvable from the workspace root throws an actionable HOISTING error (no silent skip - the
+ *   plugins resolve from the root scope, so only hoisting fixes them).
  *
  */
 export function toolGate<T extends ToggleOptions>(
@@ -393,7 +436,7 @@ export function toolGate<T extends ToggleOptions>(
     const {
         tool,
         has,
-        strictHas = has,
+        strictHas,
         packageName,
         requirePackage = Boolean(packageName),
         absolutizeOptions,
@@ -419,8 +462,9 @@ export function toolGate<T extends ToggleOptions>(
     };
 
     if (strict) {
-        if (!(enabled ?? strictHas)) return trace(off, 'strict probe negative');
-        if (requirePackage && !has) {
+        const here = packageName ? isPackageResolvable(packageName, process.cwd()) : has;
+        if (!(enabled ?? strictHas ?? here)) return trace(off, 'strict probe negative');
+        if (requirePackage && !here) {
             throw new Error(
                 `${prefix} is on under strict detection, but the \`${packageName}\` package is not ` +
                     `resolvable at this scope - install it here or set \`${tool}: false\`.`,
@@ -457,10 +501,9 @@ export function toolGate<T extends ToggleOptions>(
 
     /*
      * The tool is ON but its package is invisible at the workspace root - the scope the plugins
-     * resolve from at lint time. No silent skip and no symlink bridging: fail with the fix
-     * (hoisting) and let the user or their AI agent pick it up from here.
+     * resolve from at lint time: fail with the fix (hoisting).
      */
-    if (requirePackage && packageName && !has) {
+    if (requirePackage && packageName && !isPackageResolvable(packageName)) {
         const leaf = files.map((file) => dirname(file)).find((dir) => isPackageExists(packageName, { paths: [dir] }));
         throw new Error(
             `${prefix} is in use, but the \`${packageName}\` package is not resolvable from the workspace root` +

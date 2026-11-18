@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { ESLint, type Linter } from 'eslint';
-import { test } from 'vite-plus/test';
+import { test, vi } from 'vite-plus/test';
 
 import {
     baseConfig,
@@ -29,6 +29,9 @@ import {
     vitestConfig,
 } from './index.js';
 import { hasTailwindBlockIn, inTempDir, TAILWIND_ENTRY, tailwindBlockOf } from './testUtils.js';
+
+// the plugins load on demand, in the first test that builds their block: slow under a full parallel run
+vi.setConfig({ testTimeout: 30_000 });
 
 test('tool options flow through eslintConfig to the blocks', async () => {
     await inTempDir({ 'app.css': TAILWIND_ENTRY }, async () => {
@@ -70,13 +73,28 @@ test('detection: false turns tools off unless explicitly enabled', async () => {
     });
 });
 
+test('detection: strict probes from cwd only', async () => {
+    await inTempDir(
+        { 'a.css': TAILWIND_ENTRY },
+        async () => {
+            // no tailwindcss here: strict does not see the monorepo's
+            assert.ok(!hasTailwindBlockIn(await eslintConfig({ detection: { strict: true } })));
+            await assert.rejects(
+                eslintConfig({ detection: { strict: true }, tailwind: { cssConfigPath: 'a.css' } }),
+                /not resolvable at this scope/,
+            );
+        },
+        { packages: [] },
+    );
+});
+
 test('detection: strict skips scans and requires explicit settings', async () => {
     await inTempDir({ 'a.css': TAILWIND_ENTRY, 'b.css': TAILWIND_ENTRY }, async () => {
         // ambiguous entries would be a hard error in auto mode; strict + explicit path works because nothing is scanned
         const explicit = await eslintConfig({ detection: { strict: true }, tailwind: { cssConfigPath: 'x.css' } });
         assert.equal(tailwindBlockOf(explicit).settings.tailwindcss.cssConfigPath, 'x.css');
 
-        // hasTailwind is true in this monorepo → tailwind is on, but strict cannot scan for the entry
+        // tailwindcss resolves from cwd → tailwind is on, but strict cannot scan for the entry
         await assert.rejects(eslintConfig({ detection: { strict: true } }), /strict detection/);
 
         // strict-off: everything is explicit-only
@@ -97,12 +115,14 @@ test('lint.config.ts in the workspace root is the base, the overrides win', asyn
 });
 
 test('every block function returns a non-empty array of config objects', async () => {
+    // awaited first: inTempDir moves cwd, and the other blocks must see this monorepo
+    const ignores = await inTempDir({ '.gitignore': 'dist\n', '.prettierignore': 'coverage\n' }, async (dir) =>
+        defaultIgnoreConfig({ importMetaUrl: new URL(`file://${dir}/eslint.config.mjs`).href }),
+    );
     // gated blocks are forced on (`true` / explicit options) so the assertion is machine-independent
     const blocks = {
         baseConfig: baseConfig(),
-        defaultIgnoreConfig: inTempDir({ '.gitignore': 'dist\n', '.prettierignore': 'coverage\n' }, async (dir) =>
-            defaultIgnoreConfig({ importMetaUrl: new URL(`file://${dir}/eslint.config.mjs`).href }),
-        ),
+        defaultIgnoreConfig: ignores,
         nextBaseConfig: nextBaseConfig(),
         nextConfig: nextConfig(true),
         reactBaseConfig: reactBaseConfig(),

@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -6,7 +5,6 @@ import type { UnitEntry } from './auditParts';
 import type { ScopeData } from './auditScope';
 import { checkData, JUDGE_VERDICT, parseData, readData, READER_FINDINGS, tryReadData, writeData } from './data';
 import { AUDIT_DIR, FINDINGS_DIR, REPORT_DATA, REPORT_FILE, SCOPE_FILE, UNITS_FILE, VERIFIED_MARKER } from './files';
-import { root } from './repo';
 import {
     describeThresholds,
     fuse,
@@ -18,6 +16,7 @@ import {
     type Tier,
     tierOf,
 } from './severity';
+import { repoRoot, show } from './steward/lib/git';
 
 /**
  * The specification audit's report, merged mechanically from what each worker judged. A worker
@@ -144,33 +143,33 @@ export type Reader = (file: string) => readonly string[] | undefined;
  */
 export const isForeign = (file: string) => file.startsWith(`${AUDIT_DIR}/`) || /(^|\/)node_modules\//.test(file);
 
-/** Files as a commit carries them: `git show <ref>:<file>` — what no worker's edit of the tree can reach. */
-export const gitReader =
-    (ref: string, cwd: string = root()): Reader =>
-    (file) => {
-        try {
-            return execFileSync('git', ['show', `${ref}:${file}`], {
-                cwd,
-                encoding: 'utf8',
-                maxBuffer: 64 * 1024 * 1024,
-                stdio: ['ignore', 'pipe', 'ignore'],
-            }).split('\n');
-        } catch {
-            return undefined;
-        }
+/** A reader that reads each file once: a quote is looked up again for every finding that cites its file. */
+const memoized = (read: Reader): Reader => {
+    const cache = new Map<string, readonly string[] | undefined>();
+    return (file) => {
+        if (!cache.has(file)) cache.set(file, read(file));
+        return cache.get(file);
     };
+};
+
+/**
+ * Files as a commit carries them: `git show <ref>:<file>` — what no worker's edit of the tree can reach. The
+ * repository is the current one unless `cwd` names another.
+ */
+export const gitReader = (ref: string, cwd?: string): Reader =>
+    memoized((file) => show(cwd ?? repoRoot(), ref, file)?.split('\n'));
 
 /** The audited commit: `HEAD`, the tree CI checked out and `spec-tools audit`'s detached worktree. */
 export const commitReader: Reader = gitReader('HEAD');
 
 /** A file as the working tree carries it — the audited tree of `spec-tools audit --here` alone. */
-export const worktreeReader: Reader = (file) => {
+export const worktreeReader: Reader = memoized((file) => {
     try {
-        return fs.readFileSync(path.join(root(), file), 'utf8').split('\n');
+        return fs.readFileSync(path.join(repoRoot(), file), 'utf8').split('\n');
     } catch {
         return undefined;
     }
-};
+});
 
 /**
  * The highest severity a finding can reach, and why, from deterministic rules alone: INFO-class kinds and kinds the
@@ -419,7 +418,7 @@ export function applyVerdicts(
 
 /** Every verdict file the verification pass wrote, by the ERROR's position; one that is not valid is reported and skipped. */
 export function readVerdicts(problems: string[]): Map<number, Verdict> {
-    const dir = path.join(root(), FINDINGS_DIR);
+    const dir = path.join(repoRoot(), FINDINGS_DIR);
     const out = new Map<number, Verdict>();
     if (!fs.existsSync(dir)) return out;
     for (const name of fs.readdirSync(dir).sort()) {
@@ -574,9 +573,9 @@ export function scopeHeader(scope: ScopeData): string[] {
 export function main(read: Reader = commitReader, env: NodeJS.ProcessEnv = process.env): string {
     const t = thresholds(env);
     // Every unit in scope, as the scope classed it.
-    const units = tryReadData<UnitsFile>(path.join(root(), UNITS_FILE)) ?? {};
+    const units = tryReadData<UnitsFile>(path.join(repoRoot(), UNITS_FILE)) ?? {};
     const advisory = new Set(Object.entries(units).flatMap(([id, u]) => (u.advisory ? [id] : [])));
-    const scopePath = path.join(root(), SCOPE_FILE);
+    const scopePath = path.join(repoRoot(), SCOPE_FILE);
     const scope: ScopeData | undefined = fs.existsSync(scopePath) ? readData<ScopeData>(scopePath) : undefined;
     const problems: string[] = [];
     if (!scope) problems.push(`\`${SCOPE_FILE}\` is missing — run \`spec-tools scope\` first; one part assumed.`);
@@ -586,7 +585,7 @@ export function main(read: Reader = commitReader, env: NodeJS.ProcessEnv = proce
     const readers = scope?.readers ?? 1;
     const readPart = (files: readonly string[], n: number): (PartFindings | undefined)[] =>
         files.map((rel, index) => {
-            const file = path.join(root(), rel);
+            const file = path.join(repoRoot(), rel);
             if (!fs.existsSync(file)) {
                 problems.push(`\`${rel}\` was not written — reader ${index + 1} of part ${n} counts as not run.`);
                 return undefined;
@@ -606,7 +605,7 @@ export function main(read: Reader = commitReader, env: NodeJS.ProcessEnv = proce
         });
     const defaults = (n: number) =>
         Array.from({ length: readers }, (_, r) => `${FINDINGS_DIR}/part-${n}-${r + 1}.yaml`);
-    const dir = path.join(root(), FINDINGS_DIR);
+    const dir = path.join(repoRoot(), FINDINGS_DIR);
     const present = fs.existsSync(dir) ? fs.readdirSync(dir).map((f) => `${FINDINGS_DIR}/${f}`) : [];
     for (let n = 1; n <= expected; n++)
         parts.set(n, readPart(readerFiles(scope?.parts[n - 1]?.findings ?? defaults(n), present, n), n));
@@ -619,15 +618,15 @@ export function main(read: Reader = commitReader, env: NodeJS.ProcessEnv = proce
             ),
         ),
         readVerdicts(problems),
-        fs.existsSync(path.join(root(), VERIFIED_MARKER)),
+        fs.existsSync(path.join(repoRoot(), VERIFIED_MARKER)),
         t,
     );
     const expectedIds = new Map((scope?.parts ?? []).map((p) => [p.part, p.requirementIds ?? []] as const));
     const coverage = mergeCoverage(parts, expectedIds);
 
     const report = render(header, findings, coverage, problems, t);
-    fs.mkdirSync(path.dirname(path.join(root(), REPORT_FILE)), { recursive: true });
-    fs.writeFileSync(path.join(root(), REPORT_FILE), report);
+    fs.mkdirSync(path.dirname(path.join(repoRoot(), REPORT_FILE)), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot(), REPORT_FILE), report);
     const v = verdict(findings, coverage, t);
     const data = {
         verdict: v.line,
@@ -638,7 +637,7 @@ export function main(read: Reader = commitReader, env: NodeJS.ProcessEnv = proce
         findings,
         short: shortList(parts, expectedIds),
     };
-    writeData(path.join(root(), REPORT_DATA), data);
+    writeData(path.join(repoRoot(), REPORT_DATA), data);
     // Every merge of a run kept beside the workers' files, numbered, so a run can be analysed pass by pass.
     fs.mkdirSync(dir, { recursive: true });
     const merges = fs.readdirSync(dir).filter((f) => MERGE_FILE.test(f)).length;

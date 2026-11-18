@@ -22,7 +22,7 @@ import {
 } from './changeGates';
 import { diffBase } from './ci';
 import { DIFF_FILE } from './files';
-import { root } from './repo';
+import { repoRoot } from './steward/lib/git';
 
 export { DIFF_FILE };
 
@@ -121,7 +121,7 @@ export function render(diff: SpecDiff, base: string, moved: readonly CapabilityM
 /** The working tree's requirement blocks, cut by the same rule as the base's. */
 export function requirementsInTree(): RequirementBlock[] {
     return capabilitySpecs().flatMap((spec) =>
-        requirementBlocks(spec.file, fs.readFileSync(path.join(root(), spec.file), 'utf8')),
+        requirementBlocks(spec.file, fs.readFileSync(path.join(repoRoot(), spec.file), 'utf8')),
     );
 }
 
@@ -133,7 +133,7 @@ export function main(argv: readonly string[] = [], env = process.env): string {
         base,
         capabilityMoves(specMovesSince(base)),
     );
-    fs.mkdirSync(path.dirname(path.join(root(), DIFF_FILE)), { recursive: true });
-    fs.writeFileSync(path.join(root(), DIFF_FILE), text);
+    fs.mkdirSync(path.dirname(path.join(repoRoot(), DIFF_FILE)), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot(), DIFF_FILE), text);
     return text;
 }

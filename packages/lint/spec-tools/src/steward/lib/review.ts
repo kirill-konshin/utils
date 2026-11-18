@@ -5,9 +5,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseDocument } from 'yaml';
 
-import { toYaml } from '../../data';
+import { readEdited, readLoose, toYaml } from '../../data';
 import { normalize, parseArgs } from './util';
 
 export type Finding = {
@@ -174,15 +173,9 @@ export function stateOf(decision: string) {
 
 /** The review file's text as items, or the YAML errors that stop it from being read. */
 export function readReview(text: string): { items: Item[]; errors: string[] } {
-    const doc = parseDocument(text, { uniqueKeys: true });
-    if (doc.errors.length)
-        return {
-            items: [],
-            errors: doc.errors.map(
-                (e) => `line ${e.linePos?.[0]?.line ?? '?'}: not valid YAML: ${e.message.split('\n')[0]}`,
-            ),
-        };
-    const data = (doc.toJS() ?? {}) as Record<string, ReviewEntry>;
+    const { value, errors } = readEdited(text);
+    if (errors.length) return { items: [], errors };
+    const data = (value ?? {}) as Record<string, ReviewEntry>;
     const items = Object.entries(data).map(([id, entry]) => {
         const applied = entry?.applied === undefined ? [] : [entry.applied].flat().map(String);
         return {
@@ -308,7 +301,7 @@ export function reviewCli(argv: string[], roots: { name: string; path: string }[
     const [sub, ...rest] = argv;
     const opts = parseArgs(rest, ['root']);
     const file = opts._[0];
-    const load = (f: string) => parseDocument(fs.readFileSync(f, 'utf8')).toJS();
+    const load = (f: string): any => readLoose(f);
     if (sub === 'render') {
         const data = load(file);
         const existing = opts.out && opts.append && fs.existsSync(opts.out) ? fs.readFileSync(opts.out, 'utf8') : '';

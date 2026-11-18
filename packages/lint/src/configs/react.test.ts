@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { test } from 'vite-plus/test';
+import { test, vi } from 'vite-plus/test';
 
 import { hasNextPluginIn, hasNextSettingsIn, inTempDir, nextSettingsBlockOf } from '../testUtils.js';
 import { nextConfig, reactConfig } from './react.js';
+
+// the plugins load on demand, in the first test that builds their block: slow under a full parallel run
+vi.setConfig({ testTimeout: 30_000 });
 
 test('explicit rootDir lands in settings.next.rootDir and skips the scan', async () => {
     const config = await nextConfig({ rootDir: 'apps/web' });

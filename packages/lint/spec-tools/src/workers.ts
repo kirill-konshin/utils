@@ -24,13 +24,13 @@
  * Models, efforts and gating are the run class's (`tier.ts`); how many parts there are is the evidence's
  * (`auditScope.ts`), and how many run at once is memory's, below.
  */
-import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { Graded, ShortPart } from './auditReport';
 import type { Part, ScopeData } from './auditScope';
 import { shard } from './ci';
+import { claudeSession, CORRECTIONS, correctUntilValid } from './claude';
 import {
     checkFile,
     JUDGE_VERDICT,
@@ -44,10 +44,10 @@ import {
     writeData,
 } from './data';
 import { AUDIT_DIR, AUDIT_FILES, type AuditFiles, type AuditName, findingsFile, verdictFile } from './files';
-import { git, root } from './repo';
 import { correction, KEY_STYLE, readRules, rulesText } from './rules';
 import { judgeGate, THRESHOLDS, type Thresholds, thresholds } from './severity';
 import { SKILLS_DIR } from './skillsDir';
+import { gitOrThrow, repoRoot } from './steward/lib/git';
 import * as steward from './stewardAudit';
 import { CHEAP_EFFORT, CHEAP_MODEL, EXPENSIVE_MODEL, workersFor } from './tier';
 
@@ -68,8 +68,7 @@ export const TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Gre
 const STEWARD_TOOLS = 'Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Grep,Write';
 /** What a pass may leave behind besides nothing: the audit's own folder. */
 const OUTPUTS = new RegExp(`^${AUDIT_DIR.replace('.', '\\.')}/`);
-/** How many times a file that fails its schema goes back to its worker before the worker counts as not run. */
-export const CORRECTIONS = 2;
+export { CORRECTIONS };
 /** A worker that exits non-zero this soon, with no file written, failed to start — e.g. "Not logged in" when many sessions start at once. */
 export const EARLY_FAILURE_MS = 60_000;
 /**
@@ -115,14 +114,20 @@ export const shareOf = (parts: readonly Part[], { index, total }: { index: numbe
 /** The tree as git sees it beyond HEAD: every changed or untracked file with its content's hash. */
 export function treeState(cwd: string): Map<string, string> {
     const state = new Map<string, string>();
-    for (const file of git(['ls-files', '--modified', '--others', '--exclude-standard', '-z'], cwd).split('\0')) {
+    const regular: string[] = [];
+    const listed = gitOrThrow(cwd, ['ls-files', '--modified', '--others', '--exclude-standard', '-z']).split('\0');
+    for (const file of listed) {
         if (!file) continue;
-        const full = path.join(cwd, file);
-        const stat = fs.lstatSync(full, { throwIfNoEntry: false });
-        state.set(
-            file,
-            !stat ? 'deleted' : stat.isFile() ? git(['hash-object', '--no-filters', '--', file], cwd).trim() : 'other',
-        );
+        const stat = fs.lstatSync(path.join(cwd, file), { throwIfNoEntry: false });
+        state.set(file, !stat ? 'deleted' : stat.isFile() ? '' : 'other');
+        if (stat?.isFile()) regular.push(file);
+    }
+    // Every regular file's hash from one git process, in the order the paths go in.
+    if (regular.length) {
+        const hashes = gitOrThrow(cwd, ['hash-object', '--no-filters', '--stdin-paths'], `${regular.join('\n')}\n`)
+            .trim()
+            .split('\n');
+        regular.forEach((file, i) => state.set(file, hashes[i]!));
     }
     return state;
 }
@@ -241,21 +246,6 @@ export function duration(text: string): number {
     return Number(m[1]) * { '': 1000, s: 1000, m: 60_000, h: 3_600_000 }[m[2] as '' | 's' | 'm' | 'h'];
 }
 
-/** The last `result` event of a worker's stream, or undefined when it wrote none. */
-function resultOf(jsonl: string): Record<string, unknown> | undefined {
-    if (!fs.existsSync(jsonl)) return undefined;
-    let result: Record<string, unknown> | undefined;
-    for (const line of fs.readFileSync(jsonl, 'utf8').split('\n')) {
-        try {
-            const event = JSON.parse(line) as Record<string, unknown>;
-            if (event.type === 'result') result = event;
-        } catch {
-            // a partial line
-        }
-    }
-    return result;
-}
-
 type Run = {
     readonly prompt: string;
     readonly model: string;
@@ -353,34 +343,16 @@ async function runClaude(
 ): Promise<Ran> {
     const jsonl = path.join(cwd, run.dir, `${run.log}.jsonl`);
     const err = path.join(cwd, run.dir, `${run.log}.err`);
-    const args = [
-        ...(run.resume ? ['--resume', run.resume] : []),
-        '--print',
-        run.prompt,
-        '--model',
-        run.model,
-        '--effort',
-        run.effort,
-        '--permission-mode',
-        'default',
-    ];
-    args.push('--output-format', 'stream-json', '--verbose', '--allowedTools', run.tools);
-    const out = fs.openSync(jsonl, 'w');
-    const errOut = fs.openSync(err, 'w');
-    const child = spawn('claude', args, { cwd, env, stdio: ['ignore', out, errOut] });
-    let killed = false;
-    const timer = setTimeout(() => {
-        killed = true;
-        child.kill('SIGTERM');
-    }, budget);
-    const code = await new Promise<number>((resolve) => {
-        child.on('error', () => resolve(127));
-        child.on('close', (c) => resolve(c ?? 1));
+    const ended = await claudeSession({
+        ...run,
+        flags: ['--permission-mode', 'default'],
+        env,
+        cwd,
+        stream: jsonl,
+        stderr: err,
+        budget,
     });
-    clearTimeout(timer);
-    fs.closeSync(out);
-    fs.closeSync(errOut);
-    const r = resultOf(jsonl);
+    const { code, killed, result: r } = ended;
     const session = typeof r?.session_id === 'string' ? r.session_id : run.resume;
     if (killed) return { status: `killed after ${Math.round(budget / 60_000)}m`, session };
     if (code !== 0) {
@@ -439,25 +411,19 @@ async function checked(
     cwd: string,
 ): Promise<{ status: string; errors: string[]; corrections: number }> {
     const full = path.join(cwd, file);
-    let ran = first;
-    let errors = checkFile(full, schema);
-    let corrections = 0;
-    while (errors.length && ran.status === 'ok' && ran.session && corrections < CORRECTIONS) {
-        corrections++;
-        ran = await runClaude(
-            {
-                ...run,
-                prompt: correction(file, errors, canEdit),
-                resume: ran.session,
-                log: `${run.log}-fix-${corrections}`,
-            },
-            () => fs.existsSync(full),
-            budget,
-            env,
-            cwd,
-        );
-        errors = checkFile(full, schema);
-    }
+    const { ran, errors, corrections } = await correctUntilValid(
+        first,
+        () => checkFile(full, schema),
+        (r) => (r.status === 'ok' ? r.session : undefined),
+        (errors, n, session) =>
+            runClaude(
+                { ...run, prompt: correction(file, errors, canEdit), resume: session, log: `${run.log}-fix-${n}` },
+                () => fs.existsSync(full),
+                budget,
+                env,
+                cwd,
+            ),
+    );
     return { status: ran.status, errors, corrections };
 }
 
@@ -479,7 +445,7 @@ const checkNote = ({ errors, corrections }: { errors: readonly string[]; correct
 /** One pass of the audit's workers; the exit code: 0 done, 1 the tree changed, 2 an input is missing. */
 export async function workers(
     pass: Pass,
-    { audit = 'spec-verify', context, env = process.env, cwd = root(), log = console.log }: Options = {},
+    { audit = 'spec-verify', context, env = process.env, cwd = repoRoot(), log = console.log }: Options = {},
 ) {
     const withContext = (prompt: string) =>
         context?.trim()

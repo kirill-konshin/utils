@@ -15,9 +15,9 @@ import type { ShortPart } from './auditReport';
 import type { Part, ScopeData } from './auditScope';
 import { checkData, parseData, readData, STEWARD_FINDINGS, STEWARD_VERDICT, toYaml, writeData } from './data';
 import { AUDIT_FILES, findingsFile, verdictFile } from './files';
-import { git, root } from './repo';
 import { KEY_STYLE, readRules, rulesText } from './rules';
 import { SKILLS_DIR } from './skillsDir';
+import { listFiles, repoRoot } from './steward/lib/git';
 import { render as renderReview } from './steward/lib/review';
 import { globToRegExp } from './steward/lib/util';
 
@@ -97,16 +97,15 @@ export type StewardData = {
 };
 
 /** The skill's sweeps, each a unit numbered after the last capability part, its files resolved in this repository. */
-export function sweepUnits(model: EvidenceModel, after: number, cwd: string = root()): Part[] {
+export function sweepUnits(model: EvidenceModel, after: number, cwd: string = repoRoot()): Part[] {
     const sweeps = JSON.parse(fs.readFileSync(path.join(SKILLS_DIR, 'spec-steward/sweeps.json'), 'utf8')) as Sweep[];
-    const tracked = git(['ls-files', '-co', '--exclude-standard'], cwd).split('\n').filter(Boolean);
+    const tracked = listFiles(cwd);
+    if (!tracked) throw new Error(`git cannot list the files of ${cwd}`);
     const fromEvidence = (kind: 'bindings' | 'pointers') => [
         ...new Set(model.requirements.flatMap((r) => r[kind].map((b) => b.file))),
     ];
     return sweeps.map((sweep, i) => {
-        const patterns = (sweep.files ?? []).map(
-            (glob) => new RegExp(`^${globToRegExp(glob).source.replace(/^\^/, '')}`),
-        );
+        const patterns = (sweep.files ?? []).map(globToRegExp);
         const files = sweep.from
             ? fromEvidence(sweep.from)
             : tracked.filter((file) => patterns.some((re) => re.test(file)));
@@ -254,7 +253,7 @@ const words = (key: string) => key.replace(/-/g, ' ').replace(/^./, (c) => c.toU
  * folded, theme candidates grouped, coverage checked against the judged lists. Writes the data and renders the review
  * file; returns the one-line summary.
  */
-export function merge(read: (file: string) => readonly string[] | undefined, cwd: string = root()): string {
+export function merge(read: (file: string) => readonly string[] | undefined, cwd: string = repoRoot()): string {
     const scopePath = path.join(cwd, FILES.scope);
     const scope = fs.existsSync(scopePath) ? readData<ScopeData>(scopePath) : undefined;
     if (!scope) throw new Error(`${FILES.scope} is missing — run spec-tools scope --audit spec-steward first`);

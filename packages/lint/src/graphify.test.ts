@@ -5,7 +5,7 @@ import { afterEach, test, vi } from 'vite-plus/test';
 
 import {
     finishGraphify,
-    graphifyAgentsSection,
+    GRAPHIFY_SECTION,
     graphifyMode,
     removeGraphifySkills,
     removeSection,
@@ -140,20 +140,19 @@ test('removeSection: from the exact heading up to the next boundary line or the 
     assert.equal(removeSection('# graphify tools\n', '# graphify', '# '), '# graphify tools\n');
 });
 
-test('graphifyAgentsSection: an empty anchor, then the kept section; the virtualenv heading always ends it', () => {
-    const empty = graphifyAgentsSection();
-    assert.ok(empty.startsWith('## graphify\n\n## graphify virtualenv\n'), empty);
+test('GRAPHIFY_SECTION: an empty anchor, then the section kept from before; the virtualenv heading always ends it', () => {
+    const empty = generateAgentsFile([], null, '', [GRAPHIFY_SECTION]);
+    assert.ok(empty.includes('## graphify\n## graphify virtualenv\n\ngraphify is installed'), empty);
     assert.ok(empty.includes('source .venv/bin/activate &&'), empty);
 
-    const previous = generateAgentsFile([], '# Mine', '', graphifyAgentsSection()).replace(
-        '## graphify\n',
-        `${SECTION}\n`,
-    );
-    assert.ok(graphifyAgentsSection(previous).startsWith(`${SECTION}\n\n## graphify virtualenv`));
+    const previous = empty.replace('## graphify\n', `${SECTION}\n\n`);
+    const kept = generateAgentsFile([], null, previous, [GRAPHIFY_SECTION]);
+    assert.ok(kept.includes(`${SECTION}\n\n## graphify virtualenv\n\ngraphify is installed`), kept);
+    assert.equal(kept, previous);
 });
 
 test('generateAgentsFile: the graphify section follows the tool sections, above the custom section', () => {
-    const content = generateAgentsFile([], '# Mine\n\n## Kept', '', graphifyAgentsSection());
+    const content = generateAgentsFile([], '# Mine\n\n## Kept', '', [GRAPHIFY_SECTION]);
 
     assert.ok(content.indexOf('<!--VITE PLUS END-->') < content.indexOf('## graphify\n'), content);
     assert.ok(content.indexOf('## graphify virtualenv') < content.indexOf('# Custom Rules'), content);
@@ -177,7 +176,7 @@ test('graphify: true end to end - .venv, both skill flavors in place, the sectio
     await inTempDir({}, async (dir) => {
         vi.stubEnv('CI', '');
         vi.stubEnv('PATH', fakeBin(dir, 'uv'));
-        write(join(dir, 'CLAUDE.md'), generateAgentsFile([], '# Mine', '', graphifyAgentsSection()));
+        write(join(dir, 'CLAUDE.md'), generateAgentsFile([], '# Mine', '', [GRAPHIFY_SECTION]));
 
         const setup = setUpGraphify(dir, { version: '1.2.3' }, fakeGraphify);
         finishGraphify(dir, setup, fakeGraphify);

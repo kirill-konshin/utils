@@ -8,38 +8,61 @@
  * exactly one of these, and applying the other runner's correctness rules to it would be
  * conceptually wrong (even if mechanically harmless, since the rule namespaces don't collide).
  */
+import { dirname } from 'node:path';
 import vitestPlugin from '@vitest/eslint-plugin';
 import type { Linter } from 'eslint';
 import jestPlugin from 'eslint-plugin-jest';
+import { getPackageInfoSync } from 'local-pkg';
 
 import type { ToggleOptions } from '../config.js';
-import { tsExts } from '../exts.js';
+import { testRunnerRules, vitestRules } from '../conventions.js';
+import { testFiles } from '../exts.js';
 import { jestGate, vitestGate } from '../gates.js';
+import { hasJest } from '../lib.js';
 import { testColocation } from '../testColocation.js';
 
 export { jestPlugin, vitestPlugin };
 
 /*
  * Both runners use the evidence-based gates (`jestGate`, `vitestGate` in gates.js): a runner config file marks the repo
- * even when the runner is installed only in a leaf package (invisible to the `has*` probe), and
- * the runner package itself must then be resolvable - eslint-plugin-jest sniffs the installed
- * `jest` version (jest/no-deprecated-functions) - so leaf-only installs are bridged. Unlike the
- * plugin-crashing tools (next/storybook/tailwind) the rules are pure AST checks that work without
- * the runner, so forcing a runner on never throws (`requirePackage: false`).
+ * even when the runner is installed only in a leaf package (invisible to the `has*` probe). Unlike the plugin-crashing
+ * tools (next/storybook/tailwind) the rules are pure AST checks that work without the runner, so forcing a runner on
+ * never throws (`requirePackage: false`).
  */
+
+/**
+ * The major version `jest/no-deprecated-functions` needs, when eslint-plugin-jest cannot find `jest` itself (it
+ * resolves `jest` from its own install, the workspace root): read from the install next to a Jest config file. `null`
+ * when there is none anywhere - the rule would throw, so it goes off; `undefined` when the plugin finds `jest` itself.
+ */
+function jestVersion(configFiles: string[]): number | null | undefined {
+    if (hasJest()) return undefined;
+
+    const version = configFiles
+        .map((file) => getPackageInfoSync('jest', { paths: [dirname(file)] })?.version)
+        .find(Boolean);
+    return version ? Number.parseInt(version, 10) : null;
+}
 
 /**
  * Jest recommended rules, scoped to test files.
  *
  */
 export function jestConfig(option?: boolean | ToggleOptions, strict = false): Linter.Config[] {
-    const { enabled } = jestGate(option, strict);
+    const { enabled, files } = jestGate(option, strict);
     if (!enabled) return [];
+
+    const version = jestVersion(files);
+    const recommended = jestPlugin.configs['flat/recommended'];
     return [
         {
-            ...jestPlugin.configs['flat/recommended'],
+            ...recommended,
             name: 'Jest Rules',
-            files: [`**/*.{test,spec}.${tsExts}`],
+            files: [testFiles],
+            ...(version ? { settings: { jest: { version } } } : {}),
+            ...(version === null
+                ? { rules: { ...recommended.rules, 'jest/no-deprecated-functions': 'off' as const } }
+                : {}),
         },
     ];
 }
@@ -55,22 +78,13 @@ export function vitestConfig(option?: boolean | ToggleOptions, strict = false): 
         {
             ...vitestPlugin.configs.recommended,
             name: 'Vitest Rules',
-            files: [`**/*.{test,spec}.${tsExts}`],
-            rules: {
-                ...vitestPlugin.configs.recommended.rules,
-                // `expectTypeOf` and `assertType` are assertions too: a type test proves its contract without a runtime
-                // expect. Listed here rather than through the plugin's `typecheck` setting, which makes other rules demand
-                // type information.
-                'vitest/expect-expect': [
-                    'error',
-                    { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
-                ],
-            },
+            files: [testFiles],
+            rules: { ...vitestPlugin.configs.recommended.rules, ...vitestRules },
         },
         {
             ...vitestPlugin.configs.env,
             name: 'Vitest globals',
-            files: [`**/*.{test,spec}.${tsExts}`],
+            files: [testFiles],
         },
     ];
 }
@@ -84,19 +98,13 @@ export function testConfig(): Linter.Config[] {
     return [
         {
             name: 'Test rules',
-            files: [`**/*.{test,spec}.${tsExts}`],
+            files: [testFiles],
             plugins: {
                 jest: jestPlugin,
                 vitest: vitestPlugin,
                 local: { rules: { 'test-colocation': testColocation } },
             },
-            rules: {
-                'jest/consistent-test-it': ['error', { fn: 'test' }],
-                'vitest/consistent-test-it': ['error', { fn: 'test' }],
-                'local/test-colocation': 'error',
-                'jest/no-disabled-tests': 'warn',
-                'vitest/no-disabled-tests': 'warn',
-            },
+            rules: { ...testRunnerRules('jest'), ...testRunnerRules('vitest'), 'local/test-colocation': 'error' },
         },
     ];
 }

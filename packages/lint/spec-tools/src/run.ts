@@ -7,10 +7,10 @@
  * review stops, and sends the errors back to the same session to correct, at most `CORRECTIONS` times. Exits with
  * Claude's own status, the result echoed on a failure — e.g. an API usage-limit error.
  */
-import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import { claudeSession, CORRECTIONS, correctUntilValid } from './claude';
 import { checkFile, REVIEW_REPORT } from './data';
 import { STREAM_FILE } from './files';
 import { correction } from './rules';
@@ -18,9 +18,7 @@ import { CHEAP_EFFORT, CHEAP_MODEL } from './tier';
 
 /** What a review may do: read, delegate to sub-agents, load skills, write its report — and the read-only git commands. */
 export const REVIEW_TOOLS = 'Agent,Skill,Bash(git:git diff*|git log*|git show*),Read,Glob,Grep,Write';
-export { STREAM_FILE };
-/** How many times a report that fails its schema goes back to the review. */
-export const CORRECTIONS = 2;
+export { CORRECTIONS, STREAM_FILE };
 
 type Event = {
     type?: string;
@@ -55,49 +53,27 @@ async function session(
     env: NodeJS.ProcessEnv,
     resume?: string,
 ): Promise<{ code: number; result: string; id?: string }> {
-    const args = [
-        ...(resume ? ['--resume', resume] : []),
-        '--print',
-        prompt,
-        '--model',
-        env.AUDIT_MODEL || CHEAP_MODEL,
-        '--effort',
-        env.AUDIT_EFFORT || CHEAP_EFFORT,
-        '--output-format',
-        'stream-json',
-        '--verbose',
-        '--include-partial-messages',
-        '--allowedTools',
-        REVIEW_TOOLS,
-    ];
-    fs.mkdirSync(path.dirname(STREAM_FILE), { recursive: true });
-    const stream = fs.createWriteStream(STREAM_FILE, { flags: resume ? 'a' : 'w' });
-    const child = spawn('claude', args, { env, stdio: ['ignore', 'pipe', 'inherit'] });
     let result = '';
     let id: string | undefined;
-    let pending = '';
-    child.stdout.on('data', (chunk: Buffer) => {
-        stream.write(chunk);
-        const lines = (pending + chunk.toString('utf8')).split('\n');
-        pending = lines.pop() ?? '';
-        for (const line of lines) {
-            try {
-                const event = JSON.parse(line) as Event;
-                if (event.type === 'result') {
-                    result = event.result ?? '';
-                    id = event.session_id ?? id;
-                }
-                process.stdout.write(progress(event));
-            } catch {
-                // not an event
+    const { code } = await claudeSession({
+        prompt,
+        model: env.AUDIT_MODEL || CHEAP_MODEL,
+        effort: env.AUDIT_EFFORT || CHEAP_EFFORT,
+        tools: REVIEW_TOOLS,
+        resume,
+        flags: ['--include-partial-messages'],
+        env,
+        stream: STREAM_FILE,
+        append: !!resume,
+        onEvent: (raw) => {
+            const event = raw as Event;
+            if (event.type === 'result') {
+                result = event.result ?? '';
+                id = event.session_id ?? id;
             }
-        }
+            process.stdout.write(progress(event));
+        },
     });
-    const code = await new Promise<number>((resolve) => {
-        child.on('error', () => resolve(127));
-        child.on('close', (c) => resolve(c ?? 1));
-    });
-    await new Promise<void>((resolve) => stream.end(resolve));
     return { code, result, id: id ?? resume };
 }
 
@@ -109,13 +85,20 @@ export async function run(
 ): Promise<number> {
     let ran = await session(`/${skill}`, env);
     if (ran.code === 0 && report) {
-        let errors = checkFile(report, REVIEW_REPORT);
-        for (let n = 1; errors.length && ran.code === 0 && ran.id && n <= CORRECTIONS; n++) {
-            console.log(`spec-tools run: ${report} has ${errors.length} error(s); correction ${n} of ${CORRECTIONS}`);
-            ran = await session(correction(report, errors, false), env, ran.id);
-            errors = checkFile(report, REVIEW_REPORT);
-        }
-        if (errors.length) console.error(`spec-tools run: ${report} is still not valid:\n${errors.join('\n')}`);
+        const checked = await correctUntilValid(
+            ran,
+            () => checkFile(report, REVIEW_REPORT),
+            (r) => (r.code === 0 ? r.id : undefined),
+            (errors, n, id) => {
+                console.log(
+                    `spec-tools run: ${report} has ${errors.length} error(s); correction ${n} of ${CORRECTIONS}`,
+                );
+                return session(correction(report, errors, false), env, id);
+            },
+        );
+        ran = checked.ran;
+        if (checked.errors.length)
+            console.error(`spec-tools run: ${report} is still not valid:\n${checked.errors.join('\n')}`);
     }
     fs.mkdirSync(path.dirname(log), { recursive: true });
     fs.writeFileSync(log, ran.result ? `${ran.result}\n` : '');

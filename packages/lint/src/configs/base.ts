@@ -6,6 +6,7 @@ import type { Linter } from 'eslint';
 import globals from 'globals';
 
 import type { DefaultIgnoreOptions } from '../config.js';
+import { coreRules } from '../conventions.js';
 import { asOptions, GLOBAL_IGNORES } from '../lib.js';
 
 /**
@@ -38,17 +39,7 @@ export function baseConfig(): Linter.Config[] {
         {
             name: 'ESLint overrides',
             rules: {
-                'no-restricted-imports': [
-                    'error',
-                    {
-                        paths: [
-                            {
-                                name: 'next/router',
-                                message: 'Please use next/navigation instead of next/router',
-                            },
-                        ],
-                    },
-                ],
+                ...coreRules,
                 // 'multiline-comment-style': ['warn', 'starred-block'],
                 'multiline-comment-style': 'off',
             },

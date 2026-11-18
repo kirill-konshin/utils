@@ -13,7 +13,7 @@ import { jestConfig, testConfig, vitestConfig } from './configs/testing.js';
 import { turboConfig } from './configs/turbo.js';
 import { typeAwareConfig } from './configs/typescriptTypeAware.js';
 import { unicornConfig } from './configs/unicorn.js';
-import { asOptions } from './lib.js';
+import { detectionOf } from './lib.js';
 
 export * from './configs/base.js';
 export * from './configs/imports.js';
@@ -50,16 +50,7 @@ export async function eslintConfig(overrides: LintConfig = {}): Promise<Linter.C
     const options = await resolveLintConfig(overrides);
     const { typeAware, defaultIgnore } = options.eslint ?? {};
 
-    /*
-     * `detection` uses the same toggle notation as the tool flags (true <> { enabled: true } <>
-     * false <> { enabled: false }): `enabled` = are tools ON unless said otherwise (default true),
-     * `strict` = same-scope package probes only, no workspace evidence scans (default false;
-     * ideal for per-package monorepo configs).
-     */
-    const { enabled: defaultOn = true, strict = false } = asOptions(options.detection);
-    // with detection off, tools not mentioned explicitly are OFF instead of auto-detected
-    const flag = <T>(option: T | undefined): T | false | undefined =>
-        option === undefined && !defaultOn ? false : option;
+    const { strict, flag } = detectionOf(options);
 
     // blocks from the same configs/* file stay consecutive - ordering inside a family matters
     // (e.g. next: base config, then the TS wiring stemming from it, then overrides, then settings)

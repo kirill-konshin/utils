@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { GRAPHIFY_VERSION, type GraphifyOptions } from './config.js';
-import type { RunCommand } from './lintPrepare.js';
+import { asOptions } from './lib.js';
+import { type RunCommand, runOrWarn } from './runCommand.js';
+import { findBlock } from './textBlocks.js';
 
 /**
  * graphify (https://graphify.com, PyPI `graphifyy`) for `lint-prepare`, by the `graphify` option of `lint.config.ts`:
@@ -54,10 +56,8 @@ const isWindows = process.platform === 'win32';
 
 /** The mode the `graphify` option asks for, and the version `venv` installs. */
 export function graphifyMode(option: boolean | GraphifyOptions | undefined): { mode: GraphifyMode; version: string } {
-    if (option === undefined) return { mode: 'detect', version: GRAPHIFY_VERSION };
-    if (typeof option === 'boolean') return { mode: option ? 'venv' : 'off', version: GRAPHIFY_VERSION };
-
-    return { mode: option.enabled === false ? 'off' : 'venv', version: option.version ?? GRAPHIFY_VERSION };
+    const { enabled, version = GRAPHIFY_VERSION } = asOptions(option);
+    return { mode: enabled === undefined ? 'detect' : enabled ? 'venv' : 'off', version };
 }
 
 /** The absolute path of `command` on `PATH`, undefined when there is none. */
@@ -86,16 +86,14 @@ export const venvExe = (cwd: string): string =>
 /** A skill folder graphify installed: it holds graphify's version stamp. */
 export const isGraphifySkill = (dir: string): boolean => fs.existsSync(path.join(dir, VERSION_STAMP));
 
-function runQuiet(run: RunCommand, command: string, args: string[], cwd: string): boolean {
-    const result = run(command, args, { cwd, ...QUIET });
-
-    if (result.status === 0) return true;
-
-    console.warn(
-        `[lint-prepare] ${path.basename(command)} ${args.join(' ')} failed (${result.error?.message ?? `exit code ${result.status}`}), graphify may be incomplete: re-run lint-prepare`,
-    );
-    return false;
-}
+const runQuiet = (run: RunCommand, command: string, args: string[], cwd: string): boolean =>
+    runOrWarn(run, {
+        command,
+        args,
+        options: { cwd, ...QUIET },
+        label: `${path.basename(command)} ${args.join(' ')}`,
+        what: 'graphify',
+    });
 
 /**
  * Create the project `.venv` with `uv` (kept when it exists) and install `graphifyy==version` into it. Throws when `uv`
@@ -160,24 +158,16 @@ export function removeSection(content: string, heading: string, boundary: string
 }
 
 /**
- * The AGENTS.md anchors for `venv`: graphify's `## graphify` section, kept from `previous` (graphify fills it right
- * after, `graphify claude install`), then the `## graphify virtualenv` heading, which ends graphify's section, with how
- * to reach `.venv`.
+ * graphify's AGENTS.md section for `venv`, kept by `lint-prepare` from one generation to the next: `## graphify`, which
+ * `graphify claude install` fills (it replaces up to the next `## ` line), then the `## graphify virtualenv` heading,
+ * which ends it, with how to reach `.venv`.
  */
-export function graphifyAgentsSection(previous = ''): string {
-    const lines = previous.split('\n');
-    const start = lines.indexOf(SECTION_HEADING);
-    const end = start === -1 ? -1 : lines.indexOf(VENV_HEADING, start);
-    const section = end === -1 ? SECTION_HEADING : lines.slice(start, end).join('\n').trim();
-
-    return [
-        section,
-        '',
-        VENV_HEADING,
-        '',
-        `graphify is installed in the project \`${VENV}\`, not on \`PATH\`: run every \`graphify\` and \`python3\` command of the graphify skill as \`source ${VENV}/bin/activate && <command>\`, from the repository root.`,
-    ].join('\n');
-}
+export const GRAPHIFY_SECTION = {
+    tool: 'graphify',
+    start: SECTION_HEADING,
+    end: VENV_HEADING,
+    tail: `graphify is installed in the project \`${VENV}\`, not on \`PATH\`: run every \`graphify\` and \`python3\` command of the graphify skill as \`source ${VENV}/bin/activate && <command>\`, from the repository root.`,
+};
 
 const isGraphifyCommand = (command = ''): boolean =>
     command.includes('graphify') && /\bhook-(guard|check)\b/.test(command);
@@ -248,9 +238,8 @@ export function installGraphifyInstructions(cwd: string, exe: string, run: RunCo
  */
 export function updateGitignoreBlock(content: string, entries: string[]): string {
     const lines = content.split('\n');
-    const from = lines.indexOf(GITIGNORE_BEGIN);
-    const to = from === -1 ? -1 : lines.indexOf(GITIGNORE_END, from);
-    const rest = to === -1 ? lines : [...lines.slice(0, from), ...lines.slice(to + 1)];
+    const found = findBlock(lines, GITIGNORE_BEGIN, GITIGNORE_END);
+    const rest = found ? [...lines.slice(0, found[0]), ...lines.slice(found[1] + 1)] : lines;
     const text = rest
         .join('\n')
         .replace(/\n{3,}/g, '\n\n')
@@ -320,11 +309,11 @@ export function finishGraphify(cwd: string, { mode, exe }: GraphifySetup, run: R
     if (!exe) return;
 
     console.log('Building the graphify code graph (graphify update .)');
-    const result = run(exe, ['update', '.'], { cwd, stdio: 'inherit' });
-
-    if (result.status !== 0) {
-        console.warn(
-            `[lint-prepare] graphify update failed (${result.error?.message ?? `exit code ${result.status}`}): run "graphify update ." to retry`,
-        );
-    }
+    runOrWarn(run, {
+        command: exe,
+        args: ['update', '.'],
+        options: { cwd, stdio: 'inherit' },
+        label: 'graphify update .',
+        what: 'the code graph',
+    });
 }

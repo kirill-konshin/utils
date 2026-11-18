@@ -8,6 +8,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parseDocument, stringify } from 'yaml';
 
+/** Parse errors, one line each: the line an error is on and the first line of its message. */
+export const parseErrors = (errors: readonly { message: string; linePos?: readonly { line: number }[] }[]): string[] =>
+    errors.map((e) => `line ${e.linePos?.[0]?.line ?? '?'}: not valid YAML: ${e.message.split('\n')[0]}`);
+
 /** YAML text of a value: literal blocks for multi-line strings, no line folding, no aliases. */
 export const toYaml = (data: unknown): string =>
     stringify(data, { lineWidth: 0, blockQuote: 'literal', aliasDuplicateObjects: false });
@@ -20,6 +24,18 @@ export function parseData<T>(text: string): T {
 }
 
 export const readData = <T>(file: string): T => parseData<T>(fs.readFileSync(file, 'utf8'));
+
+/**
+ * A value from YAML text that a person edits (the review file): its value, or — duplicate keys included — every parse
+ * error with its line, and no value.
+ */
+export function readEdited(text: string): { value?: unknown; errors: string[] } {
+    const doc = parseDocument(text, { uniqueKeys: true });
+    return doc.errors.length ? { errors: parseErrors(doc.errors) } : { value: doc.toJS(), errors: [] };
+}
+
+/** A data file's value as far as it parses: no duplicate-key check, and a parse error does not stop it. */
+export const readLoose = (file: string): unknown => parseDocument(fs.readFileSync(file, 'utf8')).toJS();
 
 /** A data file, if it exists and parses; otherwise undefined. */
 export function tryReadData<T>(file: string): T | undefined {
@@ -34,9 +50,6 @@ export function writeData(file: string, data: unknown): void {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, toYaml(data));
 }
-
-const parseErrors = (errors: readonly { message: string; linePos?: readonly { line: number }[] }[]): string[] =>
-    errors.map((e) => `line ${e.linePos?.[0]?.line ?? '?'}: not valid YAML: ${e.message.split('\n')[0]}`);
 
 /** The shape a data file must have. A field is required unless it says `optional`; unknown keys are allowed. */
 export type Schema =

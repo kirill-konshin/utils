@@ -1,13 +1,12 @@
+import type nxPlugin from '@nx/eslint-plugin';
 import type { Linter } from 'eslint';
 import * as jsoncParser from 'jsonc-eslint-parser';
 
 import type { ToggleOptions } from '../config.js';
 import { nxGate } from '../gates.js';
-import { hasNx } from '../lib.js';
 
-// lazy so consumers without Nx don't pay the load cost (it drags in a large part of nx itself) -
-// re-exported from index.js
-export const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : null;
+/** `@nx/eslint-plugin`, loaded on demand: it drags in a large part of Nx itself. */
+export const loadNxPlugin = async (): Promise<typeof nxPlugin> => (await import('@nx/eslint-plugin')).default;
 
 /**
  * Nx blocks: plugin registration + `@nx/dependency-checks` on every `package.json`.
@@ -23,7 +22,7 @@ export const nxPlugin = hasNx ? (await import('@nx/eslint-plugin')).default : nu
 export async function nxConfig(option?: boolean | ToggleOptions, strict = false): Promise<Linter.Config[]> {
     const { enabled } = nxGate(option, strict);
     if (!enabled) return [];
-    const nx = (await import('@nx/eslint-plugin')).default;
+    const nx = await loadNxPlugin();
     return [
         ...nx.configs['flat/base'],
         {

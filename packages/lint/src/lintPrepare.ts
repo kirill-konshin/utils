@@ -20,7 +20,7 @@
  * so it can be imported (for testing/reuse) without side effects.
  */
 
-import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -30,13 +30,17 @@ import { parse } from 'yaml';
 import { LINT_CONFIG_FILE, type LintConfig, resolveLintConfig, type SkillsConfig } from './config.js';
 import {
     finishGraphify,
+    GRAPHIFY_SECTION,
     GRAPHIFY_SKILL,
-    graphifyAgentsSection,
     isGraphifySkill,
     setUpGraphify,
     writeGitignoreBlock,
 } from './graphify.js';
-import { asOptions, findWorkspaceRoot, workspaceDependsOn } from './lib.js';
+import { asOptions, detectionOf, findWorkspaceRoot, workspaceDependsOn } from './lib.js';
+import { type RunCommand, runOrWarn } from './runCommand.js';
+import { findBlock } from './textBlocks.js';
+
+export type { RunCommand } from './runCommand.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,15 +51,6 @@ const __dirname = path.dirname(__filename);
 type Rule = { file: string; name: string; description?: string; paths?: string[]; content: string };
 type Skill = { name: string };
 type ExistingFile = { exists: boolean; generated: boolean; customSection: string | null };
-/**
- * The part of `spawnSync` runSkillsSync() uses.
- */
-export type RunCommand = (
-    command: string,
-    args: string[],
-    options: SpawnSyncOptions,
-) => { status: number | null; error?: Error };
-
 const AGENTS_FILE = 'AGENTS.md';
 const CLAUDE_FILE = 'CLAUDE.md';
 const RULES_DIR = path.join(__dirname, '../rules');
@@ -94,12 +89,19 @@ Add your project-specific rules below the comment line.`;
 const GENERATED_MARKER = '<!-- @kirill.konshin/lint:generated -->';
 
 /**
+ * A marked section of AGENTS.md another tool owns: its anchors - lines of their own - and what `lint-prepare` writes
+ * after them (`tail`).
+ */
+export type ToolSection = { tool: string; start: string; end: string; tail?: string };
+
+/**
  * Marked sections of AGENTS.md that other tools own. Tools write their own agent instructions - nobody copies them by
  * hand: this file only provides each anchor, a marker pair, on every generation, and keeps what the tool wrote between
  * them. Vite+ fills its section on `vp config`, run right after `lint-prepare` in the same install script (it never
  * creates a section, and its creating commands rewrite dependencies); Next.js on `next dev`, when it detects an agent.
+ * Sections of tools `lint.config.ts` turns on (graphify) are passed to generateAgentsFile().
  */
-const TOOL_SECTIONS: { tool: string; start: string; end: string }[] = [
+const TOOL_SECTIONS: ToolSection[] = [
     { tool: 'Vite+', start: '<!--VITE PLUS START-->', end: '<!--VITE PLUS END-->' },
     { tool: 'Next.js', start: '<!-- BEGIN:nextjs-agent-rules -->', end: '<!-- END:nextjs-agent-rules -->' },
 ];
@@ -360,13 +362,19 @@ export function readRules(): Rule[] {
  * shipped with all its files (scripts, references, ...).
  */
 export function readSkills(): Skill[] {
-    if (!fs.existsSync(SKILLS_DIR)) return [];
+    return skillDirs(SKILLS_DIR)
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ name }));
+}
+
+/** The skills in `root`: every directory holding a `SKILL.md`, by name; none when `root` does not exist. */
+function skillDirs(root: string): string[] {
+    if (!fs.existsSync(root)) return [];
 
     return fs
-        .readdirSync(SKILLS_DIR, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(SKILLS_DIR, entry.name, 'SKILL.md')))
-        .map((entry) => ({ name: entry.name }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .readdirSync(root, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(root, entry.name, 'SKILL.md')))
+        .map((entry) => entry.name);
 }
 
 /**
@@ -399,13 +407,7 @@ export const skillDirName = (name: string): string =>
  * none.
  */
 export function readSyncedSkills(cwd: string): Set<string> {
-    try {
-        const lock: unknown = JSON.parse(fs.readFileSync(path.join(cwd, SKILLS_LOCK), 'utf-8'));
-        const skills = (lock as { skills?: unknown })?.skills;
-        return new Set(skills && typeof skills === 'object' ? Object.keys(skills).map(skillDirName) : []);
-    } catch {
-        return new Set();
-    }
+    return new Set(Object.keys(readSkillsLock(cwd)).map(skillDirName));
 }
 
 /**
@@ -449,18 +451,14 @@ export function readUserEntries(cwd: string): Map<string, string> {
 function runSkillsCli(cwd: string, args: string[], run: RunCommand): boolean {
     const manifestPath = createRequire(import.meta.url).resolve('skills/package.json');
     const { bin } = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as { bin: Record<string, string> };
-    const result = run(process.execPath, [path.join(path.dirname(manifestPath), bin.skills), ...args], {
-        cwd,
-        stdio: 'inherit',
-        env: { DISABLE_TELEMETRY: '1', ...process.env },
+
+    return runOrWarn(run, {
+        command: process.execPath,
+        args: [path.join(path.dirname(manifestPath), bin.skills), ...args],
+        options: { cwd, stdio: 'inherit', env: { DISABLE_TELEMETRY: '1', ...process.env } },
+        label: `skills ${args[0]}`,
+        what: 'skills',
     });
-
-    if (result.status === 0) return true;
-
-    console.warn(
-        `[lint-prepare] skills ${args[0]} failed (${result.error?.message ?? `exit code ${result.status}`}), skills may be missing: re-run lint-prepare`,
-    );
-    return false;
 }
 
 /**
@@ -491,16 +489,9 @@ export type SkillsPlan = { syncExclude: string[]; remote: RemoteSkills[] };
  * Names of the skills an installed npm package ships: `skills/<name>/SKILL.md` or `dist/skills/<name>/SKILL.md`.
  */
 export function readPackageSkills(cwd: string, packageName: string): string[] {
-    return ['skills', path.join('dist', 'skills')].flatMap((dir) => {
-        const root = path.join(cwd, 'node_modules', packageName, dir);
-
-        if (!fs.existsSync(root)) return [];
-
-        return fs
-            .readdirSync(root, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(root, entry.name, 'SKILL.md')))
-            .map((entry) => entry.name);
-    });
+    return ['skills', path.join('dist', 'skills')].flatMap((dir) =>
+        skillDirs(path.join(cwd, 'node_modules', packageName, dir)),
+    );
 }
 
 /**
@@ -567,8 +558,11 @@ export function syncRemoteSkills(cwd: string, remote: RemoteSkills[], run: RunCo
     const fromSource = (lock: Record<string, LockEntry>, { source, ref }: RemoteSkills) =>
         Object.keys(lock).filter((name) => own(lock[name]) && lock[name].source === source && lock[name].ref === ref);
 
+    // read again only after a `skills add` changed it
+    let lock = readSkillsLock(cwd);
+
     for (const wanted of remote) {
-        const installed = fromSource(readSkillsLock(cwd), wanted);
+        const installed = fromSource(lock, wanted);
         const complete =
             wanted.skills === '*' ? installed.length > 0 : wanted.skills.every((name) => installed.includes(name));
 
@@ -577,9 +571,9 @@ export function syncRemoteSkills(cwd: string, remote: RemoteSkills[], run: RunCo
         const skills = wanted.skills === '*' ? ['*'] : wanted.skills;
         const source = wanted.ref ? `${wanted.source}#${wanted.ref}` : wanted.source;
         runSkillsCli(cwd, ['add', source, '-y', ...SKILLS_AGENTS, '--skill', ...skills], run);
+        lock = readSkillsLock(cwd);
     }
 
-    const lock = readSkillsLock(cwd);
     const kept = new Set(
         remote.flatMap((wanted) =>
             fromSource(lock, wanted).filter((name) =>
@@ -736,13 +730,13 @@ export function symlinkClaudeMd(cwd: string): void {
  *
  * The links are plain, never `@path` imports: Claude Code loads `.claude/rules` itself (syncAgentDirs() links them
  * there) and honours each rule's `paths`, while an `@` import would load every rule into every session, scoped or not.
- * Codex, which expands no `@`, reads this index. `graphifySection` (graphify.ts) follows the tool sections.
+ * Codex, which expands no `@`, reads this index. `toolSections` follow the sections of {@link TOOL_SECTIONS}.
  */
 export function generateAgentsFile(
     rules: Rule[],
     customSection: string | null,
     previous = '',
-    graphifySection?: string,
+    toolSections: ToolSection[] = [],
 ): string {
     const entries = rules.map((rule) => {
         // the canonical entry (a package link or the user's own file), not the package install path
@@ -754,12 +748,12 @@ export function generateAgentsFile(
     });
 
     // what a tool wrote between its markers last time stays: lint-prepare never empties it
-    const sections = TOOL_SECTIONS.map(({ start, end }) => {
-        const from = previous.indexOf(start);
-        const to = from === -1 ? -1 : previous.indexOf(end, from);
-        return to === -1 ? `${start}\n${end}` : previous.slice(from, to + end.length);
+    const lines = previous.split(/\r?\n/);
+    const sections = [...TOOL_SECTIONS, ...toolSections].map(({ start, end, tail }) => {
+        const block = findBlock(lines, start, end);
+        const kept = block ? lines.slice(block[0], block[1] + 1).join('\n') : `${start}\n${end}`;
+        return tail ? `${kept}\n\n${tail}` : kept;
     });
-    if (graphifySection) sections.push(graphifySection);
     const generated = `${HEADER}\n\n# Rules\n\n${entries.join('\n')}\n\n${sections.join('\n\n')}\n\n${FOOTER}\n\n${GENERATED_MARKER}`;
 
     return customSection ? `${generated}\n\n${customSection}\n` : `${generated}\n`;
@@ -837,7 +831,7 @@ export async function main(): Promise<void> {
         // after syncAgentDirs(): it removes the skill links older versions placed, the CLI then places its own; the sync
         // first, it drops the skills a package `skills` field no longer asks for
         // with detection off, gated skills stay off unless `lint.config.ts` turns them on
-        const { enabled: detect = true } = asOptions(config.detection);
+        const { detect } = detectionOf(config);
         const plan = planSkills(
             config.skills ?? {},
             (packageName) => readPackageSkills(cwd, packageName),
@@ -849,14 +843,9 @@ export async function main(): Promise<void> {
         recordSyncedSkills(cwd);
 
         const previous = exists ? fs.readFileSync(targetPath, 'utf-8') : '';
-        // the anchors keep graphify's section from the last run; graphify fills them below
-        const graphifySection = graphify.mode === 'venv' ? graphifyAgentsSection(previous) : undefined;
-        const content = generateAgentsFile(
-            installedRules(rules, userEntries),
-            customSection,
-            previous,
-            graphifySection,
-        );
+        // graphify fills its section below (finishGraphify()), the next generation keeps it
+        const toolSections = graphify.mode === 'venv' ? [GRAPHIFY_SECTION] : [];
+        const content = generateAgentsFile(installedRules(rules, userEntries), customSection, previous, toolSections);
         fs.writeFileSync(targetPath, content, 'utf-8');
         console.log(`${exists ? 'Updated' : 'Created'} ${AGENTS_FILE}`);
 

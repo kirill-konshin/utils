@@ -5,7 +5,7 @@ import type * as ts from 'typescript';
 
 import { readData, toYaml, writeData } from './data';
 import { EVIDENCE_FILE, PARTS_DIR, UNITS_FILE } from './files';
-import { root } from './repo';
+import { repoRoot } from './steward/lib/git';
 import { evidenceAt, rootsOf } from './steward/steward';
 
 let loaded: typeof ts | undefined;
@@ -104,13 +104,19 @@ export type Requirement = {
     readonly related: readonly { id: string; shared: readonly string[] }[];
 };
 
-/** spec-steward's evidence model of the repository at `cwd`, written for the scope and the focused check. */
-export function writeEvidence(cwd: string): void {
-    writeData(path.join(cwd, EVIDENCE_FILE), evidenceAt(rootsOf({}, cwd)[0]!));
+/**
+ * spec-steward's evidence model of the repository at `cwd`, written for the scope and the focused check; returned, so
+ * the command that wrote it need not read it back.
+ */
+export function writeEvidence(cwd: string): EvidenceModel {
+    const model = evidenceAt(rootsOf({}, cwd)[0]!);
+    writeData(path.join(cwd, EVIDENCE_FILE), model);
+    // Typed as `loadEvidence` types the file it reads back: the interface, not the producer's own types.
+    return model as unknown as EvidenceModel;
 }
 
 /** The evidence model at a path; a missing file is the operator's to fix — the scope never guesses its evidence. */
-export function loadEvidence(file = path.join(root(), EVIDENCE_FILE)): EvidenceModel {
+export function loadEvidence(file = path.join(repoRoot(), EVIDENCE_FILE)): EvidenceModel {
     if (!fs.existsSync(file))
         throw new Error(
             `${EVIDENCE_FILE} is missing — \`spec-tools scope\` writes it from spec-steward's evidence model`,
@@ -181,7 +187,7 @@ export function sourceReader(): Reader {
     return (file) => {
         if (!cache.has(file)) {
             try {
-                cache.set(file, fs.readFileSync(path.join(root(), file), 'utf8').split('\n'));
+                cache.set(file, fs.readFileSync(path.join(repoRoot(), file), 'utf8').split('\n'));
             } catch {
                 cache.set(file, undefined);
             }
@@ -357,12 +363,14 @@ export const WHOLE_FILE_LINES = 150;
  * past the budget, or a file that is not TypeScript — is a window around the line. Every line carries
  * its number.
  */
-export function excerpt(file: string, code: string, line: number): Excerpt {
+export const excerpt = (file: string, code: string, line: number): Excerpt => excerptOf(parsed(file, code), line);
+
+/** A file as excerpts are cut from it: its lines and, in TypeScript, its syntax tree — built once per file. */
+type Parsed = { readonly file: string; readonly lines: readonly string[]; readonly sf?: ts.SourceFile };
+
+function parsed(file: string, code: string): Parsed {
     const lines = code.split('\n');
-    if (!/\.(ts|tsx|mts|cts)$/.test(file)) {
-        if (lines.length <= WHOLE_FILE_LINES) return { startLine: 1, text: numbered(lines, 1), cut: false };
-        return window(lines, line);
-    }
+    if (!/\.(ts|tsx|mts|cts)$/.test(file)) return { file, lines };
     const sf = typescript().createSourceFile(
         file,
         code,
@@ -370,6 +378,15 @@ export function excerpt(file: string, code: string, line: number): Excerpt {
         true,
         file.endsWith('x') ? typescript().ScriptKind.TSX : typescript().ScriptKind.TS,
     );
+    return { file, lines, sf };
+}
+
+/** `excerpt` over a file already parsed. */
+function excerptOf({ file, lines, sf }: Parsed, line: number): Excerpt {
+    if (!sf) {
+        if (lines.length <= WHOLE_FILE_LINES) return { startLine: 1, text: numbered(lines, 1), cut: false };
+        return window(lines, line);
+    }
     // The citation itself, not the line's indentation — so a one-line doc comment still counts as one.
     const text = lines[line - 1] ?? '';
     const column = Math.max(0, text.indexOf('@link') === -1 ? text.search(/\S/) : text.indexOf('@link'));
@@ -414,12 +431,20 @@ export type Context = {
 };
 
 export function contextOf(all: readonly Requirement[], read: Reader = sourceReader()): Context {
+    const files = new Map<string, Parsed | undefined>();
+    const parsedAt = (file: string) => {
+        if (!files.has(file)) {
+            const lines = read(file);
+            files.set(file, lines ? parsed(file, lines.join('\n')) : undefined);
+        }
+        return files.get(file);
+    };
     const excerpts = new Map<string, Excerpt | undefined>();
     const excerptAt = (file: string, line: number) => {
         const key = `${file}:${line}`;
         if (!excerpts.has(key)) {
-            const lines = read(file);
-            excerpts.set(key, lines ? excerpt(file, lines.join('\n'), line) : undefined);
+            const p = parsedAt(file);
+            excerpts.set(key, p ? excerptOf(p, line) : undefined);
         }
         return excerpts.get(key);
     };
@@ -683,7 +708,7 @@ export function writeParts(
     only?: ReadonlySet<string>,
 ): EvidenceFile[] {
     const ctx = contextOf(all);
-    const dir = path.join(root(), PARTS_DIR);
+    const dir = path.join(repoRoot(), PARTS_DIR);
     // Regenerating the evidence replaces the evidence only: `findings/` holds the audit's output, and a scope
     // regenerated after an audit must not erase what the audit found.
     if (fs.existsSync(dir)) {
@@ -698,13 +723,13 @@ export function writeParts(
         if (capabilities.includes(r.capability) && (!only || only.has(idOf(r))))
             units[idOf(r)] = r.advisory ? { advisory: true } : {};
     }
-    writeData(path.join(root(), UNITS_FILE), units);
+    writeData(path.join(repoRoot(), UNITS_FILE), units);
     return capabilities.flatMap((capability) => {
         const slices = renderCapability(capability, ctx, only);
         return slices.map(({ requirements, text }, k) => {
             const file = `${PARTS_DIR}/${capability}${slices.length > 1 ? `.${k + 1}` : ''}.yaml`;
-            fs.mkdirSync(path.dirname(path.join(root(), file)), { recursive: true });
-            fs.writeFileSync(path.join(root(), file), text);
+            fs.mkdirSync(path.dirname(path.join(repoRoot(), file)), { recursive: true });
+            fs.writeFileSync(path.join(repoRoot(), file), text);
             return {
                 capability,
                 file,

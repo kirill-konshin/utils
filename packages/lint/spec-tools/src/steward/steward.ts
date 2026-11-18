@@ -33,10 +33,10 @@ import {
     scopePrompts,
     SIZE,
 } from './lib/checks';
-import { scanCitations } from './lib/citations';
+import { fileReader, scanCitations } from './lib/citations';
 import { DEFAULT_SPECS_DIR, loadCorpus, loadCorpusAt, parseSpec } from './lib/corpus';
 import { coverageReport } from './lib/coverage';
-import { evidenceModel, sourceIndex } from './lib/evidence';
+import { evidenceModel, isSource, sourceIndex } from './lib/evidence';
 import { changedFiles, forget, listFiles, resolveBase, toplevel } from './lib/git';
 import { parseArgs } from './lib/util';
 
@@ -163,10 +163,12 @@ function oneRoot(roots: { name: string }[], cmd: string) {
 /** The audits' evidence model of one root. */
 export function evidenceAt(root: { name: string; path: string; specsDir: string }, opts: Record<string, any> = {}) {
     assertScannable(root);
+    // The scan reads every file; the sources it keeps are what the index reads next.
+    const read = fileReader(root.path, isSource);
     return evidenceModel(
         loadCorpus(root.path, root),
-        scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path) }),
-        sourceIndex(root.path),
+        scanCitations(root.path, anchorsOf, { binds: bindsOf(opts, root.path), read }),
+        sourceIndex(root.path, read),
     );
 }
 

@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { isAbsolute } from 'node:path';
-import { test } from 'vite-plus/test';
+import { test, vi } from 'vite-plus/test';
 
 import { eslintExts } from './exts.js';
 import { prettier } from './prettier.js';
-import { inTempDir, packagesLoadedBy, TAILWIND_ENTRY } from './testUtils.js';
+import { inTempDir, packagesLoadedBy, stubPackage, TAILWIND_ENTRY } from './testUtils.js';
 import { fmtConfig, lintConfig, stagedConfig, vitePlusConfig } from './vitePlus.js';
+
+// the plugins load on demand, in the first test that builds their block: slow under a full parallel run
+vi.setConfig({ testTimeout: 30_000 });
 
 const OFF = { detection: false } as const;
 
@@ -99,6 +102,10 @@ test('vitest is on under detection with no probe - Vite+ bundles it', () => {
     assert.ok(testOverride(others)?.plugins?.includes('vitest'));
     assert.ok(!testOverride({ ...others, vitest: false })?.plugins?.includes('vitest'));
     assert.ok(!testOverride(OFF)?.plugins?.includes('vitest'));
+
+    // a Jest repo gets the Jest rules only, unless Vitest is set too
+    assert.deepEqual(testOverride({ ...others, jest: true })?.plugins, ['jest']);
+    assert.deepEqual(testOverride({ ...others, jest: true, vitest: true })?.plugins, ['vitest', 'jest']);
 });
 
 test('typeAware is on by default - vp check is the type check - and typeAware: false turns it off', () => {
@@ -153,9 +160,29 @@ test('next: an explicit rootDir is passed through', async () => {
     });
 });
 
+/** A stand-in `eslint` install for a temp workspace: the Nx JS plugin needs it. */
+const ESLINT = stubPackage('eslint');
+
+test('nx: the JS plugin needs eslint, checked on its own - nx.json alone is not enough', async () => {
+    const hasNxPlugin = (options: Parameters<typeof lintConfig>[0]) =>
+        lintConfig(options).jsPlugins?.some((plugin) => typeof plugin === 'object' && plugin.name === '@nx');
+
+    await inTempDir({ 'nx.json': '{}' }, async () => {
+        assert.throws(() => lintConfig({ nx: true }), /`eslint` package is not resolvable/);
+        assert.throws(() => lintConfig({}), /`eslint` package is not resolvable/);
+    });
+    await inTempDir({ ...ESLINT }, async () => {
+        // forced on without nx.json: eslint is there, so no misleading error
+        assert.ok(hasNxPlugin({ nx: true }));
+    });
+});
+
 test('vitePlusConfig: lint.config.ts in the workspace root is the base, the overrides win', async () => {
     await inTempDir(
-        { 'lint.config.ts': 'export default { detection: false, nx: true, vitePlus: { typeAware: false } };\n' },
+        {
+            'lint.config.ts': 'export default { detection: false, nx: true, vitePlus: { typeAware: false } };\n',
+            ...ESLINT,
+        },
         async () => {
             const fromFile = await vitePlusConfig();
             assert.equal(fromFile.lint?.options, undefined);

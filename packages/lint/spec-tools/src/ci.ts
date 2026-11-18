@@ -4,8 +4,7 @@
  * spec-steward's own resolver, so the corpus gate and the change gates always judge against the same commit.
  */
 import { jobLogFile } from './files';
-import { git, root } from './repo';
-import { resolveBase } from './steward/lib/git';
+import { gitOrThrow, repoRoot, resolveBase } from './steward/lib/git';
 
 type Env = NodeJS.ProcessEnv;
 
@@ -14,7 +13,7 @@ type Env = NodeJS.ProcessEnv;
  * none in any other pipeline — a default-branch push or the nightly has no branch of its own; locally, the merge base
  * with the default branch.
  */
-export function gateBase(env: Env = process.env, rootDir: string = root()): string | null {
+export function gateBase(env: Env = process.env, rootDir: string = repoRoot()): string | null {
     const base = resolveBase(rootDir, 'auto', env);
     if ('error' in base) throw new Error(base.error);
     return base.ref;
@@ -28,7 +27,11 @@ export function gateBase(env: Env = process.env, rootDir: string = root()): stri
 export function diffBase(env: Env = process.env): string {
     if (env.CI_MERGE_REQUEST_DIFF_BASE_SHA) return env.CI_MERGE_REQUEST_DIFF_BASE_SHA;
     if (env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME)
-        return git(['merge-base', `origin/${env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME}`, 'HEAD']).trim();
+        return gitOrThrow(repoRoot(), [
+            'merge-base',
+            `origin/${env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME}`,
+            'HEAD',
+        ]).trim();
     // A push: the tip before it, which is all zeros on a branch's first push.
     if (env.CI_COMMIT_SHA) return /^0*$/.test(env.CI_COMMIT_BEFORE_SHA ?? '') ? 'HEAD^' : env.CI_COMMIT_BEFORE_SHA!;
     return 'HEAD';

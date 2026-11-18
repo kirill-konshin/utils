@@ -5,10 +5,22 @@ import type { OxfmtConfig } from 'vite-plus/fmt';
 import type { OxlintConfig, OxlintOverride } from 'vite-plus/lint';
 
 import { type LintConfig, resolveLintConfig } from './config.js';
-import { defaultExportFiles, filenameCaseIgnore } from './conventions.js';
-import { eslintExts, markupExtsRaw, prettierExtsRaw, tsExts, tsExtsRaw } from './exts.js';
+import {
+    coreRules,
+    declarationFileRules,
+    defaultExportFiles,
+    filenameCaseIgnore,
+    nextRules,
+    promiseRules,
+    reactRules,
+    testRunnerRules,
+    typescriptRules,
+    vitestRules,
+} from './conventions.js';
+import { markupExtsRaw, prettierExtsRaw, testFiles, tsExts, tsExtsRaw, tsFiles } from './exts.js';
 import { jestGate, nextGate, nxGate, storybookGate, tailwindGate, turboGate } from './gates.js';
-import { asOptions, findWorkspaceRoot, GLOBAL_IGNORES } from './lib.js';
+import { asOptions, detectionOf, findWorkspaceRoot, GLOBAL_IGNORES } from './lib.js';
+import { prettier } from './prettier.js';
 
 /*
  * Vite+ (`vite-plus`) config, the `@kirill.konshin/lint/vite-plus` entry: the same defaults as the ESLint, Prettier
@@ -24,9 +36,7 @@ export { tsExts } from './exts.js';
 
 type StagedConfig = NonNullable<UserConfig['staged']>;
 type JsPlugin = NonNullable<OxlintConfig['jsPlugins']>[number];
-
-const TS_FILES = `**/*.${tsExts}`;
-const TEST_FILES = `**/*.{test,spec}.${tsExts}`;
+type OxlintRules = NonNullable<OxlintConfig['rules']>;
 
 /**
  * Type-aware `correctness` rules of Oxlint 1.88 that stay off when `typeAware` is on. Tried on this monorepo they
@@ -48,6 +58,22 @@ function pluginPath(specifier: string): string {
     return fileURLToPath(import.meta.resolve(specifier));
 }
 
+// ESLint plugin prefixes Oxlint names differently; the shared rule tables of `conventions.ts` use the ESLint names
+const OXLINT_PREFIXES: [eslint: string, oxlint: string][] = [
+    ['@typescript-eslint/', 'typescript/'],
+    ['@next/next/', 'nextjs/'],
+];
+
+/** Rules by their ESLint names, renamed for Oxlint. */
+function oxlintRules(rules: Record<string, unknown>): OxlintRules {
+    return Object.fromEntries(
+        Object.entries(rules).map(([name, setting]) => {
+            const prefix = OXLINT_PREFIXES.find(([eslint]) => name.startsWith(eslint));
+            return [prefix ? prefix[1] + name.slice(prefix[0].length) : name, setting];
+        }),
+    ) as OxlintRules;
+}
+
 /** A workspace-root-relative glob for an absolute directory (Oxlint override globs resolve from the config file). */
 function workspaceGlob(dir: string, glob: string): string {
     const rel = relative(findWorkspaceRoot(), dir).replaceAll('\\', '/');
@@ -65,10 +91,7 @@ function workspaceGlob(dir: string, glob: string): string {
  * import autofix.
  */
 export function lintConfig(options: LintConfig = {}): OxlintConfig {
-    const { enabled: defaultOn = true, strict = false } = asOptions(options.detection);
-    // with detection off, tools not mentioned explicitly are OFF instead of auto-detected
-    const flag = <T>(option: T | undefined): T | false | undefined =>
-        option === undefined && !defaultOn ? false : option;
+    const { strict, flag } = detectionOf(options);
 
     /*
      * Native plugins need no package: the gates only decide whether the tool is in use. JS plugins resolve from this
@@ -79,8 +102,9 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
     const turbo = turboGate(flag(options.turbo));
     const nx = nxGate(flag(options.nx), strict, { packageName: 'eslint' });
     const jest = jestGate(flag(options.jest), strict);
-    // Vite+ bundles Vitest: on unless turned off
-    const vitest = asOptions(flag(options.vitest)).enabled ?? true;
+    // Vite+ bundles Vitest, so its config and package are everywhere: Vitest is on unless the repo runs Jest, or it is
+    // set explicitly (a repo moving between the two sets both)
+    const vitest = asOptions(flag(options.vitest)).enabled ?? !jest.enabled;
     const tailwind = tailwindGate(flag(options.tailwind), strict);
     // on by default: `vp check` is the type check (TypeScript 7 engine via tsgolint); `vp pack` builds declarations
     // without one. Not a detected tool, so `detection: false` leaves it on
@@ -99,39 +123,27 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
     const overrides: OxlintOverride[] = [
         {
             files: ['**/*.d.ts'],
-            rules: {
-                // `typeof import('pkg')` annotations are how declaration files name types
-                'typescript/consistent-type-imports': [
-                    'error',
-                    { prefer: 'type-imports', fixStyle: 'inline-type-imports', disallowTypeAnnotations: false },
-                ],
-            },
+            rules: oxlintRules(declarationFileRules),
         },
         {
             files: defaultExportFiles,
             rules: { 'import/no-default-export': 'off' },
         },
         {
-            files: [TEST_FILES],
+            files: [testFiles],
             plugins: [...(vitest ? (['vitest'] as const) : []), ...(jest.enabled ? (['jest'] as const) : [])],
             env: { ...(vitest ? { vitest: true } : {}), ...(jest.enabled ? { jest: true } : {}) },
             rules: {
                 'local/test-colocation': 'error',
                 ...(vitest
-                    ? {
-                          'vitest/consistent-test-it': ['error', { fn: 'test' }],
-                          'vitest/no-disabled-tests': 'warn',
+                    ? oxlintRules({
+                          ...testRunnerRules('vitest'),
                           // a `correctness` rule outside the plugin's `recommended` set the ESLint config used
                           'vitest/require-mock-type-parameters': 'off',
-                          'vitest/expect-expect': [
-                              'error',
-                              { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
-                          ],
-                      }
+                          ...vitestRules,
+                      })
                     : {}),
-                ...(jest.enabled
-                    ? { 'jest/consistent-test-it': ['error', { fn: 'test' }], 'jest/no-disabled-tests': 'warn' }
-                    : {}),
+                ...(jest.enabled ? oxlintRules(testRunnerRules('jest')) : {}),
             },
         },
     ];
@@ -167,7 +179,7 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
 
     if (tailwind) {
         overrides.push({
-            files: [tailwind.packageDir ? workspaceGlob(tailwind.packageDir, TS_FILES) : TS_FILES],
+            files: [tailwind.packageDir ? workspaceGlob(tailwind.packageDir, tsFiles) : tsFiles],
             jsPlugins: [{ name: 'tailwindcss', specifier: pluginPath('eslint-plugin-tailwindcss') }],
             rules: {
                 'tailwindcss/classnames-order': 'warn',
@@ -183,7 +195,7 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
 
     if (turbo.enabled) {
         overrides.push({
-            files: [TS_FILES],
+            files: [tsFiles],
             jsPlugins: [{ name: 'turbo', specifier: pluginPath('eslint-plugin-turbo') }],
             rules: { 'turbo/no-undeclared-env-vars': 'warn' },
         });
@@ -215,10 +227,7 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
         ...(typeAware ? { options: { typeAware: true, typeCheck: true } } : {}),
         rules: {
             // core
-            'no-restricted-imports': [
-                'error',
-                { paths: [{ name: 'next/router', message: 'Please use next/navigation instead of next/router' }] },
-            ],
+            ...oxlintRules(coreRules),
             /*
              * Autofixable removal of unused imports, as eslint-plugin-unused-imports did. Unused parameters stay
              * allowed (signatures of callbacks and overridable methods), as `@typescript-eslint/no-unused-vars` was
@@ -246,25 +255,7 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
             'typescript/no-useless-empty-export': 'off',
 
             // typescript
-            'typescript/consistent-type-definitions': ['error', 'type'],
-            'typescript/consistent-type-imports': [
-                'error',
-                { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
-            ],
-            'typescript/ban-ts-comment': [
-                'error',
-                {
-                    'ts-expect-error': 'allow-with-description',
-                    'ts-ignore': true,
-                    'ts-nocheck': true,
-                    'ts-check': false,
-                    minimumDescriptionLength: 3,
-                },
-            ],
-            'typescript/prefer-as-const': 'error',
-            'typescript/no-explicit-any': 'off',
-            'typescript/no-empty-function': 'off',
-            'typescript/no-require-imports': 'off',
+            ...oxlintRules(typescriptRules),
             ...(typeAware
                 ? {
                       'typescript/prefer-optional-chain': 'warn',
@@ -290,20 +281,16 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
             'react/set-state-in-render': 'error',
             'react/unsupported-syntax': 'warn',
             'react/react-in-jsx-scope': 'off',
-            'jsx-a11y/alt-text': 'off',
+            ...oxlintRules(reactRules),
 
             // next
-            ...(next.enabled ? { 'nextjs/no-html-link-for-pages': 'off', 'nextjs/no-img-element': 'off' } : {}),
-            'import/no-anonymous-default-export': 'off',
+            ...(next.enabled ? oxlintRules(nextRules) : {}),
 
             // imports
             'import/no-default-export': 'warn',
 
             // promise
-            'promise/prefer-await-to-then': 'warn',
-            'promise/param-names': 'off',
-            'promise/always-return': 'off',
-            'promise/catch-or-return': 'off',
+            ...oxlintRules(promiseRules),
 
             // unicorn
             'unicorn/filename-case': [
@@ -325,11 +312,9 @@ export function lintConfig(options: LintConfig = {}): OxlintConfig {
  * Markdown gets 200 columns; a wider table is HTML, or stays unaligned when it is mostly code (rules/markdown.md).
  */
 export function fmtConfig(): OxfmtConfig {
+    const { overrides: prettierOverrides = [], ...prettierOptions } = prettier;
     return {
-        printWidth: 120,
-        tabWidth: 2,
-        singleQuote: true,
-        proseWrap: 'never',
+        ...(prettierOptions as OxfmtConfig),
         insertFinalNewline: true,
         sortPackageJson: false,
         ignorePatterns: [
@@ -383,7 +368,11 @@ export function fmtConfig(): OxfmtConfig {
             ],
         },
         overrides: [
-            { files: [`**/${eslintExts}`], options: { tabWidth: 4 } },
+            // Oxfmt matches override globs against the path, Prettier against the file name
+            ...prettierOverrides.map(({ files, options }) => ({
+                files: [files].flat().map((glob) => `**/${glob}`),
+                options: options as NonNullable<OxfmtConfig['overrides']>[number]['options'],
+            })),
             // code blocks in docs are fragments, often alternatives side by side - Prettier never sorted them; tables up
             // to 200 columns stay aligned
             { files: ['**/*.{md,mdx}'], options: { sortImports: false, printWidth: 200 } },

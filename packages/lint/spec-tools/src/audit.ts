@@ -13,7 +13,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { AUDIT_DIR, type AuditName } from './files';
-import { git, root } from './repo';
+import { gitOrThrow, repoRoot } from './steward/lib/git';
 
 /** What a run produces and brings back to the working tree: the audit's folder. */
 const outputs = [AUDIT_DIR];
@@ -66,14 +66,14 @@ export function audit(argv: readonly string[], audit: AuditName = 'spec-verify')
     const context = given ? path.resolve(given) : undefined;
     const here = argv.includes('--here');
     const dry = argv.includes('--dry');
-    const top = root();
-    const head = git(['rev-parse', '--short', 'HEAD']).trim();
+    const top = repoRoot();
+    const head = gitOrThrow(top, ['rev-parse', '--short', 'HEAD']).trim();
     if (here) {
         console.log(`spec-tools audit: working tree (${head}, uncommitted edits included)`);
         return sequence(top, true, dry, audit, context);
     }
     const tree = path.join(fs.mkdtempSync(path.join(os.tmpdir(), `${path.basename(top)}-audit-`)), 'tree');
-    git(['worktree', 'add', '--detach', '--quiet', tree, 'HEAD']);
+    gitOrThrow(top, ['worktree', 'add', '--detach', '--quiet', tree, 'HEAD']);
     try {
         fs.symlinkSync(path.join(top, 'node_modules'), path.join(tree, 'node_modules'));
         console.log(`spec-tools audit: detached tree of ${head} at ${tree}`);
@@ -88,7 +88,7 @@ export function audit(argv: readonly string[], audit: AuditName = 'spec-verify')
         return code;
     } finally {
         try {
-            git(['worktree', 'remove', '--force', tree]);
+            gitOrThrow(top, ['worktree', 'remove', '--force', tree]);
         } catch {
             fs.rmSync(tree, { recursive: true, force: true });
         }

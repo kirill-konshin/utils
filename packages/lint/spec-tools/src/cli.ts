@@ -29,18 +29,22 @@
  * Exit: 0 clean; 1 a failed gate; 2 a usage error; `report --gate` and `verdict` as their headers say.
  */
 import type { AuditName } from './files';
+import { parseArgs } from './steward/lib/util';
+
+/** The flags that never take a value. */
+const BOOLEANS = ['verify', 'complete', 'worktree', 'gate', 'advisory', 'here', 'dry', 'classify'];
 
 const [command, ...argv] = process.argv.slice(2);
+const opts = parseArgs(argv, [], BOOLEANS);
 
-/** The value after a flag, or undefined. */
-const flag = (name: string) => {
-    const i = argv.indexOf(name);
-    return i >= 0 ? argv[i + 1] : undefined;
-};
+/** The value of a flag (`--name value` or `--name=value`), or undefined. */
+const flag = (name: string): string | undefined => (typeof opts[name] === 'string' ? opts[name] : undefined);
+/** Whether a flag that takes no value is given. */
+const has = (name: string): boolean => opts[name] === true;
 
 /** The audit `--audit` names; spec-verify when none is named. */
 async function auditOf(): Promise<AuditName> {
-    const name = flag('--audit') ?? 'spec-verify';
+    const name = flag('audit') ?? 'spec-verify';
     const { AUDIT_NAMES } = await import('./files');
     if (!(AUDIT_NAMES as readonly string[]).includes(name))
         throw new Error(`--audit ${name}: expected one of ${AUDIT_NAMES.join(', ')}`);
@@ -50,8 +54,8 @@ async function auditOf(): Promise<AuditName> {
 async function main(): Promise<number> {
     switch (command) {
         case 'gates': {
-            const { root } = await import('./repo');
-            const checked = await (await import('./steward/steward')).run(['check', '--base', 'auto'], root());
+            const { repoRoot } = await import('./steward/lib/git');
+            const checked = await (await import('./steward/steward')).run(['check', '--base', 'auto'], repoRoot());
             const gates = (await import('./changeGates')).main();
             return Math.max(checked, gates);
         }
@@ -63,9 +67,9 @@ async function main(): Promise<number> {
             console.log((await import('./specDiff')).main(argv));
             return 0;
         case 'changed': {
-            const { root } = await import('./repo');
-            (await import('./auditParts')).writeEvidence(root());
-            process.stdout.write((await import('./auditChanged')).main());
+            const { repoRoot } = await import('./steward/lib/git');
+            const model = (await import('./auditParts')).writeEvidence(repoRoot());
+            process.stdout.write((await import('./auditChanged')).main(process.env, model));
             return 0;
         }
         case 'tier': {
@@ -74,23 +78,21 @@ async function main(): Promise<number> {
             return 0;
         }
         case 'scope': {
-            const { root } = await import('./repo');
-            (await import('./auditParts')).writeEvidence(root());
-            process.stdout.write((await import('./auditScope')).main(process.env, await auditOf()));
+            const { repoRoot } = await import('./steward/lib/git');
+            const model = (await import('./auditParts')).writeEvidence(repoRoot());
+            process.stdout.write((await import('./auditScope')).main(process.env, await auditOf(), model));
             return 0;
         }
         case 'workers': {
-            const pass = argv.includes('--verify') ? 'verify' : argv.includes('--complete') ? 'complete' : 'read';
-            const file = flag('--context');
+            const pass = has('verify') ? 'verify' : has('complete') ? 'complete' : 'read';
+            const file = flag('context');
             const context = file ? (await import('node:fs')).readFileSync(file, 'utf8') : undefined;
             return (await import('./workers')).workers(pass, { audit: await auditOf(), context });
         }
         case 'report': {
             if ((await auditOf()) === 'spec-verify') return (await import('./auditReport')).cli(argv);
             const { commitReader, worktreeReader } = await import('./auditReport');
-            console.log(
-                (await import('./stewardAudit')).merge(argv.includes('--worktree') ? worktreeReader : commitReader),
-            );
+            console.log((await import('./stewardAudit')).merge(has('worktree') ? worktreeReader : commitReader));
             return 0;
         }
         case 'audit':
@@ -100,16 +102,16 @@ async function main(): Promise<number> {
             if (!skill || skill.startsWith('-')) break;
             const { jobLog } = await import('./ci');
             const log = jobLog();
-            const report = flag('--verdict');
+            const report = flag('verdict');
             const code = await (await import('./run')).run(skill, log, report);
             if (code !== 0 || !report) return code;
-            const advisory = argv.includes('--advisory') || process.env.AUDIT_GATING === 'advisory';
+            const advisory = has('advisory') || process.env.AUDIT_GATING === 'advisory';
             return (await import('./verdict')).gate(report, advisory);
         }
         case 'verdict': {
             const report = argv[0];
             if (!report || report.startsWith('-')) break;
-            const advisory = argv.includes('--advisory') || process.env.AUDIT_GATING === 'advisory';
+            const advisory = has('advisory') || process.env.AUDIT_GATING === 'advisory';
             return (await import('./verdict')).gate(report, advisory);
         }
         case 'comment':

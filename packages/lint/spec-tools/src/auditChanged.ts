@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import {
     contextOf,
     distinctiveTerms,
+    type EvidenceModel,
     idOf,
     loadEvidence,
     renderChanged,
@@ -13,8 +14,9 @@ import {
 import { syncedUnarchivedChanges, touchedOpenChanges } from './changeGates';
 import { diffBase } from './ci';
 import { PARTS_DIR } from './files';
-import { git, root } from './repo';
+import { walkFiles } from './steward/lib/corpus';
 import { isSource, termPattern } from './steward/lib/evidence';
+import { gitOrThrow, repoRoot } from './steward/lib/git';
 import { stripComments } from './steward/lib/scan';
 
 /**
@@ -279,7 +281,8 @@ export function affectedScope(
     const add = (r: Requirement) => set.set(idOf(r), r);
 
     // SEED. `-M`: a moved capability's hunks are its edits, addressed by its new path — a pure move touches nothing.
-    const specHunks = hunksOf(git(['diff', '-M', '--unified=0', base, '--', 'openspec/specs']));
+    const root = repoRoot();
+    const specHunks = hunksOf(gitOrThrow(root, ['diff', '-M', '--unified=0', base, '--', 'openspec/specs']));
     for (const r of requirementsTouched(specHunks, all)) add(r);
     const known = new Set(all.map((r) => r.capability));
     const edited = [...new Set(specHunks.map((h) => capabilityOf(h.file)))]
@@ -288,26 +291,21 @@ export function affectedScope(
 
     const synced = new Set(syncedUnarchivedChanges().map((s) => s.split(' — ')[0]!));
     for (const change of touchedOpenChanges(base).filter((c) => !synced.has(c))) {
-        const specs = path.join(root(), 'openspec/changes', change, 'specs');
+        const specs = path.join(root, 'openspec/changes', change, 'specs');
         if (!fs.existsSync(specs)) continue;
-        const walk = (dir: string): string[] =>
-            fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-                const full = path.join(dir, entry.name);
-                return entry.isDirectory() ? walk(full) : entry.name === 'spec.md' ? [full] : [];
-            });
-        for (const delta of walk(specs)) {
+        for (const delta of walkFiles(specs, (name) => name === 'spec.md')) {
             const capability = path.relative(specs, path.dirname(delta));
             for (const r of deltaRequirements(fs.readFileSync(delta, 'utf8'), capability, all)) add(r);
         }
     }
 
     // An untracked file is changed throughout.
-    const untracked = git(['ls-files', '--others', '--exclude-standard'])
+    const untracked = gitOrThrow(root, ['ls-files', '--others', '--exclude-standard'])
         .split('\n')
         .filter(Boolean)
         .map((file): Hunk => ({ file, start: 1, count: Number.MAX_SAFE_INTEGER, removed: [] }));
-    for (const r of reachedBy([...hunksOf(git(['diff', '--unified=0', base])), ...untracked], all, options.context))
-        add(r);
+    const hunks = hunksOf(gitOrThrow(root, ['diff', '--unified=0', base]));
+    for (const r of reachedBy([...hunks, ...untracked], all, options.context)) add(r);
 
     const requirements = grow([...set.values()], all, edited, options);
     return {
@@ -319,13 +317,14 @@ export function affectedScope(
     };
 }
 
-export function main(env: NodeJS.ProcessEnv = process.env): string {
+/** `spec-tools changed`; `model` is the evidence model the command just wrote, read from its file when not given. */
+export function main(env: NodeJS.ProcessEnv = process.env, model?: EvidenceModel): string {
     const base = diffBase(env);
-    const all = requirementsOf(loadEvidence());
+    const all = requirementsOf(model ?? loadEvidence());
     const scope = affectedScope(base, all, affectedOptions(env));
     const text = renderChanged(scope.requirements, contextOf(all), base, describeOptions(scope.options));
-    fs.mkdirSync(path.join(root(), PARTS_DIR), { recursive: true });
-    fs.writeFileSync(path.join(root(), CHANGED_FILE), text);
+    fs.mkdirSync(path.join(repoRoot(), PARTS_DIR), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot(), CHANGED_FILE), text);
     const by = describeOptions(scope.options);
     return scope.requirements.length
         ? `${scope.requirements.length} requirement(s) in scope against ${base} (${by}) → ${CHANGED_FILE}:\n${scope.requirements.map((r) => `- ${idOf(r)}`).join('\n')}\n`

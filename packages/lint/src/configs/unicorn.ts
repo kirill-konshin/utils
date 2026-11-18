@@ -2,7 +2,7 @@ import type { Linter } from 'eslint';
 import unicornPlugin from 'eslint-plugin-unicorn';
 
 import { filenameCaseIgnore } from '../conventions.js';
-import { tsExts } from '../exts.js';
+import { tsFiles } from '../exts.js';
 
 /**
  * Filename casing + node: protocol.
@@ -15,7 +15,7 @@ export function unicornConfig(): Linter.Config[] {
     return [
         {
             name: 'Unicorn rules',
-            files: [`**/*.${tsExts}`],
+            files: [tsFiles],
             plugins: { unicorn: unicornPlugin },
             rules: {
                 'unicorn/filename-case': [

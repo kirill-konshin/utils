@@ -26,7 +26,10 @@ export type Citation = {
     testTitle?: string;
     window: [number, number];
 };
-export type ScanOptions = { files?: string[]; binds?: string[] };
+/** A repository file's bytes, or undefined when it cannot be read. */
+export type FileReader = (file: string) => Buffer | undefined;
+/** `read`: how a scan reads a file — a shared `fileReader` lets the source index reuse what the scan read. */
+export type ScanOptions = { files?: string[]; binds?: string[]; read?: FileReader };
 
 const CITE = /((?:\.{1,2}\/)*(?:[\w@.-]+\/)*?openspec\/specs\/[\w./-]*?spec\.md)(?:#([\w-]+))?/g;
 /** Build outputs and vendored copies, the specs themselves, and every change folder (prose that quotes other trees). */
@@ -74,6 +77,25 @@ function anchorsFor(abs: string, anchorsOf: (text: string) => Set<string>) {
 }
 
 /**
+ * Reads repository files, keeping the bytes of those `keep` accepts for the next reader of the same file — so the
+ * citation scan and the source index read a source once between them.
+ */
+export function fileReader(root: string, keep: (file: string) => boolean = () => false): FileReader {
+    const kept = new Map<string, Buffer | undefined>();
+    return (file) => {
+        if (kept.has(file)) return kept.get(file);
+        let buf: Buffer | undefined;
+        try {
+            buf = fs.readFileSync(path.join(root, file));
+        } catch {
+            buf = undefined;
+        }
+        if (keep(file)) kept.set(file, buf);
+        return buf;
+    };
+}
+
+/**
  * The files a scan reads: every tracked or untracked-unignored file, or the given ones; null when git cannot list them.
  */
 export const scanUniverse = (root: string, { files }: ScanOptions = {}) =>
@@ -91,16 +113,12 @@ export function scanCitations(
 ): Citation[] {
     anchorCache.clear();
     const binds = (opts.binds ?? []).map(globToRegExp);
+    const read = opts.read ?? fileReader(root);
 
     const out: Citation[] = [];
     for (const file of scanUniverse(root, opts) ?? []) {
-        let buf;
-        try {
-            buf = fs.readFileSync(path.join(root, file));
-        } catch {
-            continue;
-        }
-        if (buf.indexOf('openspec/specs/') < 0 || buf.includes(0)) continue;
+        const buf = read(file);
+        if (!buf || buf.indexOf('openspec/specs/') < 0 || buf.includes(0)) continue;
         const text = buf.toString('utf8');
         const lines = text.split('\n');
         const kind = isTestFile(file) ? 'test' : isDoc(file) ? 'doc' : 'code';

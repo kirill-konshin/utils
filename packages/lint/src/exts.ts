@@ -10,3 +10,7 @@ export const prettierExtsRaw = 'css,scss,sass,less,yml,yaml,json,json5,jsonc,gra
 export const tsExts = `{${tsExtsRaw}}`;
 export const eslintExts = `*.{${eslintExtsRaw}}`;
 export const prettierExts = `*.{${prettierExtsRaw}}`;
+
+/** Every code file, and every test file, as globs. */
+export const tsFiles = `**/*.${tsExts}`;
+export const testFiles = `**/*.{test,spec}.${tsExts}`;

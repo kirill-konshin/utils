@@ -1,4 +1,5 @@
 import { dirname } from 'node:path';
+import type nextPlugin from '@next/eslint-plugin-next';
 import type { Linter } from 'eslint';
 import nextTs from 'eslint-config-next/typescript';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
@@ -6,12 +7,14 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
 import type { NextOptions } from '../config.js';
-import { tsExts } from '../exts.js';
+import { declarationFileRules, nextRules, reactRules, typescriptRules } from '../conventions.js';
+import { tsFiles } from '../exts.js';
 import { nextGate } from '../gates.js';
-import { findNextRoots, GLOBAL_IGNORES, hasNext } from '../lib.js';
+import { findNextRoots, GLOBAL_IGNORES } from '../lib.js';
 
-// lazy so consumers without Next don't pay the load cost - re-exported from index.js
-export const nextPlugin = hasNext ? (await import('@next/eslint-plugin-next')).default : null;
+/** `@next/eslint-plugin-next`, loaded on demand: consumers without Next never pay for it. */
+export const loadNextPlugin = async (): Promise<typeof nextPlugin> =>
+    (await import('@next/eslint-plugin-next')).default;
 
 /**
  * Next.js blocks: the whole `eslint-config-next` flat config, plus `settings.next.rootDir`.
@@ -60,7 +63,7 @@ export function reactBaseConfig(): Linter.Config[] {
  * otherwise. Full evidence-based gate (see `nextGate` in gates.js), mirroring Tailwind: app-root
  * evidence (see {@link findNextRoots} - `next.config.*`, a `package.json` depending on `next`, a
  * `src/app`/`src/pages` tree) marks a Next repo even when the `next` package is installed only in
- * a leaf app (invisible to `hasNext`) - and because `eslint-config-next` `require`s files INSIDE
+ * a leaf app (invisible to `hasNext()`) - and because `eslint-config-next` `require`s files INSIDE
  * the `next` package, `next` must be resolvable from the workspace root (hoisted); a leaf-only
  * install is a hard error with hoisting guidance (see `nextGate` in gates.js).
  *
@@ -85,50 +88,17 @@ export function typescriptOverridesConfig(): Linter.Config[] {
         ...nextTs,
         {
             name: '@typescript-eslint overrides',
-            files: [`**/*.${tsExts}`],
+            files: [tsFiles],
             rules: {
                 '@typescript-eslint/explicit-module-boundary-types': 'off',
-                '@typescript-eslint/no-empty-function': 'off',
-                '@typescript-eslint/no-explicit-any': 'off',
-                '@typescript-eslint/no-require-imports': 'off',
                 '@typescript-eslint/no-unused-vars': 'off', // superseded by 'unused-imports/no-unused-imports', which is actually autofixable
-                '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
-                '@typescript-eslint/consistent-type-imports': [
-                    'error',
-                    { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
-                ],
-                '@typescript-eslint/ban-ts-comment': [
-                    'error',
-                    {
-                        'ts-expect-error': 'allow-with-description',
-                        'ts-ignore': true,
-                        'ts-nocheck': true,
-                        'ts-check': false,
-                        minimumDescriptionLength: 3,
-                    },
-                ],
-                /*
-                 * `as const` is the mechanical half of "Prefer `as const` and `readonly` for immutable
-                 * constants and objects" - the `readonly` half is a per-case judgment call (which objects
-                 * deserve it), so that guidance stays in typescript.md instead of being lint-enforced here.
-                 */
-                '@typescript-eslint/prefer-as-const': 'error',
+                ...typescriptRules,
             },
         },
         {
             name: '@typescript-eslint declaration-file overrides',
             files: ['**/*.d.ts'],
-            rules: {
-                /*
-                 * `typeof import('pkg')` annotations are the standard mechanism in declaration files
-                 * (tsc itself emits them when generating .d.ts) - the annotation ban of
-                 * consistent-type-imports is meant for source files.
-                 */
-                '@typescript-eslint/consistent-type-imports': [
-                    'error',
-                    { prefer: 'type-imports', fixStyle: 'inline-type-imports', disallowTypeAnnotations: false },
-                ],
-            },
+            rules: declarationFileRules,
         },
     ];
 }
@@ -144,10 +114,8 @@ export function nextOverridesConfig(): Linter.Config[] {
         {
             name: 'eslint-config-next overrides',
             rules: {
-                '@next/next/no-html-link-for-pages': 'off',
-                '@next/next/no-img-element': 'off',
-                'import/no-anonymous-default-export': 'off', // overrides eslint-config-next's own default
-                'jsx-a11y/alt-text': 'off',
+                ...nextRules,
+                ...reactRules,
                 'react/prop-types': 'off', // ts does it statically
             },
         },
