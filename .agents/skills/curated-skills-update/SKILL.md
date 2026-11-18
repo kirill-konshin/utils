@@ -13,7 +13,7 @@ The pins:
 The sources:
 
 - The Core Pack, https://skills.sh/p/DxVN7q53wGdAcZQt — the user adds and removes skills there; the defaults follow it
-- The official skills of the libraries the rules cover (Next.js, Redux Toolkit, Turborepo, Nx, Expo, Playwright) — listed below the pack entries in `config.ts`
+- The official skills of the libraries the rules cover (Next.js, Redux Toolkit, Turborepo, Nx, Expo, Playwright) and Modern Web Guidance (`GoogleChrome/modern-web-guidance`, pin its latest `v*` tag) — listed below the pack entries in `config.ts`
 - Not here: machine-wide skills (the System Pack https://skills.sh/p/qOfi5GxJSfJQI1aB) — the user's dotfiles own them
 
 Ask the user to commit unrelated work first.
